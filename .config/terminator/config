@@ -1,0 +1,34 @@
+[global_config]
+  enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
+[keybindings]
+[layouts]
+  [[default]]
+    [[[child0]]]
+      fullscreen = False
+      last_active_term = deed9a14-30dd-49c6-b8e0-e10ede244f59
+      last_active_window = True
+      maximised = False
+      order = 0
+      parent = ""
+      position = 372:176
+      size = 735, 455
+      title = fish  /home/adam
+      type = Window
+    [[[terminal1]]]
+      order = 0
+      parent = child0
+      profile = adam
+      type = Terminal
+      uuid = deed9a14-30dd-49c6-b8e0-e10ede244f59
+[plugins]
+[profiles]
+  [[default]]
+    background_color = "#263238"
+    background_image = None
+    custom_command = /bin/fish
+    foreground_color = "#c5c8c6"
+    palette = "#212d32:#ec5f67:#8bd649:#f8e71c:#5f819d:#85678f:#5c7e8c:#707880:#2c3a40:#f77669:#c3e88d:#f1e655:#82b1ff:#7986cb:#80cbc4:#cdd3de"
+    scrollback_infinite = True
+    scrollbar_position = hidden
+    show_titlebar = False
+    use_custom_command = True
