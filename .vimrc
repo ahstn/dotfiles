@@ -25,7 +25,6 @@ NeoBundle 'tpope/vim-fugitive'
 NeoBundle 'easymotion/vim-easymotion'
 NeoBundle 'tpope/vim-surround'
                             " Completion
-NeoBundle 'Valloric/YouCompleteMe'
 NeoBundle 'mattn/emmet-vim'
 NeoBundle 'Shougo/neocomplete.vim'
 NeoBundle 'ervandew/supertab'
@@ -54,8 +53,9 @@ set ruler			        " Show Current Line and Col
 set title			        " Show File Title in Terminal Tab
 set number                  " Show Line Numbers
 set cursorline			    " Highlight Current Line
+                            " Use relative line numbers in normal
 autocmd InsertEnter * :set number
-autocmd InsertLeave * :set relativenumber " Use relative line numbers in normal
+autocmd InsertLeave * :set relativenumber
 
 if exists("+colorcolumn")
 	set colorcolumn=81	    " Limit line length to 80
@@ -91,13 +91,31 @@ nnoremap <C-H> <C-W><C-H>
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Filetype Config
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
-au FileType notes setlocal wrap textwidth=80 
+au FileType notes setlocal wrap textwidth=80
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Plugin Config
 nnoremap <C-\> :NERDTreeToggle<CR>
-let g:airline_powerline_fonts = 1  " use airline symbols
-set laststatus=2                   " Force airline to display
+                            " vim-airline
+let g:airline_left_sep=''
+let g:airline_right_sep=''
+let g:airline_left_alt_sep='|'
+let g:airline_right_alt_sep = '|'
+let g:airline#extensions#whitespace#enabled = 0
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#fnamemod = ':t'
+set laststatus=2
+                            " vim-move
+let g:move_key_modifier = 'C'
+                            " vim-notes
 let g:notes_directories = ['~/Documents/Notes']
 let g:notes_suffix = '.txt'
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Show syntax highlighting groups for word under cursor
+nmap <F9> :call <SID>SynStack()<CR>
+function! <SID>SynStack()
+  if !exists("*synstack")
+    return
+  endif
+  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+endfunc

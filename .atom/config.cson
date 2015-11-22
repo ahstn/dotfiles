@@ -22,6 +22,8 @@
     Unit: "rem"
   "vim-mode": {}
   "linter-less": {}
+  "linter-jshint":
+    esnext: true
 ".basic.html.text":
   editor:
     tabLength: 2
