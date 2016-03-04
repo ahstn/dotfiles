@@ -1,29 +1,55 @@
 "*":
-  welcome:
-    showOnStartup: false
+  "atom-material-ui":
+    colors:
+      abaseColor:
+        red: 239
+        green: 83
+        blue: 80
+        alpha: 1
+      accentColor:
+        red: 89
+        green: 252
+        blue: 255
+        alpha: 1
+      genAccent: true
+      predefinedColor: "Red"
+    fonts: {}
+    panels:
+      panelContrast: true
+    tabs:
+      rippleAccentColor: true
+    treeView:
+      compactList: true
+    ui:
+      panelContrast: true
   core:
+    autoHideMenuBar: true
     themes: [
       "atom-material-ui"
       "atom-material-syntax"
     ]
-    autoHideMenuBar: true
+  "easy-motion-redux": {}
   editor:
+    fontFamily: "Hack"
+    fontSize: 12
     invisibles: {}
     showIndentGuide: true
+    showInvisibles: true
     softTabs: true
     tabLength: 4
-    fontSize: 15
-    showInvisibles: true
-  "easy-motion-redux": {}
-  "atom-material-ui":
-    panelContrast: true
-    rippleAccentColor: true
-  "px-to-em":
-    Unit: "rem"
-  "vim-mode": {}
-  "linter-less": {}
+  emmet: {}
+  "exception-reporting":
+    userId: "cdf2e795-78ae-ae7a-759f-34520798e1b5"
   "linter-jshint":
     esnext: true
+  "linter-less": {}
+  "px-to-em":
+    Unit: "rem"
+  "vim-mode":
+    startInInsertMode: true
+    useClipboardAsDefaultRegister: true
+  welcome:
+    showOnStartup: false
 ".basic.html.text":
   editor:
     tabLength: 2

@@ -10,15 +10,12 @@
   # For windows, tabs & panes
   'shift-q': 'core:close'
   'f6': 'tabs:close-all-tabs'
-  'g s o': 'custom:close-other-panes'
-  'g s o': 'pane:close-other-items'
-  'g s s': 'pane:split-down'
-  'g s v': 'pane:split-right'
-  'g s q': 'pane:close'
+  'ctrl-x': 'pane:split-down'
+  'ctrl-v': 'pane:split-right'
   'ctrl-j': 'window:focus-pane-below'
-  'ctrl-k ': 'window:focus-pane-above'
+  'ctrl-k': 'window:focus-pane-above'
   'ctrl-h': 'window:focus-pane-on-left'
   'ctrl-l': 'window:focus-pane-on-right'
 
 'atom-text-editor.vim-mode.insert-mode':
-  'j': 'expand-emmet-if-proceded-by-h'
+  'tab': 'emmet:expand-abbreviation-with-tab'

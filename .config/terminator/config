@@ -1,6 +1,12 @@
 [global_config]
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
 [keybindings]
+  go_down = <Alt>j
+  go_left = <Alt>h
+  go_right = <Alt>l
+  go_up = <Alt>k
+  split_horiz = <Alt>x
+  split_vert = <Alt>v
 [layouts]
   [[default]]
     [[[child0]]]
@@ -23,12 +29,16 @@
 [plugins]
 [profiles]
   [[default]]
-    background_color = "#263238"
-    background_image = None
-    custom_command = /bin/fish
-    foreground_color = "#c5c8c6"
-    palette = "#212d32:#ec5f67:#8bd649:#f8e71c:#5f819d:#85678f:#5c7e8c:#707880:#2c3a40:#f77669:#c3e88d:#f1e655:#82b1ff:#7986cb:#80cbc4:#cdd3de"
-    scrollback_infinite = True
+    background_color = "#2f343f"
+    copy_on_selection = True
+    cursor_color = "#fafafa"
+    cursor_shape = ibeam
+    delete_binding = automatic
+    font = Hack 12
+    foreground_color = "#fafafa"
+    icon_bell = False
+    palette = "#212d32:#ec5f67:#8bd649:#f1e655:#85678f:#7986cb:#5c7e8c:#fafafa:#37474f:#f77669:#c3e88d:#f8e71c:#5f819d:#82b1ff:#80cbc4:#cdd3de"
     scrollbar_position = hidden
     show_titlebar = False
-    use_custom_command = True
+    update_records = False
+    use_system_font = False
