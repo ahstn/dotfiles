@@ -1,7 +1,0 @@
-{
-    "node"          : true,
-    "esnext"        : true,
-
-    "trailing"      : false,    // Prohibit trailing whitespaces.
-    "indent"        : 4         // Specify indentation spacing
-}

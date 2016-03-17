@@ -1,0 +1,81 @@
+"*":
+  "atom-material-ui":
+    colors:
+      abaseColor:
+        red: 239
+        green: 83
+        blue: 80
+        alpha: 1
+      accentColor:
+        red: 89
+        green: 252
+        blue: 255
+        alpha: 1
+      genAccent: true
+      predefinedColor: "Red"
+    fonts: {}
+    panels:
+      altCmdPalette: false
+    tabs:
+      rippleAccentColor: true
+    treeView:
+      compactList: true
+    ui: {}
+  "atom-ternjs":
+    displayAboveSnippets: true
+    useSnippets: true
+    useSnippetsAndFunction: true
+  core:
+    audioBeep: false
+    autoHideMenuBar: true
+    disabledPackages: [
+      "bookmarks"
+      "grammar-selector"
+      "image-view"
+      "language-c"
+      "language-clojure"
+      "language-coffee-script"
+      "language-csharp"
+      "language-go"
+      "language-make"
+      "language-mustache"
+      "language-objective-c"
+      "language-perl"
+      "language-php"
+      "language-property-list"
+      "language-ruby-on-rails"
+      "language-source"
+      "language-toml"
+      "language-yaml"
+      "metrics"
+    ]
+    themes: [
+      "atom-material-ui"
+      "atom-material-syntax"
+    ]
+  editor:
+    autoIndent: false
+    fontFamily: "Hack"
+    invisibles: {}
+    showIndentGuide: true
+    showInvisibles: true
+    softTabs: true
+    softWrap: true
+    tabLength: 4
+    tabType: "soft"
+  "exception-reporting":
+    userId: "c665f589-2d72-f689-715e-ae3704d2ae2a"
+  "file-watcher":
+    promptWhenFileHasChangedOnDisk: false
+  "vim-mode":
+    useClipboardAsDefaultRegister: true
+  welcome:
+    showOnStartup: false
+".basic.html.text":
+  editor:
+    showInvisibles: false
+    tabLength: 2
+".js.source":
+  editor:
+    autoIndent: true
+    tabLength: 2
