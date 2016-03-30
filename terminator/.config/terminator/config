@@ -1,5 +1,6 @@
 [global_config]
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
+  suppress_multiple_term_dialog = True
 [keybindings]
   go_down = <Alt>j
   go_left = <Alt>h
@@ -33,15 +34,24 @@
     background_image = None
     copy_on_selection = True
     cursor_color = "#fafafa"
-    cursor_shape = ibeam
     custom_command = /bin/fish
     delete_binding = automatic
     font = Hack 12
-    foreground_color = "#fafafa"
+    foreground_color = "#eff1f5"
     icon_bell = False
-    palette = "#212d32:#ec5f67:#8bd649:#f1e655:#85678f:#7986cb:#5c7e8c:#fafafa:#37474f:#f77669:#c3e88d:#f8e71c:#5f819d:#82b1ff:#80cbc4:#cdd3de"
+    palette = "#2b303b:#bf616a:#a3be8c:#ebcb8b:#8fa1b3:#b48ead:#96b5b4:#c0c5ce:#65737e:#d08770:#343d46:#4f5b66:#a7adba:#dfe1e8:#ab7967:#eff1f5"
     scrollbar_position = hidden
     show_titlebar = False
     update_records = False
     use_custom_command = True
+    use_system_font = False
+  [[Material]]
+    background_color = "#2f343f"
+    background_image = None
+    copy_on_selection = True
+    font = Hack 12
+    foreground_color = "#fafafa"
+    palette = "#212d32:#ec5f67:#8bd649:#f1e655:#85678f:#7986cb:#5c7e8c:#fafafa:#37474f:#f77669:#c3e88d:#f8e71c:#5f819d:#82b1ff:#80cbc4:#cdd3de"
+    scrollbar_position = hidden
+    show_titlebar = False
     use_system_font = False
