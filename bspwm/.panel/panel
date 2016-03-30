@@ -1,56 +1,79 @@
 #! /bin/sh
 
-PANEL_HEIGHT=30
-PANEL_FONT_FAMILY="LiberationSans:size=12"
-ICON_FONT="FontAwesome:size11"
+. panel_colors
+. panel_config
 
-if [ $(pgrep -cx panel) -gt 1 ] ; then
+# Check if the panel is already running
+if [[ $(pgrep -cx panel) -gt 1 ]]; then
 	printf "%s\n" "The panel is already running." >&2
 	exit 1
 fi
 
+# Exit if terminated
 trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
 
+# Remove old $PANEL_FIFO and create a new one
 [ -e "$PANEL_FIFO" ] && rm "$PANEL_FIFO"
 mkfifo "$PANEL_FIFO"
 
-bspc control --subscribe > "$PANEL_FIFO" &
+# Setup BSPWM padding for the bar and grab the status feed
+bspc config top_padding $PANEL_HEIGHT
+bspc subscribe report > "$PANEL_FIFO" &
 
-# app launcher # uf000a
-echo -e 'L\uf0c9' > $PANEL_FIFO &
-
-# window title
+# Focused Window Title T*)
 xtitle -sf 'T%s' > "$PANEL_FIFO" &
 
-# clock
+# Current Time S*)
 while true; do
-	echo -e 'C\uf017' $(date '+ %R');
-	sleep 5
+    time=$(date '+%R')
+    date=$(date '+%x')
+    echo -e "S $ICON_DATE $date   $ICON_CLOCK $time "
+    sleep 5
 done > "$PANEL_FIFO" &
 
-# date
+# Wifi Network N*)
+# wlsp3s0 - wifi interface ($ ip link)
 while true; do
-              echo -e 'D\uf073' $(date +'%a, %d %b %Y')
-            sleep 5
+    wifi=$(iw wlp3s0 link)
+    wifi_ssid=$(echo "$wifi" | grep 'SSID' | sed 's/SSID: //' | sed 's/\t//')
+    wifi_sign=$(echo "$wifi" | grep 'signal' | sed 's/signal: //' | sed 's/dBm//' | sed 's/\t//')
+
+    if [[ $wifi != "Not connected." ]]; then
+        echo -e "N $ICON_WIFI $wifi_ssid"
+    else
+        echo -e "N $ICON_WIFI_DC"
+    fi
+    sleep 30
 done > "$PANEL_FIFO" &
 
-#power button
-echo -e '  P\uf011' > $PANEL_FIFO &
+# Battery Levels B*)
+while true; do
+    battery=$(acpi -b | grep -o '[0-9]\{1,3\}%' | sed 's/%//')
+    if acpi -b | grep 'Charging'; then
+        echo -e "B $ICON_BATTERY_CHARGING $battery%"
+    elif [[ $battery -ge 80 ]]; then
+        echo -e "B $ICON_BATTERY_FULL $battery%"
+    elif [[ $battery -ge 60 && $battery -lt 80 ]]; then
+        echo -e "B $ICON_BATTERY_HIGH $battery%"
+    elif [[ $battery -ge 40 && $battery -lt 60 ]]; then
+        echo -e "B $ICON_BATTERY_MED $battery%"
+    elif [[ $battery -ge 20 && $battery -lt 40 ]]; then
+        echo -e "B $ICON_BATTERY_LOW $battery%"
+    elif [[ $battery -lt 20 ]]; then
+        echo -e "B $ICON_BATTERY_MED $battery%"
+    fi
+    sleep 30
+done > "$PANEL_FIFO" &
 
-#screenlock
-echo -e '  K\uf023' > $PANEL_FIFO &
-
-. panel_colors
-
-cat "$PANEL_FIFO" \
-	| panel_bar \
-	| lemonbar \
-	-g x$PANEL_HEIGHT \
-	-f "$PANEL_FONT_FAMILY" \
-	-f "$ICON_FONT" \
-	-F "$COLOR_FOREGROUND" \
-	-B "$COLOR_BACKGROUND" \
-	-u 2 \
-	| bash &
+# Dump .panel into .panel_bar and then lemonbar
+panel_bar < "$PANEL_FIFO" | lemonbar \
+    -a 32 \
+    -n "$PANEL_WM_NAME" \
+    -g x$PANEL_HEIGHT \
+    -f "$ICON_FONT" \
+    -f "$PANEL_FONT" \
+    -F "$COLOR_DEFAULT_FG" \
+    -B "$COLOR_DEFAULT_BG" \
+    | sh &
 
 wait

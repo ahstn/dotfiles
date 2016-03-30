@@ -1,0 +1,18 @@
+# Settings
+WIFI_INT='wlp3s0'    # Wifi Interface ($ ip link) to find
+
+# Fonts
+PANEL_FONT='Roboto Medium:size=12'
+ICON_FONT='FontAwesome:size=13'
+
+# Icons (Font Awesome)
+ICON_CLOCK='\uf017'
+ICON_DATE='\uf073'
+ICON_WIFI='\uf026'
+ICON_WIFI_DC='\uf05e'
+ICON_BATTERY_CHARGING='\uf1e6'
+ICON_BATTERY_FULL='\uf240'
+ICON_BATTERY_HIGH='\uf241'
+ICON_BATTERY_MED='\uf242'
+ICON_BATTERY_LOW='\uf243'
+ICON_BATTERY_ZERO='\uf244'
