@@ -20,19 +20,25 @@ NeoBundleFetch 'Shougo/neobundle.vim'
 NeoBundle 'scrooloose/nerdtree'
 NeoBundle 'kien/ctrlp.vim'
 NeoBundle 'bling/vim-airline'
+NeoBundle 'vim-airline/vim-airline-themes'
 NeoBundle 'tpope/vim-fugitive'
-                            " Commands
+NeoBundle 'Yggdroot/indentLine'
+                            " Text Editing
 NeoBundle 'easymotion/vim-easymotion'
 NeoBundle 'tpope/vim-surround'
+NeoBundle 'matze/vim-move'
+NeoBundle 'terryma/vim-multiple-cursors'
                             " Completion
-NeoBundle 'Valloric/YouCompleteMe'
 NeoBundle 'mattn/emmet-vim'
 NeoBundle 'Shougo/neocomplete.vim'
 NeoBundle 'ervandew/supertab'
+NeoBundle 'vim-scripts/SyntaxComplete'
+NeoBundle 'vim-scripts/AutoComplPop'
                             " Web Development
 NeoBundle 'scrooloose/syntastic'
-NeoBundle 'jelera/vim-javascript-syntax'
 NeoBundle 'walm/jshint.vim'
+NeoBundle 'othree/yajs.vim'
+NeoBundle 'mxw/vim-jsx'
 NeoBundle 'moll/vim-node'
 NeoBundle 'lilydjwg/colorizer'
                             " Note Taking
@@ -46,16 +52,17 @@ NeoBundleCheck              " Prompt for uninstalled bundles
 " ~> Visuals
 syntax on
 set background=dark
-colorscheme material-adam   " Color Scheme
+colorscheme mod8            " Color Scheme
 set t_Co=256
 set showmode 			    " Show Current Mode
 set showcmd			        " Show Cmds You're Typing
+set showmatch               " Show Matching [{}]
 set ruler			        " Show Current Line and Col
 set title			        " Show File Title in Terminal Tab
 set number                  " Show Line Numbers
 set cursorline			    " Highlight Current Line
-autocmd InsertEnter * :set number
-autocmd InsertLeave * :set relativenumber " Use relative line numbers in normal
+au InsertEnter * :set number
+au InsertLeave * :set relativenumber " Use relative line numbers in normal
 
 if exists("+colorcolumn")
 	set colorcolumn=81	    " Limit line length to 80
@@ -96,8 +103,30 @@ au FileType notes setlocal wrap textwidth=80
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Plugin Config
 nnoremap <C-\> :NERDTreeToggle<CR>
-let g:airline_powerline_fonts = 1  " use airline symbols
-set laststatus=2                   " Force airline to display
+                            " vim-airline 
+let g:airline_theme='mod8'
+let g:airline_left_sep=''
+let g:airline_right_sep=''
+let g:airline_left_alt_sep='|'
+let g:airline_right_alt_sep = '|'
+let g:airline#extensions#whitespace#enabled = 0
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#fnamemod = ':t'
+set laststatus=2
+                            " vim-move
+let g:move_key_modifier = 'C'
+                            " vim-notes
 let g:notes_directories = ['~/Documents/Notes']
 let g:notes_suffix = '.txt'
+
+let g:jsx_ext_required = 0
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Show syntax highlighting groups for word under cursor
+
+nmap <F9> :call <SID>SynStack()<CR>
+function! <SID>SynStack()
+    if !exists("*synstack")
+        return
+    endif
+    echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+endfunc
