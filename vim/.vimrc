@@ -1,109 +1,79 @@
 "
 "   .vimrc
 "       - Arch Linux (Terminator)
-"       - using NeoBundle
+"       - using Vim-Plug
 "
 
-if has('vim_starting')
-    if &compatible
-        set nocompatible    " Be iMproved
-    endif
-    set runtimepath+=~/.vim/bundle/neobundle.vim/
-endif
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> NeoBundle
-
-call neobundle#begin(expand('~/.vim/bundle/'))
-NeoBundleFetch 'Shougo/neobundle.vim'
-                            " Interface
-NeoBundle 'scrooloose/nerdtree'
-NeoBundle 'kien/ctrlp.vim'
-NeoBundle 'bling/vim-airline'
-NeoBundle 'vim-airline/vim-airline-themes'
-NeoBundle 'tpope/vim-fugitive'
-NeoBundle 'Yggdroot/indentLine'
-                            " Text Editing
-NeoBundle 'easymotion/vim-easymotion'
-NeoBundle 'tpope/vim-surround'
-NeoBundle 'matze/vim-move'
-NeoBundle 'terryma/vim-multiple-cursors'
-                            " Completion
-NeoBundle 'mattn/emmet-vim'
-NeoBundle 'Shougo/neocomplete.vim'
-NeoBundle 'ervandew/supertab'
-NeoBundle 'vim-scripts/SyntaxComplete'
-NeoBundle 'vim-scripts/AutoComplPop'
-                            " Web Development
-NeoBundle 'scrooloose/syntastic'
-NeoBundle 'walm/jshint.vim'
-NeoBundle 'othree/yajs.vim'
-NeoBundle 'mxw/vim-jsx'
-NeoBundle 'moll/vim-node'
-NeoBundle 'lilydjwg/colorizer'
-                            " Note Taking
-NeoBundle 'xolox/vim-misc'
-NeoBundle 'xolox/vim-notes'
-
-call neobundle#end()
-NeoBundleCheck              " Prompt for uninstalled bundles
-
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> Visuals
+" ~> Basics / Visuals
 syntax on
 set background=dark
 colorscheme mod8            " Color Scheme
-set t_Co=256
-set showmode 			    " Show Current Mode
-set showcmd			        " Show Cmds You're Typing
+set showmode 			          " Show Current Mode
+set showcmd			            " Show Cmds You're Typing
 set showmatch               " Show Matching [{}]
-set ruler			        " Show Current Line and Col
-set title			        " Show File Title in Terminal Tab
+set ruler			              " Show Current Line and Col
+set title			              " Show File Title in Terminal Tab
 set number                  " Show Line Numbers
-set cursorline			    " Highlight Current Line
+set cursorline			        " Highlight Current Line
+set splitbelow              " hoz split goes down
+set splitright              " vert split goes right
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " Use relative line numbers in normal
 
 if exists("+colorcolumn")
-	set colorcolumn=81	    " Limit line length to 80
+	set colorcolumn=81	      " Limit line length to 80
 endif
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Tabs
 filetype plugin indent on
-set expandtab               " 4 spaces please
-set shiftwidth=4
-set tabstop=4
-set softtabstop=4
+set expandtab               " 2 spaces please
+set shiftwidth=2
+set tabstop=2
+set softtabstop=2
 set shiftround
-set nowrap 			        " No Line Wrapping
+set nowrap 			            " No Line Wrapping
 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> Spliting
-set splitbelow              " hoz split goes down
-set splitright              " vert split goes right
-                            " Switch panes with Ctrl + hjkl
-map <C-h> <C-w>h
-map <C-j> <C-w>j
-map <C-k> <C-w>k
-map <C-l> <C-w>l
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" ~> Vim-Plug
 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> Navigating Splits
-nnoremap <C-J> <C-W><C-J>
-nnoremap <C-K> <C-W><C-K>
-nnoremap <C-L> <C-W><C-L>
-nnoremap <C-H> <C-W><C-H>
+call plug#begin('~/.vim/plugged')
+                            " Interface
+Plug 'scrooloose/nerdtree'
+Plug 'kien/ctrlp.vim'
+Plug 'bling/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
+Plug 'tpope/vim-fugitive'
+Plug 'Yggdroot/indentLine'
+                            " Text Editing
+Plug 'easymotion/vim-easymotion'
+Plug 'tpope/vim-surround'
+Plug 'matze/vim-move'
+Plug 'terryma/vim-multiple-cursors'
+                            " Completion
+Plug 'mattn/emmet-vim'
+Plug 'Shougo/neocomplete'
+Plug 'ervandew/supertab'
+Plug 'vim-scripts/SyntaxComplete'
+                            " Web Development
+Plug 'scrooloose/syntastic'
+Plug 'othree/javascript-libraries-syntax.vim'
+Plug 'othree/yajs.vim'
+Plug 'mxw/vim-jsx'
+Plug 'moll/vim-node'
+Plug 'lilydjwg/colorizer'
+                            " Note Taking
+Plug 'xolox/vim-misc'
+Plug 'xolox/vim-notes'
 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> Filetype Config
-autocmd FileType html setlocal shiftwidth=2 tabstop=2
-au FileType notes setlocal wrap textwidth=80 
+call plug#end()
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Plugin Config
+                            " nerdtree
 nnoremap <C-\> :NERDTreeToggle<CR>
-                            " vim-airline 
+                            " vim-airline
 let g:airline_theme='mod8'
 let g:airline_left_sep=''
 let g:airline_right_sep=''
@@ -118,15 +88,7 @@ let g:move_key_modifier = 'C'
                             " vim-notes
 let g:notes_directories = ['~/Documents/Notes']
 let g:notes_suffix = '.txt'
-
+                            " jsx and autocomplete stuff
 let g:jsx_ext_required = 0
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" Show syntax highlighting groups for word under cursor
-
-nmap <F9> :call <SID>SynStack()<CR>
-function! <SID>SynStack()
-    if !exists("*synstack")
-        return
-    endif
-    echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
-endfunc
+let g:neocomplete#enable_at_startup = 1
+let g:used_javascript_libs = 'react,jquery'
