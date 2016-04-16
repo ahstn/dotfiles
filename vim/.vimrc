@@ -59,6 +59,7 @@ Plug 'Shougo/neocomplete'
 Plug 'ervandew/supertab'
 Plug 'vim-scripts/SyntaxComplete'
                             " Web Development
+Plug 'scrooloose/syntastic'
 Plug 'pangloss/vim-javascript'
 Plug 'mxw/vim-jsx'
 Plug 'othree/jspc.vim'
@@ -92,5 +93,6 @@ let g:move_key_modifier = 'C'
 let g:notes_directories = ['~/Documents/Notes']
 let g:notes_suffix = '.txt'
                             " jsx and autocomplete stuff
+let g:syntastic_javascript_checkers = ['eslint']
 let g:jsx_ext_required = 0
 let g:neocomplete#enable_at_startup = 1
