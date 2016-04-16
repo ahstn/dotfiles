@@ -16,3 +16,12 @@ set -x LC_CTYPE "en_GB.UTF-8"
 set -x LC_MESSAGES "en_GB.UTF-8"
 set -x LC_COLLATE C
 #export LC_ALL=en_GB.utf8
+
+# Aliases
+function ..    ; cd .. ; end
+function ...   ; cd ../.. ; end
+    # Pipe with curl to format json in term
+function jsonify ; python -mjson.tool ; end
+    # Quick yaourt cmds for updating and listing installed aur packages
+function update-aur ; yaourt -Syua --noconfirm ; end
+function list-aur   ; yaourt -Qma ; end
