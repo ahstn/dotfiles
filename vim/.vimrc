@@ -18,6 +18,7 @@ set number                  " Show Line Numbers
 set cursorline			        " Highlight Current Line
 set splitbelow              " hoz split goes down
 set splitright              " vert split goes right
+set wildignore+=*/node_modules/*
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " Use relative line numbers in normal
 
@@ -44,6 +45,7 @@ Plug 'scrooloose/nerdtree'
 Plug 'kien/ctrlp.vim'
 Plug 'bling/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
+Plug 'phazyy/vim-mod8-airline'
 Plug 'tpope/vim-fugitive'
 Plug 'Yggdroot/indentLine'
                             " Text Editing
@@ -57,11 +59,10 @@ Plug 'Shougo/neocomplete'
 Plug 'ervandew/supertab'
 Plug 'vim-scripts/SyntaxComplete'
                             " Web Development
-Plug 'scrooloose/syntastic'
-Plug 'othree/javascript-libraries-syntax.vim'
-Plug 'othree/yajs.vim'
+Plug 'pangloss/vim-javascript'
 Plug 'mxw/vim-jsx'
-Plug 'moll/vim-node'
+Plug 'othree/jspc.vim'
+Plug 'othree/es.next.syntax.vim'
 Plug 'lilydjwg/colorizer'
                             " Note Taking
 Plug 'xolox/vim-misc'
@@ -73,6 +74,8 @@ call plug#end()
 " ~> Plugin Config
                             " nerdtree
 nnoremap <C-\> :NERDTreeToggle<CR>
+                            " ctrlp
+let g:ctrlp_working_path_mode = 'ra'
                             " vim-airline
 let g:airline_theme='mod8'
 let g:airline_left_sep=''
@@ -91,4 +94,3 @@ let g:notes_suffix = '.txt'
                             " jsx and autocomplete stuff
 let g:jsx_ext_required = 0
 let g:neocomplete#enable_at_startup = 1
-let g:used_javascript_libs = 'react,jquery'
