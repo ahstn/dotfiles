@@ -56,6 +56,8 @@ Plug 'terryma/vim-multiple-cursors'
                             " Completion
 Plug 'mattn/emmet-vim'
 Plug 'Shougo/neocomplete'
+Plug 'Shougo/neosnippet'
+Plug 'Shougo/neosnippet-snippets'
 Plug 'ervandew/supertab'
 Plug 'vim-scripts/SyntaxComplete'
                             " Web Development
@@ -64,6 +66,7 @@ Plug 'pangloss/vim-javascript'
 Plug 'mxw/vim-jsx'
 Plug 'othree/jspc.vim'
 Plug 'othree/es.next.syntax.vim'
+Plug '1995eaton/vim-better-javascript-completion'
 Plug 'lilydjwg/colorizer'
                             " Note Taking
 Plug 'xolox/vim-misc'
@@ -92,7 +95,15 @@ let g:move_key_modifier = 'C'
                             " vim-notes
 let g:notes_directories = ['~/Documents/Notes']
 let g:notes_suffix = '.txt'
-                            " jsx and autocomplete stuff
+                            " jsx
 let g:syntastic_javascript_checkers = ['eslint']
 let g:jsx_ext_required = 0
+                            " neocomplete and neosnippet
 let g:neocomplete#enable_at_startup = 1
+let g:neosnippet#enable_snipmate_compatibility = 1
+let g:neosnippet#snippets_directory='~/.vim/plugin/snippets'
+let g:neosnippet#disable_runtime_snippets = {
+  \   '_' : 1,
+  \  }
+smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+      \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"

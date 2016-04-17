@@ -1,0 +1,51 @@
+# React ES6
+snippet rcc
+  import React, { Component } from 'react';
+
+  class ${1:#:class_name} extends Component {
+    constructor(props) {
+      super(props);
+    }
+
+    render() {
+      ${0:TARGET}
+    }
+  }
+  
+  export default $1;
+
+snippet compWMount
+  componentWillMount() {
+    ${1}
+  }
+
+snippet compDMount
+  componentDidMount() {
+    ${1}
+  }
+
+snippet compWUpdate
+  componentWillUpdate(nextProps, nextState) {
+    ${1}
+  }
+
+snippet shouldCompUpdate
+  shouldComponentUpdate(nextProps, nextState) {
+    ${1}
+  }
+
+# Redux
+snippet reducer
+  function ${1:#:reducer_name}(state = {}, action) {
+    switch (action.type) {
+      ${0:case}
+    }
+  }
+
+# Standard JS
+snippet function
+abbr    func
+options word
+    function ${1:#:function_name}(${2:#:argument}) {
+    ${0:TARGET}
+  }
