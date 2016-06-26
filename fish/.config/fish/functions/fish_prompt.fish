@@ -1,15 +1,15 @@
 function fish_prompt
     set_color purple
-    echo -n '┌─╼ '
+    printf '┌─╼ '
     set_color white
-    echo -n (whoami)
+    printf '%s' (whoami)
 
     echo -n ' ['
     set_color blue
-    echo -n (prompt_pwd)
+    printf '%s' (prompt_pwd)
     set_color white
-    echo -n ']'
+    printf ']'
 
     set_color purple
-    echo -e '\n└────╼ '
+    printf '\n└────╼ '
 end
