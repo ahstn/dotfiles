@@ -1,0 +1,26 @@
+{
+	"bootstrapped": true,
+	"in_process_packages":
+	[
+	],
+	"installed_packages":
+	[
+		"All Autocomplete",
+		"AutoFileName",
+		"Babel",
+		"Boxy Theme",
+		"BracketHighlighter",
+		"Color Highlighter",
+		"GitGutter",
+		"GitSavvy",
+		"Package Control",
+		"Preap",
+		"React ES6 Snippets",
+		"SideBarEnhancements",
+		"SublimeCodeIntel",
+		"SublimeLinter",
+		"SublimeLinter-contrib-eslint",
+		"Theme - Spacegray",
+		"Vintageous"
+	]
+}
