@@ -1,57 +1,56 @@
 [global_config]
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
   suppress_multiple_term_dialog = True
-[keybindings]
-  go_down = <Alt>j
-  go_left = <Alt>h
-  go_right = <Alt>l
-  go_up = <Alt>k
-  split_horiz = <Alt>x
-  split_vert = <Alt>v
+  [keybindings]
+    broadcast_all = <Primary><Shift>g
+    broadcast_off = <Primary><Shift>h
+    split_horiz = <Primary><Shift>Down
+    split_vert = <Primary><Shift>Right
 [layouts]
   [[default]]
-    [[[child0]]]
-      fullscreen = False
-      last_active_term = deed9a14-30dd-49c6-b8e0-e10ede244f59
-      last_active_window = True
-      maximised = False
-      order = 0
-      parent = ""
-      position = 372:176
-      size = 735, 455
-      title = fish  /home/adam
-      type = Window
-    [[[terminal1]]]
-      order = 0
-      parent = child0
-      profile = adam
+    [[[child1]]]
+      parent = window0
       type = Terminal
-      uuid = deed9a14-30dd-49c6-b8e0-e10ede244f59
+    [[[window0]]]
+      parent = ""
+      type = Window
 [plugins]
 [profiles]
   [[default]]
+    background_color = "#181512"
+    background_image = None
+    copy_on_selection = True
+    custom_command = /bin/zsh
+    font = Hack 12
+    foreground_color = "#eddcd3"
+    palette = "#333333:#8c4665:#287373:#f74372:#40bfa6:#f82b4a:#31658c:#d3d7cf:#3d3d3d:#bf4d80:#53a6a6:#db63b5:#40ddc2:#f2397a:#6096bf:#c0c0c0"
+    scrollbar_position = hidden
+    show_titlebar = False
+    use_custom_command = True
+    use_system_font = False
+  [[material]]
     background_color = "#2f343f"
     background_image = None
     copy_on_selection = True
     cursor_color = "#fafafa"
-    custom_command = /bin/fish
-    delete_binding = automatic
+    custom_command = /bin/zsh
     font = Hack 12
     foreground_color = "#eff1f5"
-    icon_bell = False
     palette = "#2b303b:#bf616a:#a3be8c:#ebcb8b:#8fa1b3:#b48ead:#96b5b4:#c0c5ce:#65737e:#d08770:#343d46:#4f5b66:#a7adba:#dfe1e8:#ab7967:#eff1f5"
     scrollbar_position = hidden
     show_titlebar = False
-    update_records = False
     use_custom_command = True
     use_system_font = False
-  [[Material]]
-    background_color = "#2f343f"
+  [[purp]]
+    use_theme_colors = False
+    background_color = "#1c1320"
     background_image = None
     copy_on_selection = True
+    custom_command = /bin/zsh
     font = Hack 12
-    foreground_color = "#fafafa"
-    palette = "#212d32:#ec5f67:#8bd649:#f1e655:#85678f:#7986cb:#5c7e8c:#fafafa:#37474f:#f77669:#c3e88d:#f8e71c:#5f819d:#82b1ff:#80cbc4:#cdd3de"
+    foreground_color = "#73a1d0"
+    palette = "#252525:#c27370:#70c273:#bfc270:#7370c2:#c270bf:#70bfc2:#d9d9d9:#444444:#e0b9b8:#b8e0b9:#dfe0b8:#b9b8e0:#e0b8df:#b8dfe0:#ffffff"
     scrollbar_position = hidden
     show_titlebar = False
+    use_custom_command = True
     use_system_font = False
