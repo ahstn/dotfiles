@@ -1,11 +1,11 @@
 [global_config]
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
   suppress_multiple_term_dialog = True
-  [keybindings]
-    broadcast_all = <Primary><Shift>g
-    broadcast_off = <Primary><Shift>h
-    split_horiz = <Primary><Shift>Down
-    split_vert = <Primary><Shift>Right
+[keybindings]
+  broadcast_all = <Primary><Shift>g
+  broadcast_off = <Primary><Shift>h
+  split_horiz = <Primary><Shift>Down
+  split_vert = <Primary><Shift>Right
 [layouts]
   [[default]]
     [[[child1]]]
@@ -18,8 +18,8 @@
 [profiles]
   [[default]]
     background_color = "#181512"
-    background_image = None
     copy_on_selection = True
+    cursor_color = "#eddcd3"
     custom_command = /bin/zsh
     font = Hack 12
     foreground_color = "#eddcd3"
@@ -28,9 +28,20 @@
     show_titlebar = False
     use_custom_command = True
     use_system_font = False
+  [[hyper-snazzy]]
+    background_color = "#282a36"
+    copy_on_selection = True
+    cursor_color = "#97979b"
+    custom_command = /bin/zsh
+    font = Hack 12
+    foreground_color = "#eff0eb"
+    palette = "#282a36:#ff5c57:#5af78e:#f3f99d:#57c7ff:#ff6ac1:#9aedfe:#f1f1f0:#686868:#ff5c57:#5af78e:#f3f99d:#57c7ff:#ff6ac1:#9aedfe:#eff0eb"
+    scrollbar_position = hidden
+    show_titlebar = False
+    use_custom_command = True
+    use_system_font = False
   [[material]]
     background_color = "#2f343f"
-    background_image = None
     copy_on_selection = True
     cursor_color = "#fafafa"
     custom_command = /bin/zsh
@@ -42,9 +53,7 @@
     use_custom_command = True
     use_system_font = False
   [[purp]]
-    use_theme_colors = False
     background_color = "#1c1320"
-    background_image = None
     copy_on_selection = True
     custom_command = /bin/zsh
     font = Hack 12
