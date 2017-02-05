@@ -18,4 +18,4 @@ etc, etc..
 - Vim
 
 ## Gnome Screenshot
-![screenshot](http://i.imgur.com/uicILKc.png =250x)
+![screenshot](Pictures/screenshots/2017-02-05.png)
