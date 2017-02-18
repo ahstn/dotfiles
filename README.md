@@ -9,13 +9,14 @@ $ stow atom
 ```
 etc, etc..
 
-## Configs
-- BSPWM
-- Atom Editor
-- Fish Shell
-- Terminator
-- Tmux
-- Vim
+## Appearance
+- GTK: [Arc]
+- Shell: [Ciliora-Teria]
+- Icons: [La Capitaine]
 
 ## Gnome Screenshot
 ![screenshot](Pictures/screenshots/2017-02-05.png)
+
+[Arc]: https://github.com/horst3180/arc-theme
+[Ciliora-Teria]: https://github.com/zagortenay333/ciliora-tertia-shell
+[La Capitaine]: https://github.com/keeferrourke/la-capitaine-icon-theme
