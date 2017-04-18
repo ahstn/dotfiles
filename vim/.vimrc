@@ -1,14 +1,9 @@
-"
-"   .vimrc
-"       - Arch Linux (Terminator)
-"       - using Vim-Plug
-"
-
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Basics / Visuals
 syntax on
 set background=dark
-colorscheme mod8            " Color Scheme
+set termguicolors
+colorscheme deep-space      " Color Scheme
 set showmode 			          " Show Current Mode
 set showcmd			            " Show Cmds You're Typing
 set showmatch               " Show Matching [{}]
@@ -18,6 +13,7 @@ set number                  " Show Line Numbers
 set cursorline			        " Highlight Current Line
 set splitbelow              " hoz split goes down
 set splitright              " vert split goes right
+set scrolloff=3             " number of screen lines to show around the cursor
 set wildignore+=*/node_modules/*
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " Use relative line numbers in normal
@@ -37,15 +33,13 @@ set shiftround
 set nowrap 			            " No Line Wrapping
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> Vim-Plug
-
+" ~> Vim-Plug (https://github.com/junegunn/vim-plug)
 call plug#begin('~/.vim/plugged')
                             " Interface
+Plug 'tyrannicaltoucan/vim-deep-space'
 Plug 'scrooloose/nerdtree'
 Plug 'kien/ctrlp.vim'
 Plug 'bling/vim-airline'
-Plug 'vim-airline/vim-airline-themes'
-Plug 'phazyy/vim-mod8-airline'
 Plug 'tpope/vim-fugitive'
 Plug 'Yggdroot/indentLine'
                             " Text Editing
@@ -68,6 +62,8 @@ Plug 'othree/jspc.vim'
 Plug 'othree/es.next.syntax.vim'
 Plug '1995eaton/vim-better-javascript-completion'
 Plug 'lilydjwg/colorizer'
+                            " Chef
+Plug 'dougireton/vim-chef'
                             " Note Taking
 Plug 'xolox/vim-misc'
 Plug 'xolox/vim-notes'
@@ -81,7 +77,7 @@ nnoremap <C-\> :NERDTreeToggle<CR>
                             " ctrlp
 let g:ctrlp_working_path_mode = 'ra'
                             " vim-airline
-let g:airline_theme='mod8'
+let g:airline_theme='deep_space'
 let g:airline_left_sep=''
 let g:airline_right_sep=''
 let g:airline_left_alt_sep='|'
@@ -91,9 +87,9 @@ let g:airline#extensions#tabline#enabled = 1
 let g:airline#extensions#tabline#fnamemod = ':t'
 set laststatus=2
                             " vim-move
-let g:move_key_modifier = 'C'
+let g:move_key_modifier = 'S'
                             " vim-notes
-let g:notes_directories = ['~/Documents/Notes']
+let g:notes_directories = ['~/Documents/Notes'] 
 let g:notes_suffix = '.txt'
                             " jsx
 let g:syntastic_javascript_checkers = ['eslint']

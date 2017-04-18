@@ -10,12 +10,12 @@ nnoremap <C-L> <C-W><C-L>
 nnoremap <C-H> <C-W><C-H>
 
                         " Tab navigation like Firefox.
-nnoremap <C-S-tab> :tabprevious<CR>
-nnoremap <C-tab>   :tabnext<CR>
-nnoremap <C-t>     :tabnew<CR>
-inoremap <C-S-tab> <Esc>:tabprevious<CR>i
-inoremap <C-tab>   <Esc>:tabnext<CR>i
-inoremap <C-t>     <Esc>:tabnew<CR>
+nnoremap <C-Left>   :bufferprevious!<CR>
+nnoremap <C-Right>  :buffernext!<CR>
+nnoremap <C-t>      :enew!<CR>
+inoremap <C-Left>   <Esc>:bufferprevious!<CR>i
+inoremap <C-Right>  <Esc>:buffernext!<CR>i
+inoremap <C-t>      <Esc>:enew!<CR>
 
                         " neosnippet keys
 imap <C-k>     <Plug>(neosnippet_expand_or_jump)
