@@ -1,3 +1,35 @@
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" ~> Vim-Plug (https://github.com/junegunn/vim-plug)
+call plug#begin('~/.vim/plugged')
+                            " Interface and Typing
+Plug 'tyrannicaltoucan/vim-deep-space'
+Plug 'scrooloose/nerdtree',     { 'on': 'NERDTreeToggle' }
+Plug 'junegunn/fzf',            { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'bling/vim-airline'
+Plug 'tpope/vim-fugitive'
+Plug 'tpope/vim-surround'
+Plug 'tpope/vim-commentary'
+Plug 'Yggdroot/indentLine'
+Plug 'easymotion/vim-easymotion'
+Plug 'matze/vim-move'
+Plug 'terryma/vim-multiple-cursors'
+Plug 'scrooloose/syntastic'
+                            " Completion
+Plug 'Shougo/neocomplete'
+Plug 'Shougo/neosnippet'
+Plug 'Shougo/neosnippet-snippets'
+Plug 'ervandew/supertab'
+Plug 'vim-scripts/SyntaxComplete'
+                            " Development
+Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
+Plug 'dougireton/vim-chef',     { 'for': 'ruby' }
+Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoInstallBinaries' }
+                            " Note Taking
+Plug 'xolox/vim-misc',          { 'for': 'text' }
+Plug 'xolox/vim-notes',         { 'for': 'text' }
+
+call plug#end()
+
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Basics / Visuals
 syntax on
@@ -32,50 +64,13 @@ set softtabstop=2
 set shiftround
 set nowrap 			            " No Line Wrapping
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" ~> Vim-Plug (https://github.com/junegunn/vim-plug)
-call plug#begin('~/.vim/plugged')
-                            " Interface
-Plug 'tyrannicaltoucan/vim-deep-space'
-Plug 'scrooloose/nerdtree'
-Plug 'kien/ctrlp.vim'
-Plug 'bling/vim-airline'
-Plug 'tpope/vim-fugitive'
-Plug 'Yggdroot/indentLine'
-                            " Text Editing
-Plug 'easymotion/vim-easymotion'
-Plug 'tpope/vim-surround'
-Plug 'matze/vim-move'
-Plug 'terryma/vim-multiple-cursors'
-                            " Completion
-Plug 'mattn/emmet-vim'
-Plug 'Shougo/neocomplete'
-Plug 'Shougo/neosnippet'
-Plug 'Shougo/neosnippet-snippets'
-Plug 'ervandew/supertab'
-Plug 'vim-scripts/SyntaxComplete'
-                            " Web Development
-Plug 'scrooloose/syntastic'
-Plug 'pangloss/vim-javascript'
-Plug 'mxw/vim-jsx'
-Plug 'othree/jspc.vim'
-Plug 'othree/es.next.syntax.vim'
-Plug '1995eaton/vim-better-javascript-completion'
-Plug 'lilydjwg/colorizer'
-                            " Chef
-Plug 'dougireton/vim-chef'
-                            " Note Taking
-Plug 'xolox/vim-misc'
-Plug 'xolox/vim-notes'
-
-call plug#end()
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Plugin Config
                             " nerdtree
 nnoremap <C-\> :NERDTreeToggle<CR>
-                            " ctrlp
-let g:ctrlp_working_path_mode = 'ra'
+                            " fzf
+nnoremap <c-p> :FZF<cr>
                             " vim-airline
 let g:airline_theme='deep_space'
 let g:airline_left_sep=''
