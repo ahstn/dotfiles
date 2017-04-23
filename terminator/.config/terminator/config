@@ -4,6 +4,8 @@
 [keybindings]
   broadcast_all = <Primary><Shift>g
   broadcast_off = <Primary><Shift>h
+  cycle_next = None
+  cycle_prev = None
   split_horiz = <Primary><Shift>Down
   split_vert = <Primary><Shift>Right
 [layouts]
