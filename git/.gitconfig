@@ -1,0 +1,32 @@
+[user]
+	email = phazyy9@gmail.com
+	name = Adam Houston
+
+[alias]
+  lg = log --graph --oneline --decorate
+  st = status -sb
+  up = pull --rebase --prune
+  undo = reset HEAD~1 --mixed           # Reset last commit, but keep changes
+  amend = commit -a --amend             # Modify the last commit
+  sub = submodule update --init --recursive
+
+[color]
+  ui = always
+
+[core]
+  autocrlf = input
+
+[push]
+  # Make `git push` automatically push relevant
+  # annotated tags when pushing branches out
+  followTags = true
+  default = current
+
+[rebase]
+  autoStash = true
+
+# allows: git clone github:rails/rails
+[url "git@github.com:"]
+  insteadOf = "gh:"
+  pushInsteadOf = "github:"
+  pushInsteadOf = "git://github.com/"
