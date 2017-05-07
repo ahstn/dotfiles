@@ -1,5 +1,11 @@
-## Linux dotfiles
+<img src="http://i.imgur.com/9PHYl04.png" align="left" width="128px" height="128px"/>
 
+### **dotfiles**
+> *my dotfiles for development on Linux*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Usage
 Structured to work with GNU Stow
 ```
 $ git clone https://github.com/phazyy/dotfiles.git
