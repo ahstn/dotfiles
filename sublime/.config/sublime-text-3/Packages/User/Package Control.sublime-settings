@@ -5,22 +5,17 @@
 	],
 	"installed_packages":
 	[
+		"A File Icon",
 		"All Autocomplete",
-		"AutoFileName",
-		"Babel",
 		"Boxy Theme",
 		"BracketHighlighter",
-		"Color Highlighter",
-		"GitGutter",
-		"GitSavvy",
+		"Chef",
+		"EditorConfig",
+		"Normalize Indentation",
 		"Package Control",
-		"Preap",
-		"React ES6 Snippets",
 		"SideBarEnhancements",
-		"SublimeCodeIntel",
 		"SublimeLinter",
-		"SublimeLinter-contrib-eslint",
-		"Theme - Spacegray",
-		"Vintageous"
+		"SublimeLinter-contrib-foodcritic",
+		"SublimeLinter-rubocop"
 	]
 }
