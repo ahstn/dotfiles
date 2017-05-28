@@ -1,0 +1,30 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.exclude": {
+        "**/.git": true,
+        "**/node_modules": true,
+        "**/.kitchen": true
+    },
+    "editor.formatOnPaste": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.rulers": [
+        80
+    ],
+    "editor.scrollBeyondLastLine": true,
+    "editor.wordWrap": "on",
+    "editor.wordWrapColumn": 140,
+    "editor.mouseWheelZoom": true,
+    "explorer.openEditors.visible": 0,
+    "extensions.autoUpdate": true,
+    "telemetry.enableCrashReporter": false,
+    "telemetry.enableTelemetry": false,
+    "window.menuBarVisibility": "toggle",
+    "workbench.colorTheme": "Plastic",
+    "workbench.editor.openPositioning": "first",
+    "workbench.welcome.enabled": false,
+
+    // Extensions
+    "foodcritic.enable": true
+}
