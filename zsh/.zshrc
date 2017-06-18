@@ -1,8 +1,14 @@
-export ZSH=$HOME/.oh-my-zsh
-export GOPATH=$HOME/git
+export ZSH=/home/adam/.oh-my-zsh
+export GOPATH=/home/adam/git/go
+export GOBIN=$GOPATH/bin
+export PATH=$GOPATH:$PATH
+export EDITOR=vim
 
 ZSH_THEME="robbyrussell"
-plugins=(npm sudo web-search zsh-autosuggestions)
+ENABLE_CORRECTION="true"
+COMPLETION_WAITING_DOTS="true"
+
+plugins=(git zsh)
 
 source $ZSH/oh-my-zsh.sh
-source ~/.zshenv
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
