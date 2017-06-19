@@ -7,6 +7,7 @@
         "**/.kitchen": true
     },
     "editor.formatOnPaste": true,
+    "editor.minimap.enabled": false,
     "editor.insertSpaces": true,
     "editor.tabSize": 2,
     "editor.rulers": [
@@ -26,5 +27,6 @@
     "workbench.welcome.enabled": false,
 
     // Extensions
-    "foodcritic.enable": true
+    "foodcritic.enable": true,
+    "go.gopath": "/home/adam/git/go"
 }
