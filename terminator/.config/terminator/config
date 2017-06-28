@@ -6,6 +6,8 @@
   broadcast_off = <Primary><Shift>h
   cycle_next = None
   cycle_prev = None
+  go_down = <Primary><Alt>Down
+  go_left = <Primary><Alt>Left
   split_horiz = <Primary><Shift>Down
   split_vert = <Primary><Shift>Right
 [layouts]
