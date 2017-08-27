@@ -1,4 +1,5 @@
 [global_config]
+  borderless = True
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
   suppress_multiple_term_dialog = True
 [keybindings]
@@ -22,15 +23,27 @@
 [profiles]
   [[default]]
     background_color = "#181512"
+    backspace_binding = automatic
     copy_on_selection = True
     cursor_color = "#eddcd3"
     custom_command = /bin/zsh
+    delete_binding = automatic
     font = Hack 12
     foreground_color = "#eddcd3"
     palette = "#333333:#8c4665:#287373:#f74372:#40bfa6:#f82b4a:#31658c:#d3d7cf:#3d3d3d:#bf4d80:#53a6a6:#db63b5:#40ddc2:#f2397a:#6096bf:#c0c0c0"
     scrollbar_position = hidden
     show_titlebar = False
     use_custom_command = True
+    use_system_font = False
+  [[calamity]]
+    background_color = "#2f2833"
+    copy_on_selection = True
+    cursor_color = "#aaaaaa"
+    font = Hack 12
+    foreground_color = "#d5ced9"
+    palette = "#3f3544:#fc644d:#a5f69c:#e9d7a5:#3b79c7:#c668ba:#74d3de:#d3d7cf:#2f2833:#fc644d:#a5f69c:#e9d7a5:#546381:#84627f:#34e2e2:#5e5066"
+    scrollbar_position = hidden
+    show_titlebar = False
     use_system_font = False
   [[hyper-snazzy]]
     background_color = "#282a36"
