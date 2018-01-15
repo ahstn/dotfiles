@@ -1,5 +1,4 @@
 [global_config]
-  borderless = True
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
   suppress_multiple_term_dialog = True
 [keybindings]
@@ -22,61 +21,40 @@
 [plugins]
 [profiles]
   [[default]]
-    background_color = "#181512"
+    background_color = "#282c34"
+    background_darkness = 0.98
     backspace_binding = automatic
     copy_on_selection = True
-    cursor_color = "#eddcd3"
+    cursor_color = "#bbbbbb"
     custom_command = /bin/zsh
     delete_binding = automatic
-    font = Hack 12
-    foreground_color = "#eddcd3"
-    palette = "#333333:#8c4665:#287373:#f74372:#40bfa6:#f82b4a:#31658c:#d3d7cf:#3d3d3d:#bf4d80:#53a6a6:#db63b5:#40ddc2:#f2397a:#6096bf:#c0c0c0"
+    font = DejaVu Sans Code 12
+    foreground_color = "#abb2bf"
+    palette = "#000000:#eb6e67:#95ee8f:#f8c456:#6eaafb:#d886f3:#6cdcf7:#b2b2b2:#50536b:#eb6e67:#95ee8f:#f8c456:#6eaafb:#d886f3:#6cdcf7:#dfdfdf"
     scrollbar_position = hidden
     show_titlebar = False
     use_custom_command = True
     use_system_font = False
   [[calamity]]
     background_color = "#2f2833"
-    copy_on_selection = True
     cursor_color = "#aaaaaa"
-    font = Hack 12
+    delete_binding = automatic
+    font = DejaVu Sans Code 12
     foreground_color = "#d5ced9"
     palette = "#3f3544:#fc644d:#a5f69c:#e9d7a5:#3b79c7:#c668ba:#74d3de:#d3d7cf:#2f2833:#fc644d:#a5f69c:#e9d7a5:#546381:#84627f:#34e2e2:#5e5066"
     scrollbar_position = hidden
     show_titlebar = False
+    use_custom_command = True
     use_system_font = False
   [[hyper-snazzy]]
     background_color = "#282a36"
-    copy_on_selection = True
     cursor_color = "#97979b"
-    custom_command = /bin/zsh
-    font = Hack 12
+    delete_binding = automatic
+    font = DejaVu Sans Code 12
     foreground_color = "#eff0eb"
-    palette = "#282a36:#ff5c57:#5af78e:#f3f99d:#57c7ff:#ff6ac1:#9aedfe:#f1f1f0:#686868:#ff5c57:#5af78e:#f3f99d:#57c7ff:#ff6ac1:#9aedfe:#eff0eb"
+    palette = "#282a36:#ff5c57:#5af78e:#f3f99d:#57c7ff:#ff6ac1:#9aedfe:#f1f1f0:#686868:#ff5c57:#5af78e:#f3f99d:#57c7ff:#ff6ac1:#9aedfe:#f9f9f6"
     scrollbar_position = hidden
     show_titlebar = False
     use_custom_command = True
     use_system_font = False
-  [[material]]
-    background_color = "#2f343f"
-    copy_on_selection = True
-    cursor_color = "#fafafa"
-    custom_command = /bin/zsh
-    font = Hack 12
-    foreground_color = "#eff1f5"
-    palette = "#2b303b:#bf616a:#a3be8c:#ebcb8b:#8fa1b3:#b48ead:#96b5b4:#c0c5ce:#65737e:#d08770:#343d46:#4f5b66:#a7adba:#dfe1e8:#ab7967:#eff1f5"
-    scrollbar_position = hidden
-    show_titlebar = False
-    use_custom_command = True
-    use_system_font = False
-  [[purp]]
-    background_color = "#1c1320"
-    copy_on_selection = True
-    custom_command = /bin/zsh
-    font = Hack 12
-    foreground_color = "#73a1d0"
-    palette = "#252525:#c27370:#70c273:#bfc270:#7370c2:#c270bf:#70bfc2:#d9d9d9:#444444:#e0b9b8:#b8e0b9:#dfe0b8:#b9b8e0:#e0b8df:#b8dfe0:#ffffff"
-    scrollbar_position = hidden
-    show_titlebar = False
-    use_custom_command = True
-    use_system_font = False
+
