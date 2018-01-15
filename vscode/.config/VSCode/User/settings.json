@@ -1,11 +1,17 @@
 {
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
+    "files.eol": "\n",
     "files.exclude": {
         "**/.git": true,
         "**/node_modules": true,
-        "**/.kitchen": true
+        "**/.kitchen": true,
+        "**/obj": true,
+        "**/bin": true,
+        "**/vendor": true
     },
+    "editor.fontFamily": "'DejaVu Sans Code','Hack', monospace",
+    "editor.fontLigatures": true,
     "editor.formatOnPaste": true,
     "editor.minimap.enabled": false,
     "editor.insertSpaces": true,
@@ -14,19 +20,21 @@
         80
     ],
     "editor.scrollBeyondLastLine": true,
-    "editor.wordWrap": "on",
+    "editor.wordWrap": "off",
     "editor.wordWrapColumn": 140,
     "editor.mouseWheelZoom": true,
     "explorer.openEditors.visible": 0,
-    "extensions.autoUpdate": true,
     "telemetry.enableCrashReporter": false,
     "telemetry.enableTelemetry": false,
     "window.menuBarVisibility": "toggle",
-    "workbench.colorTheme": "Plastic",
     "workbench.editor.openPositioning": "first",
-    "workbench.welcome.enabled": false,
+    "workbench.colorTheme": "Atom One Dark",
 
     // Extensions
     "foodcritic.enable": true,
-    "go.gopath": "/home/adam/git/go"
+    "go.gopath": "/home/adam/git/go",
+    "extensions.autoUpdate": true,
+    "extensions.ignoreRecommendations": false,
+    "cSpell.language": "en-GB",
+    "java.errors.incompleteClasspath.severity": "ignore"
 }
