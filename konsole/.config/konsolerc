@@ -1,0 +1,24 @@
+[Desktop Entry]
+DefaultProfile=OneDark.profile
+
+[Favorite Profiles]
+Favorites=OneDark.profile
+
+[KonsoleWindow]
+AllowMenuAccelerators=true
+ShowMenuBarByDefault=false
+
+[MainWindow]
+Height 1059=604
+Height 1800=1043
+Width 1882=907
+Width 3200=3027
+
+[SearchSettings]
+SearchCaseSensitive=true
+
+[TabBar]
+ExpandTabWidth=false
+TabBarPosition=Top
+TabBarUseUserStyleSheet=true
+TabBarUserStyleSheetFile=file:///home/ahouston/.local/share/konsole/OneDarkTabBar.css

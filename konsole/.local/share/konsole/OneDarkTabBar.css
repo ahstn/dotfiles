@@ -4,7 +4,7 @@ QWidget, QTabWidget::pane, QTabWidget::tab-bar {
 QTabBar::tab {
     color: lightgray;
     background-color: #21252B;
-    padding: 15px;
+    padding: 0.5em;
     /* border-right: 1px solid palette(highlight); */
 }
 QTabBar::tab:selected, QTabBar::tab:hover {
