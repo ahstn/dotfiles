@@ -32,9 +32,9 @@
 
     // Extensions
     "foodcritic.enable": true,
-    "go.gopath": "/home/adam/git/go",
     "extensions.autoUpdate": true,
     "extensions.ignoreRecommendations": false,
     "cSpell.language": "en-GB",
-    "java.errors.incompleteClasspath.severity": "ignore"
+    "java.errors.incompleteClasspath.severity": "ignore",
+    "window.zoomLevel": 0
 }
