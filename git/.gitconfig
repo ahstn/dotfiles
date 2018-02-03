@@ -25,7 +25,7 @@
 [rebase]
   autoStash = true
 
-# allows: git clone github:rails/rails
+# allows: git clone gh:ahstn/dotfiles
 [url "git@github.com:"]
   insteadOf = "gh:"
   pushInsteadOf = "github:"
