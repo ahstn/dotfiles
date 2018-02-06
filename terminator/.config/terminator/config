@@ -1,5 +1,6 @@
 [global_config]
   enabled_plugins = LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
+  inactive_color_offset = 1.0
   suppress_multiple_term_dialog = True
 [keybindings]
   broadcast_all = <Primary><Shift>g
@@ -21,6 +22,7 @@
 [plugins]
 [profiles]
   [[default]]
+    allow_bold = False
     background_color = "#282c34"
     background_darkness = 0.98
     backspace_binding = automatic
@@ -30,7 +32,7 @@
     delete_binding = automatic
     font = DejaVu Sans Code 12
     foreground_color = "#abb2bf"
-    palette = "#000000:#eb6e67:#95ee8f:#f8c456:#6eaafb:#d886f3:#6cdcf7:#b2b2b2:#50536b:#eb6e67:#95ee8f:#f8c456:#6eaafb:#d886f3:#6cdcf7:#dfdfdf"
+    palette = "#21252b:#eb6e67:#95ee8f:#f8c456:#6eaafb:#d886f3:#6cdcf7:#bbbbbb:#282c34:#eb6e67:#95ee8f:#f8c456:#6eaafb:#d886f3:#6cdcf7:#5c6370"
     scrollbar_position = hidden
     show_titlebar = False
     use_custom_command = True
@@ -57,4 +59,3 @@
     show_titlebar = False
     use_custom_command = True
     use_system_font = False
-
