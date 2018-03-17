@@ -12,7 +12,7 @@ Plug 'tpope/vim-commentary'
 Plug 'Yggdroot/indentLine'
 Plug 'easymotion/vim-easymotion'
 Plug 'matze/vim-move'
-Plug 'scrooloose/syntastic'
+Plug 'w0rp/ale'
 Plug 'editorconfig/editorconfig-vim'
                             " Completion
 Plug 'Shougo/neocomplete'
@@ -46,7 +46,7 @@ set ffs=unix                " use unix line endings
 set wildignore+=*/node_modules/*
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " use relative line numbers in normal
-command W w !sudo tee % > /dev/null  
+command SW w !sudo tee % > /dev/null  
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Tabs
@@ -62,11 +62,15 @@ set nowrap                  " No Line Wrapping
 nnoremap <C-\> :NERDTreeToggle<CR>
                             " fzf
 nnoremap <c-p> :FZF<cr>
+                            " ale
+let g:ale_sign_error = '⤫'
+let g:ale_sign_warning = '⚠'
                             " vim-airline
 let g:airline_theme = 'onedark'
 let g:airline_section_z = '%l:%c %p%%'
 let g:airline#extensions#whitespace#enabled = 1
 let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#ale#enabled = 1
                             " vim-move
 let g:move_key_modifier = 'S'
                             " neocomplete and neosnippet
@@ -83,9 +87,11 @@ au FileType go nmap <leader>gd <Plug>(go-def)
 au FileType go nmap <leader>gdv <Plug>(go-def-vertical)
 au FileType go nmap <leader>gdh <Plug>(go-def-split)
 au FileType go nmap <leader>gD <Plug>(go-doc)
+au FileType go nmap <leader>gt :GoDeclsDir<cr>
 au FileType go nmap <F8> :GoMetaLinter<cr>
 
 let g:go_fmt_command = "goimports"
+let g:go_auto_type_info = 1
 let g:go_auto_sameids = 1
 let g:go_highlight_types = 1
 let g:go_highlight_fields = 1

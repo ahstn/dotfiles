@@ -7,25 +7,27 @@
 | \[\[       | Move to next function                     |
 | \]\]       | Move to previous function                 |
 | %          | Move to matching brace                    |
-| Ctrl+t     | Go back                                   |
+| Ctrl+O     | Go back after jumping to a file or def    |
 | gg=GG      | Reformat the entire file                  |
 | :retab     | Convert tabs -> spaces (or vice-versa)    |
 
 ### Custom
-| Key        | Action                                    |
-|------------|-------------------------------------------|
-| , (comma)  | Leader key                                |
-| jj         | Enter normal mode from insert mode        |
-| Ctrl+h     | Jump to split right                       |
-| Ctrl+j     | Jump to above split                       |
-| Ctrl+k     | Jump to below left                        |
-| Ctrl+l     | Jump to split left                        |
-| Ctrl+Left  | Jump one buffer to the left               |
-| Ctrl+Right | Jump one buffer to the right              |
-| Ctrl+t     | Create a new empty buffer                 |
-| ,v         | Create a new vertical split               |
-| ,h         | Create a new horizontal split             |
-| ,c         | Clear search highlights                   |
+| Key        | Action                                                |
+|------------|-------------------------------------------------------|
+| , (comma)  | Leader key                                            |
+| jj         | Enter normal mode from insert mode                    |
+| Ctrl+h     | Jump to split right                                   |
+| Ctrl+j     | Jump to above split                                   |
+| Ctrl+k     | Jump to below left                                    |
+| Ctrl+l     | Jump to split left                                    |
+| Ctrl+Left  | Jump one buffer to the left                           |
+| Ctrl+Right | Jump one buffer to the right                          |
+| Ctrl+t     | Create a new empty buffer                             |
+| Ctrl+q     | Close the buffer                                      |
+| ,v         | Create a new vertical split                           |
+| ,h         | Create a new horizontal split                         |
+| ,c         | Clear search highlights                               |
+| :SW        | Sudo write(:w) file, useful if you forgot to sudo vim |
 
 ### Plugins
 | Key        | Action                                    | Plugin         |
@@ -41,6 +43,7 @@
 | ,gd        | Go to Go definition                       | vim-go         |
 | ,gdv       | Open Go definition in a vertical split    | vim-go         |
 | ,gdh       | Open Go definition in a horizontal split  | vim-go         |
+| ,gt        | Search Go project functions               | vim-go         |
 | F8         | Run GoMetaLinter                          | vim-go         |
 
 ## Plugins
@@ -55,7 +58,7 @@
 - [indentLine](github.com/Yggdroot/indentLine)
 - [vim-easymotion](github.com/easymotion/vim-easymotion)
 - [vim-move](github.com/matze/vim-move)
-- [syntastic](github.com/scrooloose/syntastic)
+- [ale](github.com/w0ro/ale)
 - [editorconfig](github.com/editorconfig/editorconfig-vim)
 
 ### Autocompletion

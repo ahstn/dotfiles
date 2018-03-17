@@ -25,14 +25,22 @@ nnoremap <leader>v :vsplit<cr>
 nnoremap <leader>h :split<cr>
 
                         " Tab navigation like Firefox.
-nnoremap <C-Left>   :bufferprevious!<CR>
-nnoremap <C-Right>  :buffernext!<CR>
+nnoremap <C-Left>   :bprevious!<CR>
+nnoremap <C-Right>  :bnext!<CR>
 nnoremap <C-t>      :enew!<CR>
-inoremap <C-Left>   <Esc>:bufferprevious!<CR>i
-inoremap <C-Right>  <Esc>:buffernext!<CR>i
-inoremap <C-t>      <Esc>:enew!<CR>
+nnoremap <C-q>      :bclose<CR>
+inoremap <C-Left>   <Esc>:bprevious!<CR>i
+inoremap <C-Right>  <Esc>:bnext!<CR>i
+inoremap <C-t>      <Esc>:enew!<CR>i
+inoremap <C-q>      <Esc>:bclose<CR>
 
                         " neosnippet keys
 imap <C-k>     <Plug>(neosnippet_expand_or_jump)
 smap <C-k>     <Plug>(neosnippet_expand_or_jump)
 xmap <C-k>     <Plug>(neosnippet_expand_target)
+
+                        " Fix common typos
+cnoreabbrev W w
+cnoreabbrev Q q
+cnoreabbrev Q! q!
+cnoreabbrev Wq wq
