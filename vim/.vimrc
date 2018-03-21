@@ -33,7 +33,7 @@ let mapleader = ','
 syntax on                   " syntax and colors
 set background=dark
 set termguicolors
-colorscheme onedark         
+colorscheme onedark
 set showmatch               " show matching [{}]
 set number                  " show line numbers
 set cursorline              " highlight current line
@@ -46,7 +46,7 @@ set ffs=unix                " use unix line endings
 set wildignore+=*/node_modules/*
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " use relative line numbers in normal
-command SW w !sudo tee % > /dev/null  
+command SW w !sudo tee % > /dev/null
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Tabs
@@ -104,14 +104,4 @@ let g:go_highlight_extra_types = 1
 
 let g:go_metalinter_command = ""
 let g:go_metalinter_deadline = "5s"
-let g:go_metalinter_enabled = [
-    \ 'deadcode',
-    \ 'gas',
-    \ 'goconst',
-    \ 'gocyclo',
-    \ 'golint',
-    \ 'gosimple',
-    \ 'ineffassign',
-    \ 'vet',
-    \ 'vetshadow'
-\]
+let g:go_metalinter_enabled = [ 'deadcode', 'golint', 'ineffassign', 'vet' ]
