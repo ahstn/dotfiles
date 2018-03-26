@@ -19,7 +19,6 @@ Plug 'Shougo/neocomplete'
 Plug 'Shougo/neosnippet'
 Plug 'Shougo/neosnippet-snippets'
 Plug 'ervandew/supertab'
-Plug 'vim-scripts/SyntaxComplete'
                             " Development
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'dougireton/vim-chef',     { 'for': 'ruby' }
@@ -43,6 +42,7 @@ set incsearch               " move to match search as you type
 set scrolloff=3             " number of screen lines to show around the cursor
 set colorcolumn=81          " limit line length to 80
 set ffs=unix                " use unix line endings
+set mouse=a
 set wildignore+=*/node_modules/*
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " use relative line numbers in normal
@@ -60,6 +60,11 @@ set nowrap                  " No Line Wrapping
 " ~> Plugin Config
                             " nerdtree
 nnoremap <C-\> :NERDTreeToggle<CR>
+let NERDTreeWinPos = 'right'
+let NERDTreeMinimalUI = 1
+let NERDTreeWinSize = '25'
+autocmd vimenter * NERDTree
+autocmd VimEnter * wincmd p
                             " fzf
 nnoremap <c-p> :FZF<cr>
                             " ale
@@ -75,13 +80,9 @@ let g:airline#extensions#ale#enabled = 1
 let g:move_key_modifier = 'S'
                             " neocomplete and neosnippet
 let g:neocomplete#enable_at_startup = 1
-let g:neosnippet#enable_snipmate_compatibility = 1
 let g:neosnippet#snippets_directory='~/.vim/plugin/snippets'
-let g:neosnippet#disable_runtime_snippets = {
-  \   '_' : 1,
-  \  }
 smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-      \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
+\ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
                             " vim-go
 au FileType go nmap <leader>gd <Plug>(go-def)
 au FileType go nmap <leader>gdv <Plug>(go-def-vertical)
