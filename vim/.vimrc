@@ -3,7 +3,9 @@
 call plug#begin('~/.vim/plugged')
                             " Interface and Typing
 Plug 'joshdick/onedark.vim'
+Plug 'rakr/vim-one'
 Plug 'scrooloose/nerdtree',     { 'on': 'NERDTreeToggle' }
+Plug 'Xuyuanp/nerdtree-git-plugin', { 'on': 'NERDTreeToggle' }
 Plug 'junegunn/fzf',            { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'bling/vim-airline'
 Plug 'airblade/vim-gitgutter'
@@ -23,6 +25,7 @@ Plug 'ervandew/supertab'
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'dougireton/vim-chef',     { 'for': 'ruby' }
 Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoInstallBinaries' }
+Plug 'posva/vim-vue',           { 'for': 'vue' }
 
 call plug#end()
 
@@ -30,9 +33,9 @@ call plug#end()
 " ~> Basics / Visuals
 let mapleader = ','
 syntax on                   " syntax and colors
-set background=dark
 set termguicolors
-colorscheme onedark
+colorscheme one
+set background=dark
 set showmatch               " show matching [{}]
 set number                  " show line numbers
 set cursorline              " highlight current line
@@ -42,11 +45,14 @@ set incsearch               " move to match search as you type
 set scrolloff=3             " number of screen lines to show around the cursor
 set colorcolumn=81          " limit line length to 80
 set ffs=unix                " use unix line endings
-set mouse=a
+set mouse=a                 " enable mouse
+set noswapfile              " no .swp - git covers backups anyway
 set wildignore+=*/node_modules/*
 au InsertEnter * :set number
 au InsertLeave * :set relativenumber " use relative line numbers in normal
 command SW w !sudo tee % > /dev/null
+let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum" " needed for truecolor
+let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Tabs
@@ -65,13 +71,14 @@ let NERDTreeMinimalUI = 1
 let NERDTreeWinSize = '25'
 autocmd vimenter * NERDTree
 autocmd VimEnter * wincmd p
+autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
                             " fzf
 nnoremap <c-p> :FZF<cr>
                             " ale
 let g:ale_sign_error = '⤫'
 let g:ale_sign_warning = '⚠'
                             " vim-airline
-let g:airline_theme = 'onedark'
+let g:airline_theme = 'one'
 let g:airline_section_z = '%l:%c %p%%'
 let g:airline#extensions#whitespace#enabled = 1
 let g:airline#extensions#tabline#enabled = 1
