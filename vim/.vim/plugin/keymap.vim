@@ -5,6 +5,8 @@ inoremap jj <esc>
 
                         " leader c to clear search highlighting
 map <leader>c :nohlsearch<cr>
+                        " leader p to change paste mode
+map <leader>p :set invpaste<cr>
 
                         " center on the line the search result is
 nnoremap n nzzzv
