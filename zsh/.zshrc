@@ -16,6 +16,7 @@ zplug "chrissicool/zsh-256color"
 zplug "junegunn/fzf-bin", from:gh-r, as:command, rename-to:fzf
 zplug "mafredri/zsh-async", from:github
 zplug "sindresorhus/pure", from:github, use:pure.zsh, as:theme
+
 zplug check || zplug install
 zplug load
 
@@ -31,11 +32,14 @@ setopt complete_in_word       # Allow completion from within a word
 setopt always_to_end          # Move to the end of a word when completing
 
 export ZSH=/home/adam/.oh-my-zsh
-export GOPATH=/home/adam/git/go
+export GOPATH=~/go
 export GOBIN=$GOPATH/bin
 export PATH=$GOBIN:$PATH
 export EDITOR=vim
 export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=15'
+export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
+export FZF_DEFAULT_OPTS='--height 30% --reverse'
+#export TERM="screen-256color"
 
 zstyle ':completion:*:*:docker:*' option-stacking yes
 zstyle ':completion:*:*:docker-*:*' option-stacking yes
