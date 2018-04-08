@@ -1,17 +1,18 @@
 # Uses zplug for plugins (https://github.com/zplug/zplug)
-# curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
+# Will install zplug if missing
+[[ -d ~/.zplug ]] || {
+  url='https://raw.githubusercontent.com/zplug/installer/master/installer.zsh'
+  curl -sL --proto-redir -all,https $url | zsh
+  source ~/.zplug/init.zsh && zplug update
+}
 
 source ~/.zplug/init.zsh
 zplug "lib/termsupport", from:oh-my-zsh, defer:0
 zplug "lib/key-bindings", from:oh-my-zsh, defer:0
 zplug "plugins/tmux", from:oh-my-zsh
-zplug "plugins/colored-man-pages", from:oh-my-zsh
-zplug "plugins/systemd", from:oh-my-zsh, if:"which systemctl"
-zplug "Russell91/sshrc", from:github, as:command, use:"sshrc"
 zplug "zsh-users/zsh-autosuggestions", defer:2
 zplug "zsh-users/zsh-history-substring-search", defer:2
 zplug "zsh-users/zsh-syntax-highlighting", defer:2
-zplug "hcgraf/zsh-sudo"
 zplug "chrissicool/zsh-256color"
 zplug "junegunn/fzf-bin", from:gh-r, as:command, rename-to:fzf
 zplug "mafredri/zsh-async", from:github
@@ -31,24 +32,19 @@ setopt hist_no_store          # Don't write the history command to history
 setopt complete_in_word       # Allow completion from within a word
 setopt always_to_end          # Move to the end of a word when completing
 
-export ZSH=/home/adam/.oh-my-zsh
-export GOPATH=~/go
-export GOBIN=$GOPATH/bin
-export PATH=$GOBIN:$PATH
-export EDITOR=vim
+export ZSH="$HOME/.oh-my-zsh"
+export GOPATH="$HOME/go"
+export GOBIN="$GOPATH/bin"
+export PATH="$GOBIN:$PATH"
+export EDITOR='vim'
+
 export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=15'
 export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
-export FZF_DEFAULT_OPTS='--height 30% --reverse'
-#export TERM="screen-256color"
-
-zstyle ':completion:*:*:docker:*' option-stacking yes
-zstyle ':completion:*:*:docker-*:*' option-stacking yes
-zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;34=0=01'
-zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,comm -w -w"
-
-bindkey  "^[[H"   beginning-of-line
-bindkey  "^[[F"   end-of-line
-bindkey "${terminfo[kcuu1]}" history-substring-search-up
-bindkey "${terminfo[kcud1]}" history-substring-search-down
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_DEFAULT_OPTS='
+  --height 30% --reverse 
+  --color pointer:1,fg+:2,marker:2,bg+:8,prompt:4,info:3
+'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
