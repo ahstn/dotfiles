@@ -39,7 +39,8 @@
 | ysiw)      | Surround (inner) word with parentheses    | vim-surround   |
 | ds)        | Remove surrounding parentheses            | vim-surround   |
 | cs)}       | Change surrounding parentheses to braces  | vim-surround   |
-| ,w         | Trigger easymotion                        | vim-easymotion |
+| ,,w        | Trigger easymotion                        | vim-easymotion |
+| ,,b        | Trigger easymotion backwards              | vim-easymotion |
 | ,gd        | Go to Go definition                       | vim-go         |
 | ,gdv       | Open Go definition in a vertical split    | vim-go         |
 | ,gdh       | Open Go definition in a horizontal split  | vim-go         |
@@ -50,9 +51,10 @@
 ### General / Interface
 - [onedark.vim (colorscheme)](github.com/joshdick/onedark)
 - [nerdtree](github.com/scrooloose/nerdtree)
+- [nerdtree-git-plugin](github.com/Xuyuanp/nerdtree-git-plugin)
 - [fzf](github.com/junegunn/fzf)
 - [vim-airline](github.com/bling/vim-airline)
-- [vim-gitgutter](github.com/airblade/vim-gitgutter)
+- [vim-signify](github.com/mhinz/vim-signify)
 - [vim-surround](github.com/tpope/vim-surround)
 - [vim-commentary](github.com/tpope/vim-commentary)
 - [indentLine](github.com/Yggdroot/indentLine)
@@ -62,12 +64,12 @@
 - [editorconfig](github.com/editorconfig/editorconfig-vim)
 
 ### Autocompletion
-- [neocomplete](github.com/Shougo/neocomplete)
 - [supertab](github.com/ervandew/supertab)
-- [SyntaxComplete](github.com/vimscripts/SyntaxComplete)
+- [deoplete](github.com/Shougo/deoplete)
 
 ### Language Specific
 - [vim-javascript](github.com/pangloss/vim-javascript)
 - [vim-chef](github.com/dougireton/vim-chef)
 - [vim-go](github.com/fatih/vim-go)
+- [vim-vue](github.com/posva/vim-vue)
 
