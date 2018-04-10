@@ -67,6 +67,7 @@ set expandtab               " auto-indent when typing
 set shiftround ai si        " only indent to multiples of 2
 set nowrap                  " no line wrapping
 set fillchars+=vert:│       " full split line
+set wildignore+=*/node_modules/**
 command SW w !sudo tee % > /dev/null
 let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum" " needed for truecolor
 let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
@@ -77,11 +78,16 @@ hi! EndOfBuffer ctermbg=bg ctermfg=bg guibg=bg guifg=bg
 
 " nerdtree
 nnoremap <C-\> :NERDTreeToggle<CR>
+let NERDTreeIgnore =['node_modules[[dir]]', 'vendor[[dir]]', '.git[[dir]]']
 let NERDTreeWinPos = 'right'
-let NERDTreeMinimalUI = v:true
 let NERDTreeWinSize = '25'
-let g:NERDTreeDirArrowExpandable = '' " ' ' U+200B - invisible for devicons
-let g:NERDTreeDirArrowCollapsible = ''
+let NERDTreeStatusLine = 'world'
+let g:NERDTreeStatusLine = 'world'
+let NERDTreeMinimalUI = v:true
+let NERDTreeShowHidden = v:true
+let NERDTreeRespectWildIgnore = v:true
+let NERDTreeDirArrowExpandable = ' ' " ' ' U+200B - invisible for devicons
+let NERDTreeDirArrowCollapsible = ' '
 autocmd vimenter * NERDTree
 autocmd VimEnter * wincmd p
 autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
@@ -105,7 +111,11 @@ let g:ale_sign_error = '⤫'
 let g:ale_sign_warning = '⚠'
 
 " vim-airline
-let g:airline_theme = 'one'
+let g:airline_theme='onedark'
+let g:airline_left_sep=''
+let g:airline_right_sep=''
+let g:airline_left_alt_sep='|'
+let g:airline_right_alt_sep = '|'
 let g:airline_section_y = ''
 let g:airline_section_z = '%l:%c'
 let g:airline#extensions#ale#enabled = v:true
