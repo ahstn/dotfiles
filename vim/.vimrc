@@ -28,14 +28,15 @@ Plug 'editorconfig/editorconfig-vim'
 Plug 'ervandew/supertab'
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'zchee/deoplete-go', { 'do': 'make' }
 else
-  Plug 'Shougo/neocomplete.vim'
+  Plug 'maralla/completor.vim'
 endif
 
 " Development
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'dougireton/vim-chef',     { 'for': 'ruby' }
-Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoInstallBinaries' }
+Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoUpdateBinaries' }
 Plug 'posva/vim-vue',           { 'for': 'vue' }
 
 call plug#end()
@@ -128,6 +129,7 @@ let g:move_key_modifier = 'S'
 
 " deoplete
 let g:deoplete#enable_at_startup = 1
+call deoplete#custom#source('_', 'converters', ['converter_auto_paren'])
 
 " vim-go
 au FileType go nmap <leader>gd <Plug>(go-def)
