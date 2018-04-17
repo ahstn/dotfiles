@@ -42,6 +42,7 @@ Plasma (KDE) desktop as of the 8th of April 2018 - [`4d078ed`]
 ### Acknowledgements
 - [`meain`] - for layout inspo and vim config
 - [`posquit0`] - for layout inspo
+- [`kutsan`] - for cool vim stuff
 
 [`vim.md`]: vim.md
 [`vim-plug`]: https://github.com/junegunn/vim-plug
@@ -52,3 +53,6 @@ Plasma (KDE) desktop as of the 8th of April 2018 - [`4d078ed`]
 [`La Capitaine`]: https://github.com/keeferrourke/la-capitaine-icon-theme
 [`Latte Dock`]: https://github.com/psifidotos/Latte-Dock
 [`4d078ed`]: https://github.com/ahstn/dotfiles/commit/4d078ededc7f3b803a18ddb80b26cddd85c529f5
+[`meain`]: https://github.com/meain/dotfiles
+[`posquit0`]: https://github.com/posquit0/dotfiles
+[`kutsan`]: https://github.com/kutsan/dotfiles
