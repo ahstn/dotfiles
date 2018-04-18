@@ -11,9 +11,9 @@ call plug#begin('~/.vim/plugged')
 " Interface and Typing
 Plug 'joshdick/onedark.vim'
 Plug 'rakr/vim-one'
-Plug 'scrooloose/nerdtree',     { 'on': 'NERDTreeToggle' }
+Plug 'scrooloose/nerdtree',         { 'on': 'NERDTreeToggle' }
 Plug 'Xuyuanp/nerdtree-git-plugin', { 'on': 'NERDTreeToggle' }
-Plug 'junegunn/fzf',            { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf',                { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'bling/vim-airline'
 Plug 'mhinz/vim-signify'
 Plug 'tpope/vim-surround'
@@ -23,12 +23,15 @@ Plug 'easymotion/vim-easymotion'
 Plug 'matze/vim-move'
 Plug 'w0rp/ale'
 Plug 'editorconfig/editorconfig-vim'
+Plug 'mhinz/vim-startify'
+
 
 " Completion
 Plug 'ervandew/supertab'
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  Plug 'zchee/deoplete-go', { 'do': 'make' }
+  Plug 'zchee/deoplete-go',    { 'do': 'make' }
+  let g:deoplete#enable_at_startup = 1
 else
   Plug 'maralla/completor.vim'
 endif
@@ -123,13 +126,21 @@ let g:airline#extensions#ale#enabled = v:true
 let g:airline#extensions#tabline#enabled = v:true
 let g:airline#extensions#tabline#formatter = 'unique_tail'
 let g:airline#extensions#whitespace#enabled = v:true
+let g:airline#extensions#tabline#buffer_min_count = 2
 
 " vim-move
 let g:move_key_modifier = 'S'
 
-" deoplete
-let g:deoplete#enable_at_startup = 1
-call deoplete#custom#source('_', 'converters', ['converter_auto_paren'])
+" vim-easymotion
+let g:EasyMotion_startofline = 0
+map <Leader>j <Plug>(easymotion-j)
+map <Leader>k <Plug>(easymotion-k)
+
+" vim-startify
+let g:startify_lists = [
+      \ { 'type': 'files',    'header': [ 'Most Recently Used'] },
+      \ { 'type': 'commands', 'header': [ 'Commands'          ] }
+      \ ]
 
 " vim-go
 au FileType go nmap <leader>gd <Plug>(go-def)
@@ -157,9 +168,6 @@ let g:go_metalinter_enabled = [ 'deadcode', 'golint', 'ineffassign', 'vet' ]
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Keymaps
-
-" remap jj to esc in insert mode
-inoremap jj <esc>
 
 " leader c to clear search highlighting
 map <leader>c :nohlsearch<cr>
