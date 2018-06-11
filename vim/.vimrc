@@ -41,6 +41,8 @@ Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'dougireton/vim-chef',     { 'for': 'ruby' }
 Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoUpdateBinaries' }
 Plug 'posva/vim-vue',           { 'for': 'vue' }
+Plug 'sbdchd/neoformat',        { 'for': 'java' }
+Plug 'artur-shaik/vim-javacomplete2', { 'for': 'java' }
 
 call plug#end()
 
@@ -58,6 +60,7 @@ set cursorline              " highlight current line
 set splitbelow              " vertical split goes below current window
 set splitright              " horizontal split goes right of current window
 set incsearch               " move to match search as you type
+set ignorecase              " case insensitive search
 set scrolloff=3             " number of screen lines to show around the cursor
 set colorcolumn=81          " limit line length to 80
 set ffs=unix                " always use unix line endings
@@ -76,6 +79,7 @@ command SW w !sudo tee % > /dev/null
 let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum" " needed for truecolor
 let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 hi! EndOfBuffer ctermbg=bg ctermfg=bg guibg=bg guifg=bg
+autocmd FileType java setlocal omnifunc=javacomplete#Complete
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Plugin Config
@@ -85,13 +89,9 @@ nnoremap <C-\> :NERDTreeToggle<CR>
 let NERDTreeIgnore =['node_modules[[dir]]', 'vendor[[dir]]', '.git[[dir]]']
 let NERDTreeWinPos = 'right'
 let NERDTreeWinSize = '25'
-let NERDTreeStatusLine = 'world'
-let g:NERDTreeStatusLine = 'world'
 let NERDTreeMinimalUI = v:true
 let NERDTreeShowHidden = v:true
 let NERDTreeRespectWildIgnore = v:true
-let NERDTreeDirArrowExpandable = ' ' " ' ' U+200B - invisible for devicons
-let NERDTreeDirArrowCollapsible = ' '
 autocmd vimenter * NERDTree
 autocmd VimEnter * wincmd p
 autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
@@ -143,12 +143,15 @@ let g:startify_lists = [
       \ ]
 
 " vim-go
-au FileType go nmap <leader>gd <Plug>(go-def)
-au FileType go nmap <leader>gdv <Plug>(go-def-vertical)
-au FileType go nmap <leader>gdh <Plug>(go-def-split)
-au FileType go nmap <leader>gD <Plug>(go-doc)
-au FileType go nmap <leader>gt :GoDeclsDir<cr>
+au FileType go nmap <leader>d <Plug>(go-def)
+au FileType go nmap <leader>dv <Plug>(go-def-vertical)
+au FileType go nmap <leader>dh <Plug>(go-def-split)
+au FileType go nmap <leader>D <Plug>(go-doc)
+au FileType go nmap <leader>r <Plug>(go-run-split)
+au FileType go nmap <leader>rv <Plug>(go-run-vertical)
+au FileType go nmap <leader>rt <Plug>(go-run-tab)
 au FileType go nmap <F8> :GoMetaLinter<cr>
+
 
 let g:go_fmt_command = "goimports"
 let g:go_auto_type_info = 1
@@ -161,7 +164,9 @@ let g:go_highlight_structs = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_build_constraints = 1
 let g:go_highlight_extra_types = 1
-
+let g:go_term_enabled = 1
+let g:go_term_height = 30
+let g:go_term_mode = "vsplit"
 let g:go_metalinter_command = ""
 let g:go_metalinter_deadline = "5s"
 let g:go_metalinter_enabled = [ 'deadcode', 'golint', 'ineffassign', 'vet' ]
