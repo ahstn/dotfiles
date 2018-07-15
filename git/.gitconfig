@@ -5,16 +5,19 @@
 [alias]
   lg = log --graph --oneline --decorate
   st = status -sb
-  up = pull --rebase --prune
+  up = pull --rebase --prune            # Update with remote, but keep local changes
   undo = reset HEAD~1 --mixed           # Reset last commit, but keep changes
   amend = commit -a --amend             # Modify the last commit
   sub = submodule update --init --recursive
+  info = remote show origin
+  url = ls-remote --get-url
 
 [color]
   ui = always
 
 [core]
   autocrlf = input
+	commentchar = *
 
 [push]
   # Make `git push` automatically push relevant
