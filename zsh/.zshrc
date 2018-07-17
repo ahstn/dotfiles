@@ -39,9 +39,7 @@ export GOPATH="$HOME/go"
 export GOBIN="$GOPATH/bin"
 export BREWPATH="/home/linuxbrew/.linuxbrew/bin"
 export PATH="$GOBIN:$GOROOT/bin:$BREWPATH:$PATH"
-export EDITOR='vim'
-
-function mvp { mvn "$@" | mvnp -t -e -n; }
+export EDITOR='nvim'
 
 export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=15'
 export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
@@ -51,5 +49,10 @@ export FZF_DEFAULT_OPTS='
   --height 30% --reverse 
   --color pointer:1,fg+:2,marker:2,bg+:8,prompt:4,info:3
 '
+
+function mvp { mvn "$@" | mvnp -t -e -n; }
+function dsh { docker exec -it "$@" /bin/bash; }
+function dps { docker ps "$@" --format "{{.ID}}\t{{.Status}}\t{{.Image}}\t"; }
+function drm { docker rm $(docker ps -aqf status=exited); }
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
