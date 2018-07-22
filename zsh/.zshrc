@@ -10,14 +10,17 @@ source ~/.zplug/init.zsh
 zplug "lib/termsupport", from:oh-my-zsh, defer:0
 zplug "lib/key-bindings", from:oh-my-zsh, defer:0
 zplug "plugins/tmux", from:oh-my-zsh
+
 zplug "zsh-users/zsh-autosuggestions", defer:2
-zplug "zsh-users/zsh-history-substring-search", defer:2
 zplug "zdharma/fast-syntax-highlighting"
 zplug "chrissicool/zsh-256color"
-zplug "junegunn/fzf-bin", from:gh-r, as:command, rename-to:fzf
 zplug "mafredri/zsh-async", from:github
-zplug "denysdovhan/spaceship-prompt", use:spaceship.zsh, from:github, as:theme
+zplug "sindresorhus/pure", use:pure.zsh, from:github, as:theme
+#zplug "denysdovhan/spaceship-prompt", use:spaceship.zsh, from:github, as:theme
 
+zplug "junegunn/fzf-bin", from:gh-r, as:command, rename-to:fzf
+zplug "supercrabtree/k", from:github, defer:2
+zplug "wfxr/forgit", from:github, defer:1
 zplug check || zplug install
 zplug load
 
@@ -33,7 +36,6 @@ setopt complete_in_word       # Allow completion from within a word
 setopt always_to_end          # Move to the end of a word when completing
 
 export JAVA_HOME='/usr/lib/jvm/jre-9'
-export ZSH="$HOME/.oh-my-zsh"
 export GOROOT="/usr/local/go"
 export GOPATH="$HOME/go"
 export GOBIN="$GOPATH/bin"

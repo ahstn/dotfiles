@@ -7,6 +7,8 @@
 | \[\[       | Move to next function                     |
 | \]\]       | Move to previous function                 |
 | %          | Move to matching brace                    |
+| _          | Move to first non-black char of the line  |
+| g_          | Move to first non-black char of the line  |
 | Ctrl+O     | Go back after jumping to a file or def    |
 | gg=GG      | Reformat the entire file                  |
 | :retab     | Convert tabs -> spaces (or vice-versa)    |
