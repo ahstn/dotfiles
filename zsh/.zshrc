@@ -21,6 +21,7 @@ zplug "sindresorhus/pure", use:pure.zsh, from:github, as:theme
 zplug "junegunn/fzf-bin", from:gh-r, as:command, rename-to:fzf
 zplug "supercrabtree/k", from:github, defer:2
 zplug "wfxr/forgit", from:github, defer:1
+zplug "so-fancy/diff-so-fancy", as:command, use:diff-so-fancy, rename-to:dsf
 zplug check || zplug install
 zplug load
 
