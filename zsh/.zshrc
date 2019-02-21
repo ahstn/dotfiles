@@ -4,13 +4,14 @@
 [[ -d ~/.zplugin ]] || {
   url='https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh'
   curl -fsSL $url | sh
-  source '~/.zplugin/bin/zplugin.zsh'
+  source ~/.zplugin/bin/zplugin.zsh
 }
 
 autoload -Uz _zplugin
-source '~/.zplugin/bin/zplugin.zsh'
+source ~/.zplugin/bin/zplugin.zsh
 (( ${+_comps} )) && _comps[zplugin]=_zplugin
 
+zplugin snippet OMZ::lib/key-bindings.zsh
 zplugin snippet OMZ::plugins/git/git.plugin.zsh
 zplugin snippet OMZ::plugins/tmux/tmux.plugin.zsh
 
@@ -22,6 +23,8 @@ zplugin light zdharma/zsh-diff-so-fancy
 
 zplugin ice pick"async.zsh" src"pure.zsh"; zplugin light sindresorhus/pure
 zplugin ice from"gh-r" as"program"; zplugin load junegunn/fzf-bin
+zplugin ice wait"2" lucid as"program" pick"bin/git-dsf"
+zplugin light zdharma/zsh-diff-so-fancy
 
 zplugin ice blockf
 zplugin light zsh-users/zsh-completions
