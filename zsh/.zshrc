@@ -13,7 +13,6 @@ source ~/.zplugin/bin/zplugin.zsh
 
 zplugin snippet OMZ::lib/key-bindings.zsh
 zplugin snippet OMZ::plugins/git/git.plugin.zsh
-zplugin snippet OMZ::plugins/tmux/tmux.plugin.zsh
 
 zplugin light zsh-users/zsh-autosuggestions
 zplugin light zdharma/fast-syntax-highlighting
@@ -61,4 +60,7 @@ function dsh { docker exec -it "$@" /bin/bash; }
 function dps { docker ps "$@" --format "{{.ID}}\t{{.Status}}\t{{.Image}}\t"; }
 function drm { docker rm $(docker ps -aqf status=exited); }
 
+autoload -Uz compinit
+compinit
+zplugin cdreplay -q
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
