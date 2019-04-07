@@ -14,23 +14,24 @@ source ~/.zplugin/bin/zplugin.zsh
 zplugin snippet OMZ::lib/key-bindings.zsh
 zplugin snippet OMZ::plugins/git/git.plugin.zsh
 
+zplugin ice wait"0" blockf
+zplugin light zsh-users/zsh-completions
+zplugin ice wait"0" lucid atload"_zsh_autosuggest_start"
 zplugin light zsh-users/zsh-autosuggestions
 zplugin light zdharma/fast-syntax-highlighting
 zplugin light chrissicool/zsh-256color
-zplugin light wfxr/forgit
-zplugin light zdharma/zsh-diff-so-fancy
 
 zplugin ice pick"async.zsh" src"pure.zsh"; zplugin light sindresorhus/pure
 zplugin ice from"gh-r" as"program"; zplugin load junegunn/fzf-bin
 zplugin ice wait"2" lucid as"program" pick"bin/git-dsf"
 zplugin light zdharma/zsh-diff-so-fancy
+zplugin light wfxr/forgit
 
-zplugin ice blockf
-zplugin light zsh-users/zsh-completions
 
 SAVEHIST=10000
 HISTFILE=~/.zsh_history
 setopt auto_cd                # If a dir is typed without cd, go there
+setopt inc_append_history     # Dont wait for shell exit to add commands
 setopt share_history          # Share history to multiple sessions
 setopt extended_history       # Save timestamp of command and duration
 setopt hist_ignore_all_dups   # Dont write duplicate entries to history
