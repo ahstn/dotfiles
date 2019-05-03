@@ -40,10 +40,11 @@ setopt complete_in_word       # Allow completion from within a word
 setopt always_to_end          # Move to the end of a word when completing
 
 export JAVA_HOME='/usr/lib/jvm/jre-9'
-export GOROOT="/usr/local/go"
+
+export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
 export GOPATH="$HOME/go"
 export GOBIN="$GOPATH/bin"
-export BREWPATH="/home/linuxbrew/.linuxbrew/bin"
+export BREWPATH="/home/ahstn/.linuxbrew/bin"
 export PATH="$GOBIN:$GOROOT/bin:$BREWPATH:/home/ahstn/.jx/bin:/home/ahstn/bin:$PATH"
 export EDITOR='nvim'
 
