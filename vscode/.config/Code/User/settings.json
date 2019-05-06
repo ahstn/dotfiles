@@ -27,14 +27,16 @@
     "telemetry.enableCrashReporter": false,
     "telemetry.enableTelemetry": false,
     "window.menuBarVisibility": "toggle",
+    "workbench.activityBar.visible": false,
     "workbench.editor.openPositioning": "first",
     "workbench.colorTheme": "Atom One Dark",
-
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.statusBar.feedback.visible": false,
     // Extensions
     "foodcritic.enable": true,
     "extensions.autoUpdate": true,
     "extensions.ignoreRecommendations": false,
     "cSpell.language": "en-GB",
     "java.errors.incompleteClasspath.severity": "ignore",
-    "window.zoomLevel": 0
+    "window.zoomLevel": 0,
 }
