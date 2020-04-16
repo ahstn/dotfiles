@@ -17,6 +17,7 @@ Plug 'junegunn/fzf',                { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
 Plug 'bling/vim-airline'
 Plug 'mhinz/vim-signify'
+Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 Plug 'Yggdroot/indentLine'
@@ -26,30 +27,32 @@ Plug 'w0rp/ale'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'mhinz/vim-startify'
 
-" Completion
-Plug 'ervandew/supertab'
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  Plug 'zchee/deoplete-go',    { 'do': 'make' }
-  let g:deoplete#enable_at_startup = 1
-else
-  Plug 'maralla/completor.vim'
-endif
-
-" Development
+" Language Support
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoUpdateBinaries' }
 Plug 'posva/vim-vue',           { 'for': 'vue' }
 Plug 'sbdchd/neoformat',        { 'for': 'java' }
+Plug 'ekalinin/dockerfile.vim',
+Plug 'towolf/vim-helm',         { 'for': 'yaml' }
 Plug 'artur-shaik/vim-javacomplete2', { 'for': 'java' }
+"
+" Completion
+Plug 'ervandew/supertab'
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+else
+  Plug 'Shougo/deoplete.nvim'
+  Plug 'roxma/nvim-yarp'
+  Plug 'roxma/vim-hug-neovim-rpc'
+endif
+Plug 'deoplete-plugins/deoplete-go', { 'for': 'go', 'do': 'make'}
 
 call plug#end()
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Basics / Visuals / Tabs
 
-"let mapleader = ','         " remap leader to comma
-let mapleader = "\<Space>"
+let mapleader = "\<Space>"  " remap leader to space
 syntax on                   " enable syntax highlighting
 set termguicolors           " use truecolor when possible
 colorscheme one             " use onedark colorscheme
@@ -75,7 +78,6 @@ set shiftround ai si        " only indent to multiples of 2
 set nowrap                  " no line wrapping
 set fillchars+=vert:│       " full split line
 set wildignore+=*/node_modules/**
-command SW w !sudo tee % > /dev/null
 let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum" " needed for truecolor
 let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 hi! EndOfBuffer ctermbg=bg ctermfg=bg guibg=bg guifg=bg
@@ -126,6 +128,8 @@ let g:airline_section_z = '%l:%c'
 let g:airline#extensions#ale#enabled = v:true
 let g:airline#extensions#tabline#enabled = v:true
 let g:airline#extensions#tabline#formatter = 'unique_tail'
+let g:airline#extensions#branch#enabled = 1
+let g:airline#extensions#branch#format = 2
 let g:airline#extensions#whitespace#enabled = v:true
 let g:airline#extensions#tabline#buffer_min_count = 2
 
