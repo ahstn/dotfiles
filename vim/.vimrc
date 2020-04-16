@@ -14,6 +14,7 @@ Plug 'rakr/vim-one'
 Plug 'scrooloose/nerdtree',         { 'on': 'NERDTreeToggle' }
 Plug 'Xuyuanp/nerdtree-git-plugin', { 'on': 'NERDTreeToggle' }
 Plug 'junegunn/fzf',                { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf.vim'
 Plug 'bling/vim-airline'
 Plug 'mhinz/vim-signify'
 Plug 'tpope/vim-surround'
@@ -24,7 +25,6 @@ Plug 'matze/vim-move'
 Plug 'w0rp/ale'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'mhinz/vim-startify'
-
 
 " Completion
 Plug 'ervandew/supertab'
@@ -38,7 +38,6 @@ endif
 
 " Development
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
-Plug 'dougireton/vim-chef',     { 'for': 'ruby' }
 Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoUpdateBinaries' }
 Plug 'posva/vim-vue',           { 'for': 'vue' }
 Plug 'sbdchd/neoformat',        { 'for': 'java' }
@@ -49,7 +48,8 @@ call plug#end()
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ~> Basics / Visuals / Tabs
 
-let mapleader = ','         " remap leader to comma
+"let mapleader = ','         " remap leader to comma
+let mapleader = "\<Space>"
 syntax on                   " enable syntax highlighting
 set termguicolors           " use truecolor when possible
 colorscheme one             " use onedark colorscheme
@@ -85,7 +85,7 @@ autocmd FileType java setlocal omnifunc=javacomplete#Complete
 " ~> Plugin Config
 
 " nerdtree
-nnoremap <C-\> :NERDTreeToggle<CR>
+nnoremap <leader>b :NERDTreeToggle<CR>
 let NERDTreeIgnore =['node_modules[[dir]]', 'vendor[[dir]]', '.git[[dir]]']
 let NERDTreeWinPos = 'right'
 let NERDTreeWinSize = '25'
@@ -106,7 +106,8 @@ let g:signify_sign_change = '│' " U+2502
 let g:signify_sign_changedelete = '│' " U+2502
 
 " fzf - uses ripgrep (https://github.com/BurntSushi/ripgrep) [optional]
-nnoremap <c-p> :FZF --reverse<cr>
+nnoremap <leader>. :FZF --reverse<cr>
+nnoremap <leader>/ :Rg<cr>
 let g:fzf_layout = { 'down': '~20%' }
 let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
 
