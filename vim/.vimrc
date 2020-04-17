@@ -11,7 +11,7 @@ call plug#begin('~/.vim/plugged')
 " Interface and Typing
 Plug 'joshdick/onedark.vim'
 Plug 'rakr/vim-one'
-Plug 'scrooloose/nerdtree',         { 'on': 'NERDTreeToggle' }
+Plug 'preservim/nerdtree',          { 'on': 'NERDTreeToggle' }
 Plug 'Xuyuanp/nerdtree-git-plugin', { 'on': 'NERDTreeToggle' }
 Plug 'junegunn/fzf',                { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
@@ -19,6 +19,7 @@ Plug 'bling/vim-airline'
 Plug 'mhinz/vim-signify'
 Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-surround'
+Plug 'tpope/vim-vinegar'    " TODO: Look into Fern to replace NERDTree + Vinegar
 Plug 'tpope/vim-commentary'
 Plug 'Yggdroot/indentLine'
 Plug 'easymotion/vim-easymotion'
