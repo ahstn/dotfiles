@@ -27,6 +27,7 @@ Plug 'matze/vim-move'
 Plug 'w0rp/ale'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'mhinz/vim-startify'
+Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKey!'] }
 
 " Language Support
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
@@ -113,6 +114,19 @@ nnoremap <leader>. :FZF --reverse<cr>
 nnoremap <leader>/ :Rg<cr>
 let g:fzf_layout = { 'down': '~20%' }
 let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
+
+" vim-which-key
+nnoremap <silent> <leader> :<c-u>WhichKey '<Space>'<CR>
+call which_key#register('<Space>', 'g:which_key_map')
+let g:which_key_map = { 
+    \    'name': 'main',
+    \    '.': 'Find Files',
+    \    '/': 'Find in Files',
+    \    'b': 'Toggle NERDTree',
+    \    'j': 'EasyMotion Down',
+    \    'k': 'EasyMotion Up',
+    \    'p': 'Paste Mode',
+    \    }
 
 " ale
 let g:ale_sign_error = '⤫'
