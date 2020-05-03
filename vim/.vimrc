@@ -77,7 +77,7 @@ autocmd FileType java setlocal omnifunc=javacomplete#Complete
 " ~> Plugin Config
 
 " nerdtree
-nnoremap <leader>b :NERDTreeToggle<CR>
+nnoremap <leader>n :NERDTreeToggle<CR>
 let NERDTreeIgnore =['node_modules[[dir]]', 'vendor[[dir]]', '.git[[dir]]']
 let NERDTreeWinPos = 'right'
 let NERDTreeWinSize = '25'
@@ -106,17 +106,24 @@ let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
 " vim-which-key
 nnoremap <silent> <leader> :<c-u>WhichKey '<Space>'<CR>
 call which_key#register('<Space>', 'g:which_key_map')
-let g:which_key_map = { 
-    \    'name': 'main',
-    \    '.': 'Find Files',
-    \    '/': 'Find in Files',
-    \    'b': 'Toggle NERDTree',
-    \    'j': 'EasyMotion Down',
-    \    'k': 'EasyMotion Up',
-    \    'p': 'Paste Mode',
-    \    'f': 'Format Block (coc)',
-    \    'rn': 'Rename Word (coc)',
-    \    }
+let g:which_key_map = {
+  \    'name': 'main',
+  \    '.': 'Find Files',
+  \    '/': 'Find in Files',
+  \    'n': 'Toggle NERDTree',
+  \    'j': 'EasyMotion Down',
+  \    'k': 'EasyMotion Up',
+  \    'p': 'Paste Mode',
+  \    'f': 'Format Block (coc)',
+  \    'rn': 'Rename Word (coc)',
+  \    'b': {
+  \      'name': 'Buffer',
+  \      'c': 'Create',
+  \      'd': 'Delete',
+  \      'n': 'Next',
+  \      'p': 'Previous',
+  \    }
+  \ }
 
 " ale
 let g:ale_sign_error = '⤫'
@@ -170,12 +177,12 @@ nmap <silent> gr <Plug>(coc-references)
 vmap <leader>f  <Plug>(coc-format-selected)
 nmap <leader>f  <Plug>(coc-format-selected)
 nmap <leader>rn <Plug>(coc-rename)
+nnoremap <silent> U :call <SID>show_documentation()<CR>
 
 " vim-go
 let g:go_def_mapping_enabled = 0    " handled by coc.nvim
-au FileType go nmap <leader>d <Plug>(go-def)
-au FileType go nmap <leader>dv <Plug>(go-def-vertical)
-au FileType go nmap <leader>dh <Plug>(go-def-split)
+au FileType go nmap <silent> gt <Plug>(go-test)
+au FileType go nmap <silent> gT <Plug>(go-test-func)
 au FileType go nmap <leader>D <Plug>(go-doc)
 au FileType go nmap <leader>r <Plug>(go-run-split)
 au FileType go nmap <leader>rv <Plug>(go-run-vertical)
@@ -227,15 +234,11 @@ nnoremap <C-H> <C-W><C-H>
 nnoremap <leader>v :vsplit<cr>
 nnoremap <leader>h :split<cr>
 
-" Tab navigation like Firefox.
-nnoremap <C-Left>   :bprevious!<CR>
-nnoremap <C-Right>  :bnext!<CR>
-nnoremap <C-t>      :enew!<CR>
-nnoremap <C-q>      :bclose<CR>
-inoremap <C-Left>   <Esc>:bprevious!<CR>i
-inoremap <C-Right>  <Esc>:bnext!<CR>i
-inoremap <C-t>      <Esc>:enew!<CR>i
-inoremap <C-q>      <Esc>:bclose<CR>
+" Buffer Navigation
+nnoremap <leader>bp   :bprevious!<CR>
+nnoremap <leader>bn   :bnext!<CR>
+nnoremap <leader>bc   :enew!<CR>
+nnoremap <leader>bd   :bdelete<CR>
 
 " Fix common typos
 cnoreabbrev W w
