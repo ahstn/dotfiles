@@ -10,7 +10,6 @@ call plug#begin('~/.vim/plugged')
 
 " Interface and Typing
 Plug 'joshdick/onedark.vim'
-Plug 'rakr/vim-one'
 Plug 'preservim/nerdtree',          { 'on': 'NERDTreeToggle' }
 Plug 'Xuyuanp/nerdtree-git-plugin', { 'on': 'NERDTreeToggle' }
 Plug 'junegunn/fzf',                { 'dir': '~/.fzf', 'do': './install --all' }
@@ -23,31 +22,20 @@ Plug 'tpope/vim-vinegar'    " TODO: Look into Fern to replace NERDTree + Vinegar
 Plug 'tpope/vim-commentary'
 Plug 'Yggdroot/indentLine'
 Plug 'easymotion/vim-easymotion'
-Plug 'matze/vim-move'
 Plug 'w0rp/ale'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'mhinz/vim-startify'
-Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKey!'] }
+Plug 'liuchengxu/vim-which-key'
 
 " Language Support
 Plug 'pangloss/vim-javascript', { 'for': 'javascript' }
 Plug 'fatih/vim-go',            { 'for': 'go', 'do': ':GoUpdateBinaries' }
 Plug 'posva/vim-vue',           { 'for': 'vue' }
-Plug 'sbdchd/neoformat',        { 'for': 'java' }
 Plug 'ekalinin/dockerfile.vim',
 Plug 'towolf/vim-helm',         { 'for': 'yaml' }
-Plug 'artur-shaik/vim-javacomplete2', { 'for': 'java' }
 "
 " Completion
-Plug 'ervandew/supertab'
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-else
-  Plug 'Shougo/deoplete.nvim'
-  Plug 'roxma/nvim-yarp'
-  Plug 'roxma/vim-hug-neovim-rpc'
-endif
-Plug 'deoplete-plugins/deoplete-go', { 'for': 'go', 'do': 'make'}
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
 
 call plug#end()
 
@@ -57,7 +45,7 @@ call plug#end()
 let mapleader = "\<Space>"  " remap leader to space
 syntax on                   " enable syntax highlighting
 set termguicolors           " use truecolor when possible
-colorscheme one             " use onedark colorscheme
+colorscheme onedark         " use onedark colorscheme
 set background=dark         " use onedark's dark colors
 set showmatch               " show matching [{}]
 set number                  " show line numbers
@@ -66,7 +54,7 @@ set splitbelow              " vertical split goes below current window
 set splitright              " horizontal split goes right of current window
 set incsearch               " move to match search as you type
 set ignorecase              " case insensitive search
-set scrolloff=3             " number of screen lines to show around the cursor
+set scrolloff=5             " number of screen lines to show around the cursor
 set colorcolumn=81          " limit line length to 80
 set ffs=unix                " always use unix line endings
 set encoding=UTF-8          " always use UTF8
@@ -96,8 +84,8 @@ let NERDTreeWinSize = '25'
 let NERDTreeMinimalUI = v:true
 let NERDTreeShowHidden = v:true
 let NERDTreeRespectWildIgnore = v:true
-autocmd vimenter * NERDTree
-autocmd VimEnter * wincmd p
+"autocmd vimenter * NERDTree
+"autocmd VimEnter * wincmd p
 autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
 
 " vim-signify
@@ -126,6 +114,8 @@ let g:which_key_map = {
     \    'j': 'EasyMotion Down',
     \    'k': 'EasyMotion Up',
     \    'p': 'Paste Mode',
+    \    'f': 'Format Block (coc)',
+    \    'rn': 'Rename Word (coc)',
     \    }
 
 " ale
@@ -148,9 +138,6 @@ let g:airline#extensions#branch#format = 2
 let g:airline#extensions#whitespace#enabled = v:true
 let g:airline#extensions#tabline#buffer_min_count = 2
 
-" vim-move
-let g:move_key_modifier = 'S'
-
 " vim-easymotion
 let g:EasyMotion_startofline = 0
 map <Leader>j <Plug>(easymotion-j)
@@ -162,7 +149,30 @@ let g:startify_lists = [
       \ { 'type': 'commands', 'header': [ 'Commands'          ] }
       \ ]
 
+" coc.nvim
+set hidden
+set nobackup
+set nowritebackup
+set cmdheight=1
+set updatetime=300
+set shortmess+=c
+set signcolumn=yes
+" setup tab completion
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? "\<C-n>" :
+      \ <SID>check_back_space() ? "\<TAB>" :
+      \ coc#refresh()
+inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+nmap <silent> gd <Plug>(coc-definition)
+nmap <silent> gy <Plug>(coc-type-definition)
+nmap <silent> gi <Plug>(coc-implementation)
+nmap <silent> gr <Plug>(coc-references)
+vmap <leader>f  <Plug>(coc-format-selected)
+nmap <leader>f  <Plug>(coc-format-selected)
+nmap <leader>rn <Plug>(coc-rename)
+
 " vim-go
+let g:go_def_mapping_enabled = 0    " handled by coc.nvim
 au FileType go nmap <leader>d <Plug>(go-def)
 au FileType go nmap <leader>dv <Plug>(go-def-vertical)
 au FileType go nmap <leader>dh <Plug>(go-def-split)
@@ -171,7 +181,6 @@ au FileType go nmap <leader>r <Plug>(go-run-split)
 au FileType go nmap <leader>rv <Plug>(go-run-vertical)
 au FileType go nmap <leader>rt <Plug>(go-run-tab)
 au FileType go nmap <F8> :GoMetaLinter<cr>
-
 
 let g:go_fmt_command = "goimports"
 let g:go_auto_type_info = 1
