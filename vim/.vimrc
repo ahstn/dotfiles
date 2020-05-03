@@ -67,6 +67,8 @@ set expandtab               " auto-indent when typing
 set shiftround ai si        " only indent to multiples of 2
 set nowrap                  " no line wrapping
 set fillchars+=vert:│       " full split line
+set conceallevel=0          " don't conceal chars (i.e. json quotes)
+set updatetime=300          " faster plugin updates
 set wildignore+=*/node_modules/**
 let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum" " needed for truecolor
 let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
@@ -104,6 +106,7 @@ let g:fzf_layout = { 'down': '~20%' }
 let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
 
 " vim-which-key
+set timeoutlen=300
 nnoremap <silent> <leader> :<c-u>WhichKey '<Space>'<CR>
 call which_key#register('<Space>', 'g:which_key_map')
 let g:which_key_map = {
