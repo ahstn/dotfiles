@@ -1,68 +1,52 @@
-# Uses zplugin for plugins (https://github.com/zdharma/zplugin)
-
-# Install zplugin if missing
-[[ -d ~/.zplugin ]] || {
-  url='https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh'
-  curl -fsSL $url | sh
-  source ~/.zplugin/bin/zplugin.zsh
+# Install Zinit if missing
+# https://github.com/zdharma/zinit
+[[ -d ~/.zinit ]] || {
+    curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh | sh
 }
+source "$HOME/.zinit/bin/zinit.zsh"
+autoload -Uz _zinit
+(( ${+_comps} )) && _comps[zinit]=_zinit
 
-autoload -Uz _zplugin
-source ~/.zplugin/bin/zplugin.zsh
-(( ${+_comps} )) && _comps[zplugin]=_zplugin
+# Plugins
+zinit for \
+    light-mode  zsh-users/zsh-autosuggestions \
+    light-mode  wfxr/forgit \
+    light-mode  zdharma/zsh-diff-so-fancy \
+    light-mode  zdharma/fast-syntax-highlighting 
 
 zplugin snippet OMZ::lib/key-bindings.zsh
-zplugin snippet OMZ::plugins/git/git.plugin.zsh
+zinit ice from"gh-r" as"program"; zinit load junegunn/fzf-bin
+zplugin ice from"gh-r" as"program" atload'!eval $(starship init zsh)' pick'**/starship'
+zplugin load starship/starship
 
-zplugin ice wait"0" blockf
-zplugin light zsh-users/zsh-completions
-zplugin ice wait"0" lucid atload"_zsh_autosuggest_start"
-zplugin light zsh-users/zsh-autosuggestions
-zplugin light zdharma/fast-syntax-highlighting
-zplugin light chrissicool/zsh-256color
-
-zplugin ice pick"async.zsh" src"pure.zsh"; zplugin light sindresorhus/pure
-zplugin ice from"gh-r" as"program"; zplugin load junegunn/fzf-bin
-zplugin ice wait"2" lucid as"program" pick"bin/git-dsf"
-zplugin light zdharma/zsh-diff-so-fancy
-zplugin light wfxr/forgit
-
-
+# Shell Configuration
 SAVEHIST=10000
 HISTFILE=~/.zsh_history
 setopt auto_cd                # If a dir is typed without cd, go there
-setopt inc_append_history     # Dont wait for shell exit to add commands
 setopt share_history          # Share history to multiple sessions
 setopt extended_history       # Save timestamp of command and duration
 setopt hist_ignore_all_dups   # Dont write duplicate entries to history
 setopt hist_no_store          # Dont write the history command to history
 setopt complete_in_word       # Allow completion from within a word
 setopt always_to_end          # Move to the end of a word when completing
+setopt glob_dots              # no special treatment for file names with a leading dot
+setopt no_auto_menu           # require an extra TAB press to open the completion menu
 
-export JAVA_HOME='/usr/lib/jvm/jre-9'
-
-export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
-export GOPATH="$HOME/go"
-export GOBIN="$GOPATH/bin"
-export BREWPATH="/home/ahstn/.linuxbrew/bin"
-export PATH="$GOBIN:$GOROOT/bin:$BREWPATH:/home/ahstn/.jx/bin:/home/ahstn/bin:$PATH"
-export EDITOR='nvim'
-
-export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=15'
-export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
+# Environment Variables
+export EDITOR="vim"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_DEFAULT_OPTS='
   --height 30% --reverse
   --color pointer:1,fg+:2,marker:2,bg+:8,prompt:4,info:3
 '
+export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
+export MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC"
 
-function mvp { mvn "$@" | mvnp -t -e -n; }
-function dsh { docker exec -it "$@" /bin/bash; }
-function dps { docker ps "$@" --format "{{.ID}}\t{{.Status}}\t{{.Image}}\t"; }
-function drm { docker rm $(docker ps -aqf status=exited); }
+# Aliases
+alias ll='ls -l'
 
-autoload -Uz compinit
-compinit
-zplugin cdreplay -q
+# FZF - Arch Linux uses /usr/share/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -d /usr/share/fzf/ ] && source /usr/share/fzf/{key-bindings,completion}.zsh
+

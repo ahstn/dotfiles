@@ -1,0 +1,6 @@
+[character]
+success_symbol = "[➜](bold green)"
+
+[[battery.display]]
+threshold = 25
+style = "bold red"
