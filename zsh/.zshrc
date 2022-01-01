@@ -3,21 +3,29 @@
 [[ -d ~/.zinit ]] || {
     curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh | sh
 }
+
 source "$HOME/.zinit/bin/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
+
+# Load a few important annexes, without Turbo
+zinit light-mode for \
+    zdharma-continuum/z-a-rust \
+    zdharma-continuum/z-a-as-monitor \
+    zdharma-continuum/z-a-patch-dl \
+    zdharma-continuum/z-a-bin-gem-node
 
 # Plugins
 zinit for \
     light-mode  zsh-users/zsh-autosuggestions \
     light-mode  wfxr/forgit \
-    light-mode  zdharma/zsh-diff-so-fancy \
-    light-mode  zdharma/fast-syntax-highlighting 
+    light-mode  zdharma-continuum/zsh-diff-so-fancy \
+    light-mode  zdharma-continuum/fast-syntax-highlighting 
 
 zplugin snippet OMZ::lib/key-bindings.zsh
 zinit ice from"gh-r" as"program"; zinit load junegunn/fzf-bin
-zplugin ice from"gh-r" as"program" atload'!eval $(starship init zsh)' pick'**/starship'
-zplugin load starship/starship
+zinit ice as"command" from"gh-r" bpick"*aarch64-apple*" atload'!eval $(starship init zsh)'
+zinit light starship/starship
 
 # Shell Configuration
 SAVEHIST=10000
