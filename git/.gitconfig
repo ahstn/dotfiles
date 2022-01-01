@@ -1,7 +1,7 @@
 [user]
-	email = phazyy9@gmail.com
-	name = Adam Houston
-	signingkey = C3EE046C6E3A6E0A
+  email = phazyy9@gmail.com
+  name = Adam Houston
+  signingkey = 68ACEF7D05786644
 
 [alias]
   lg = log --graph --oneline --decorate
@@ -30,7 +30,7 @@
   autoStash = true
 
 [gpg]
-	program = gpg2
+  program = gpg
 
 # allows: git clone gh:ahstn/dotfiles
 [url "git@github.com:"]
