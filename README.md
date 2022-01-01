@@ -1,12 +1,12 @@
 <img src="http://i.imgur.com/9PHYl04.png" align="left" width="128px" height="128px"/>
 
 ### **dotfiles**
-> *my dotfiles for development on Linux*
+> *my dotfiles for development on macOS*
 
-[![Distro](https://img.shields.io/badge/Distro-Fedora-blue.svg)](https://getfedora.org/)
+[![Distro](https://img.shields.io/badge/Distro-macOS-blue.svg)](https://apple.com/)
 [![Editor](https://img.shields.io/badge/Editor-neovim-brightgreen.svg)](https://github.com/neovim/neovim)
 [![Shell](https://img.shields.io/badge/Shell-zsh-yellow.svg)](https://github.com/zplug/zplug)
-[![Terminal](https://img.shields.io/badge/Terminal-Terminator-orange.svg)](https://gnometerminator.blogspot.co.uk/p/introduction.html)
+[![Terminal](https://img.shields.io/badge/Terminal-iTerm2-orange.svg)](https://iterm2.com/)
 [![Font](https://img.shields.io/badge/Font-Hack-lightgrey.svg)](https://sourcefoundry.org/hack/)
 
 For Vim help take a look at my [`vim.md`] which lists general, personal
@@ -26,18 +26,18 @@ etc, etc..
 - [`zplug`] - zsh plguin manger, used in my `.zshrc`
 - [`ripgrep`] - lightning fast grep, used in my `.vimrc` and `.zshrc`
 
-## Appearance
-- [`Aex Dark`] - plasma desktop theme
-- [`La Capitaine`] - icon theme (dock and general)
-- [`Latte Dock`] - dock used rather than a third party program
 
-## Screenshot
-Plasma (KDE) desktop as of the 8th of April 2018 - [`4d078ed`]
-![screenshot](images/screenshots/08-04-18-desktop.png)
+Brew command for general tools:
+```bash
+brew install rg fzf zsh gpg2 git tmux
+brew install --cask raycast
+```
 
-[N]Vim
-![screenshot](images/screenshots/08-04-18-vim.png)
-
+Brew command for specific development tools:
+```bash
+brew install golang jq nodejs yarn coreutils kubectl kubectx helm 
+brew install --cask visual-studio-code
+```
 
 ### Acknowledgements
 - [`meain`] - for layout inspo and vim config
@@ -48,11 +48,6 @@ Plasma (KDE) desktop as of the 8th of April 2018 - [`4d078ed`]
 [`vim-plug`]: https://github.com/junegunn/vim-plug
 [`zplug`]: https://github.com/zplug/zplug
 [`ripgrep`]: https://github.com/BurntSushi/ripgrep
-[`Aex Dark`]: https://store.kde.org/p/1207344
-[`Ciliora-Teria`]: https://github.com/zagortenay333/ciliora-tertia-shell
-[`La Capitaine`]: https://github.com/keeferrourke/la-capitaine-icon-theme
-[`Latte Dock`]: https://github.com/psifidotos/Latte-Dock
-[`4d078ed`]: https://github.com/ahstn/dotfiles/commit/4d078ededc7f3b803a18ddb80b26cddd85c529f5
 [`meain`]: https://github.com/meain/dotfiles
 [`posquit0`]: https://github.com/posquit0/dotfiles
 [`kutsan`]: https://github.com/kutsan/dotfiles
