@@ -1,42 +1,35 @@
 {
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-    "files.eol": "\n",
-    "files.exclude": {
-        "**/.git": true,
-        "**/node_modules": true,
-        "**/.kitchen": true,
-        "**/obj": true,
-        "**/bin": true,
-        "**/vendor": true
-    },
-    "editor.fontFamily": "'DejaVu Sans Code','Hack', monospace",
+    // User Interface
+    "breadcrumbs.enabled": false,
+    "zenMode.hideTabs": false,
+    "workbench.activityBar.visible": false,
+    "workbench.editor.limit.perEditorGroup": true,
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.value": 5,
+    "workbench.settings.useSplitJSON": true,
+    "window.zoomLevel": 1,
+    "explorer.openEditors.visible": 0,
+    "telemetry.telemetryLevel": "off",
+
+    // Editor
     "editor.fontLigatures": true,
     "editor.formatOnPaste": true,
     "editor.minimap.enabled": false,
     "editor.insertSpaces": true,
     "editor.tabSize": 2,
-    "editor.rulers": [
-        80
-    ],
-    "editor.scrollBeyondLastLine": true,
-    "editor.wordWrap": "off",
+    "editor.rulers": [ 120 ],
     "editor.wordWrapColumn": 140,
-    "editor.mouseWheelZoom": true,
-    "explorer.openEditors.visible": 0,
-    "telemetry.enableCrashReporter": false,
-    "telemetry.enableTelemetry": false,
-    "window.menuBarVisibility": "toggle",
-    "workbench.activityBar.visible": false,
-    "workbench.editor.openPositioning": "first",
-    "workbench.colorTheme": "Atom One Dark",
-    "workbench.iconTheme": "material-icon-theme",
-    "workbench.statusBar.feedback.visible": false,
+
+    // Theme
+    "workbench.colorTheme": "City Lights",
+    "workbench.iconTheme": "vikings-icon-theme",
+
     // Extensions
-    "foodcritic.enable": true,
     "extensions.autoUpdate": true,
-    "extensions.ignoreRecommendations": false,
-    "cSpell.language": "en-GB",
-    "java.errors.incompleteClasspath.severity": "ignore",
-    "window.zoomLevel": 0,
+    "svelte.enable-ts-plugin": true,
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "errorLens.excludeBySource": [
+        "cSpell"
+    ],
+    "tabnine.experimentalAutoImports": true
 }
