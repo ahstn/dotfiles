@@ -4,3 +4,13 @@ success_symbol = "[➜](bold green)"
 [[battery.display]]
 threshold = 25
 style = "bold red"
+
+[kubernetes]
+format = '[⛵ $context \($namespace\)](dimmed green) '
+disabled = false
+[kubernetes.context_aliases]
+"qa-eu-a" = "qa"
+
+[nodejs]
+format = "via [🤖 $version](bold green) "
+disabled = true
