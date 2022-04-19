@@ -34,9 +34,11 @@ cmp.setup({
      require('luasnip').lsp_expand(args.body)
     end,
   },
-  documentation = {
-    winhighlight = 'NormalFloat:CmpDocumentation,FloatBorder:CmpDocumentationBorder',
-    border = 'rounded',
+  window = {
+    documentation = {
+      winhighlight = 'NormalFloat:CmpDocumentation,FloatBorder:CmpDocumentationBorder',
+      border = 'rounded',
+    }
   },
   mapping = {
     ['<C-Space>'] = cmp.mapping.complete(),
