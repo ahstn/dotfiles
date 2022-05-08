@@ -2,6 +2,7 @@ vim.g.mapleader = ' '     -- <space bar> as leader
 
 vim.opt.updatetime = 500  -- faster updates
 vim.opt.timeoutlen = 250  -- lower keypress timeout for 'which-key'
+vim.opt.mouse = 'nv'
 
 vim.opt.termguicolors = true  -- Truecolor when possible
 vim.g.t_Co = 256

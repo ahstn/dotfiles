@@ -1,19 +1,11 @@
----@diagnostic disable: undefined-global
-local fn = vim.fn
-local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
+local install_path = vim.fn.stdpath 'data' .. '/site/pack/packer/start/packer.nvim'
 
--- Only required if you have packer configured as `opt`
-vim.cmd [[packadd packer.nvim]]
-if fn.empty(fn.glob(install_path)) > 0 then
-  packer_bootstrap = fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
+if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
+  vim.fn.execute('!git clone https://github.com/wbthomason/packer.nvim ' .. install_path)
 end
 
-vim.cmd([[
-  augroup packer_user_config
-    autocmd!
-    autocmd BufWritePost plugins.lua source <afile> | PackerSync
-  augroup end
-]])
+local packer_group = vim.api.nvim_create_augroup('Packer', { clear = true })
+vim.api.nvim_create_autocmd('BufWritePost', { command = 'source <afile> | PackerCompile', group = packer_group, pattern = 'init.lua' })
 
 return require('packer').startup(function()
   use 'wbthomason/packer.nvim'
@@ -21,23 +13,28 @@ return require('packer').startup(function()
 
   -- UI
   use 'ful1e5/onedark.nvim' -- Color Scheme
-  use 'j-hui/fidget.nvim' --  LSP Progress
   use 'folke/which-key.nvim' -- Keybinds Helper
   use {'nvim-lualine/lualine.nvim', requires = {'kyazdani42/nvim-web-devicons', opt = true}}
+  use {
+    'akinsho/bufferline.nvim',
+    requires = 'kyazdani42/nvim-web-devicons',
+    config = function() require('plugins.bufferline') end,
+  }
   use {'lewis6991/gitsigns.nvim', requires = 'nvim-lua/plenary.nvim', config = "require('gitsigns').setup()",}
   use {  -- Code Actions & File Finding
     'nvim-telescope/telescope.nvim',
     requires = {
       'nvim-lua/plenary.nvim',
-      'nvim-telescope/telescope-ui-select.nvim'
+      { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make' }
     },
-    config = function() require("telescope").load_extension("ui-select") end
+    config = function() require("plugins.telescope") end
   }
   use {
     'kyazdani42/nvim-tree.lua',
     requires = 'kyazdani42/nvim-web-devicons',
     config = function() require'nvim-tree'.setup {} end
   }
+  use 'stevearc/dressing.nvim' -- general interactive UI element improvements
   use('ggandor/lightspeed.nvim') -- hop to different parts of the buffer with s + character
 
   -- Treesitter
@@ -45,7 +42,7 @@ return require('packer').startup(function()
   use { 'nvim-treesitter/nvim-treesitter-textobjects', after = 'nvim-treesitter'}
 
   -- LSP
-  use 'neovim/nvim-lspconfig'  -- collection of LSP configurations for nvim
+  use { 'neovim/nvim-lspconfig', config = function() require('plugins.lspconfig') end }
   use 'williamboman/nvim-lsp-installer' -- auto installers for language servers
   use {
       'hrsh7th/nvim-cmp', -- auto completion
@@ -66,8 +63,8 @@ return require('packer').startup(function()
   use 'b0o/schemastore.nvim' -- adds schemas for json lsp
 
   -- TypeScript Specifics
-  use "jose-elias-alvarez/null-ls.nvim"
-  use "jose-elias-alvarez/nvim-lsp-ts-utils"
+  use 'jose-elias-alvarez/null-ls.nvim'
+  use 'jose-elias-alvarez/nvim-lsp-ts-utils'
   use { 'David-Kunz/cmp-npm', requires = 'nvim-lua/plenary.nvim' }
 
   -- Rust Specifics

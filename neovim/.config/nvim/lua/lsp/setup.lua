@@ -1,6 +1,4 @@
-require"fidget".setup{}
 local lsp_installer = require('nvim-lsp-installer')
-
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require("cmp_nvim_lsp").update_capabilities(capabilities)
 
@@ -28,6 +26,7 @@ local augroup = function(name)
     vim.api.nvim_create_augroup(name, { clear = true })
 end
 
+-- Default Options for all LSPs
 local default_on_attach = function(client, bufnr)
     if client.resolved_capabilities.code_lens then
         autocmd({ 'BufEnter', 'InsertLeave' }, {
@@ -41,6 +40,30 @@ local default_on_attach = function(client, bufnr)
     end
     vim.cmd('setlocal omnifunc=v:lua.vim.lsp.omnifunc')
     vim.api.nvim_buf_set_option(0, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
+
+    local opts = { noremap = true, silent = true }
+    local function buf_set_keymap(...)
+        vim.api.nvim_buf_set_keymap(bufnr, ...)
+    end
+    buf_set_keymap('n', 'gD', '<cmd>lua vim.lsp.buf.declaration()<cr>', opts)
+    buf_set_keymap('n', 'gd', '<cmd>lua vim.lsp.buf.definition()<cr>', opts)
+    buf_set_keymap('n', 'gi', '<cmd>lua vim.lsp.buf.implementation()<cr>', opts)
+    buf_set_keymap('n', 'gr', '<cmd>lua vim.lsp.buf.references()<cr>', opts)
+
+    buf_set_keymap('n', 'H', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
+    buf_set_keymap('n', '<leader>s', '<cmd>lua vim.lsp.buf.signature_help()<cr>', opts)
+    buf_set_keymap('n', '<leader>wa', '<cmd>lua vim.lsp.buf.add_workspace_folder()<cr>', opts)
+    buf_set_keymap('n', '<leader>wr', '<cmd>lua vim.lsp.buf.remove_workspace_folder()<cr>', opts)
+    buf_set_keymap('n', '<leader>wl', '<cmd>lua print(vim.inspect(vim.lsp.buf.list_workspace_folders()))<cr>', opts)
+    buf_set_keymap('n', '<leader>lD', '<cmd>lua vim.lsp.buf.type_definition()<cr>', opts)
+    buf_set_keymap('n', '<leader>lr', '<cmd>lua vim.lsp.buf.rename()<CR>', opts)
+    buf_set_keymap('n', '<leader>le', "<cmd>lua vim.diagnostic.show_line_diagnostics({float={border='rounded'}})<cr>", opts)
+    buf_set_keymap('n', '[d', "<cmd>lua vim.diagnostic.goto_prev({float={border='rounded'}})<cr>", opts)
+    buf_set_keymap('n', ']d', "<cmd>lua vim.diagnostic.goto_next({float={border='rounded'}})<cr>", opts)
+    buf_set_keymap('n', '<leader>lq', '<cmd>lua vim.diagnostic.set_loclist()<cr>', opts)
+    buf_set_keymap('n', '<leader>lf', '<cmd>lua vim.lsp.buf.formatting()<cr>', opts)
+
+    print('LSP Attached.')
 end
 
 local function ensure_server(name)
@@ -52,6 +75,7 @@ local function ensure_server(name)
     return server
 end
 
+-- Specific LSP Settings (Python, TS, etc)
 ensure_server('pyright'):setup({
     on_attach = default_on_attach,
     capabilities = capabilities,
@@ -85,14 +109,15 @@ ensure_server('tsserver'):setup({
             -- eslint
             eslint_enable_code_actions = true,
             eslint_enable_disable_comments = true,
-            eslint_bin = 'eslint_d',
+            eslint_bin = 'eslint',
             eslint_enable_diagnostics = true,
             eslint_opts = {},
 
             -- formatting
             enable_formatting = true,
-            formatter = 'eslint_d',
-            formatter_opts = {},
+            formatter = 'prettier',
+            formatter_args = {"--stdin-filepath", "$FILENAME"},
+            format_on_save = true,
 
             -- update imports on file move
             update_imports_on_move = true,
@@ -116,10 +141,10 @@ ensure_server('tsserver'):setup({
         vim.api.nvim_buf_set_keymap(bufnr, 'n', 'gs', ':TSLspOrganize<CR>', opts)
         vim.api.nvim_buf_set_keymap(bufnr, 'n', 'gf', ':TSLspRenameFile<CR>', opts)
         vim.api.nvim_buf_set_keymap(bufnr, 'n', 'go', ':TSLspImportAll<CR>', opts)
+        vim.api.nvim_buf_set_keymap(bufnr, "n", "gi", ":TSLspImportAll<CR>", {silent = true})
         print('TS LSP Attached')
     end,
 })
-
 
 local null_ls = require('null-ls')
 local fmt = null_ls.builtins.formatting
@@ -129,14 +154,16 @@ null_ls.setup({
         fmt.trim_whitespace.with({
             filetypes = { 'text', 'sh', 'zsh', 'toml', 'make', 'conf', 'tmux' },
         }),
-        fmt.prettierd,
-        fmt.eslint_d,
+        fmt.prettier,
+        fmt.eslint,
         fmt.rustfmt,
         fmt.terraform_fmt,
         fmt.gofmt,
-        dgn.eslint_d,
+        dgn.eslint,
+        dgn.tsc,
         dgn.pylint,
-        dgn.yamllint
+        dgn.yamllint,
+        dgn.cspell,
     },
     on_attach = function(client, bufnr)
         if client.resolved_capabilities.document_formatting then
@@ -147,6 +174,31 @@ null_ls.setup({
                 augroup END
             ]])
         end
-        vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>lF', 'lua vim.lsp.buf.formatting_sync()', {})
+        -- vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>lF', 'lua vim.lsp.buf.formatting_sync()', {})
     end,
+})
+
+ensure_server('rust_analyzer'):setup({
+    capabilities = capabilities,
+    on_attach = default_on_attach,
+    settings = {
+        ["rust-analyzer"] = {
+            assist = {
+                importMergeBehavior = "last",
+                importPrefix = "by_self",
+            },
+            diagnostics = {
+                disabled = { "unresolved-import" }
+            },
+            cargo = {
+                loadOutDirsFromCheck = true
+            },
+            procMacro = {
+                enable = true
+            },
+            checkOnSave = {
+                command = "clippy"
+            },
+        }
+    }
 })
