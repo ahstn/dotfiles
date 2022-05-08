@@ -5,12 +5,24 @@ success_symbol = "[➜](bold green)"
 threshold = 25
 style = "bold red"
 
+[aws]
+format = 'on[ ☁️ $profile (\[$duration\] )]($style)'
+
 [kubernetes]
 format = '[⛵ $context \($namespace\)](dimmed green) '
 disabled = false
 [kubernetes.context_aliases]
 "qa-eu-a" = "qa"
 
+[git_branch]
+ignore_branches = ["master", "main"]
+
 [nodejs]
-format = "via [🤖 $version](bold green) "
+format = "via [$version](bold green) "
+disabled = false
+
+[python]
+disabled = true
+
+[package]
 disabled = true
