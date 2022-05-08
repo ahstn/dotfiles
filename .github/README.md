@@ -14,7 +14,7 @@ Structured to work with `GNU Stow`
 ```
 $ git clone https://github.com/ahstn/dotfiles.git
 $ cd dotfiles/
-$ stow vim
+$ stow --target $HOME zsh
 ```
 etc, etc..
 
@@ -25,7 +25,7 @@ etc, etc..
 
   General tools:
   ```bash
-  brew install rg fzf zsh gpg2 git tmux neovim stow
+  brew install rg fzf zsh gpg2 git tmux neovim stow exa
   brew install kitty
   brew install --cask font-hack-nerd-font font-jetbrains-mono
   brew install --cask raycast
@@ -61,9 +61,9 @@ etc, etc..
     - <kbd>ds)</kbd> : remove surrounding parentheses
     - <kbd>cs)}</kbd> : change surrounding parentheses to braces
   - [nvim-telescope/telescope.nvim]
-    - <C-x>	: open file as a horizontal split
-    - <C-v>	: open file as a vertical split
-    - ? : show mappings
+    - <kbd><C-x></kbd> : open file as a horizontal split
+    - <kbd><C-v></kbd> : open file as a vertical split
+    - <kbd>?</kbd> : show mappings
 </details>
 
 <details>
@@ -88,7 +88,7 @@ etc, etc..
 - [`posquit0`] - for layout inspo
 - [`kutsan`] - for cool vim stuff
 - [`augustocdias`] - neovim setup
-- [`thanhvule0310`] - neovim setup
+- [`thanhvule0310`] - tmux & neovim setup
 
 
 [wbthomason/packer.nvim]: https://github.com/wbthomason/packer.nvim
