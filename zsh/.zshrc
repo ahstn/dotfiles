@@ -1,26 +1,25 @@
-# Install Zinit if missing
-# https://github.com/zdharma/zinit
-[[ -d ~/.zinit ]] || {
-    curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh | sh
+# Install Zinit if missing - https://github.com/zdharma-continuum/zinit
+[[ -d "$HOME/.local/share/zinit/zinit.git"  ]] || {
+    curl -fsSL https://git.io/zinit-install | sh
 }
 
-source "$HOME/.zinit/bin/zinit.zsh"
+source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 
 # Load a few important annexes, without Turbo
 zinit light-mode for \
-    zdharma-continuum/z-a-rust \
-    zdharma-continuum/z-a-as-monitor \
-    zdharma-continuum/z-a-patch-dl \
-    zdharma-continuum/z-a-bin-gem-node
+    zdharma-continuum/zinit-annex-as-monitor \
+    zdharma-continuum/zinit-annex-bin-gem-node \
+    zdharma-continuum/zinit-annex-patch-dl \
+    zdharma-continuum/zinit-annex-rust
 
 # Plugins
 zinit for \
     light-mode  zsh-users/zsh-autosuggestions \
     light-mode  wfxr/forgit \
     light-mode  zdharma-continuum/zsh-diff-so-fancy \
-    light-mode  zdharma-continuum/fast-syntax-highlighting 
+    light-mode  zdharma-continuum/fast-syntax-highlighting
 
 zplugin snippet OMZ::lib/key-bindings.zsh
 zinit ice from"gh-r" as"program"; zinit load junegunn/fzf-bin
@@ -40,21 +39,12 @@ setopt always_to_end          # Move to the end of a word when completing
 setopt glob_dots              # no special treatment for file names with a leading dot
 setopt no_auto_menu           # require an extra TAB press to open the completion menu
 
-# Environment Variables
-export EDITOR="vim"
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_DEFAULT_OPTS='
-  --height 30% --reverse
-  --color pointer:1,fg+:2,marker:2,bg+:8,prompt:4,info:3
-'
-export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
-export MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC"
+# Aliases, Functions & Environment Variables
+[ -f ~/.zsh-env ] && source ~/.zsh-env
 
-# Aliases
-alias ll='ls -l'
+# Private & Sensitive Values
+[ -f ~/.zsh-private ] && source ~/.zsh-private
 
 # FZF - Arch Linux uses /usr/share/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -d /usr/share/fzf/ ] && source /usr/share/fzf/{key-bindings,completion}.zsh
-

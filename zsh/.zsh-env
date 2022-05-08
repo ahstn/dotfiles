@@ -1,0 +1,30 @@
+export EDITOR="nvim"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_DEFAULT_OPTS='
+  --height 30% --reverse
+  --color pointer:1,fg+:2,marker:2,bg+:8,prompt:4,info:3
+'
+export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
+export MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC"
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+
+alias ll='exa -lmha --no-user --git'
+
+function dc {
+  if [ $# -lt 1 ]; then
+    echo 'Usage: $FUNCNAME ARG [ARG ...]'
+    return 1
+  fi
+
+  if [[ $1 == "krm" ]]; then
+    docker-compose rm -s
+  elif [[ $1 == "sh" ]]; then
+    docker-compose exec $2 ${3:-bash}
+  else
+    echo '[dc]: no args matched, forwarding to docker-compose'
+    docker-compose $@
+  fi
+}
