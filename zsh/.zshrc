@@ -1,4 +1,5 @@
 # Install Zinit if missing - https://github.com/zdharma-continuum/zinit
+# https://zdharma-continuum.github.io/zinit/wiki/
 [[ -d "$HOME/.local/share/zinit/zinit.git"  ]] || {
     curl -fsSL https://git.io/zinit-install | sh
 }
@@ -14,16 +15,22 @@ zinit light-mode for \
     zdharma-continuum/zinit-annex-patch-dl \
     zdharma-continuum/zinit-annex-rust
 
-# Plugins
-zinit for \
-    light-mode  zsh-users/zsh-autosuggestions \
-    light-mode  wfxr/forgit \
-    light-mode  zdharma-continuum/zsh-diff-so-fancy \
-    light-mode  zdharma-continuum/fast-syntax-highlighting
+zinit wait lucid for \
+    zsh-users/zsh-autosuggestions \
+    wfxr/forgit \
+    hlissner/zsh-autopair \
+    zdharma-continuum/zsh-diff-so-fancy \
+    zdharma-continuum/fast-syntax-highlighting \
+    OMZL::key-bindings.zsh
 
-zplugin snippet OMZ::lib/key-bindings.zsh
-zinit ice from"gh-r" as"program"; zinit load junegunn/fzf-bin
-zinit ice as"command" from"gh-r" bpick"*aarch64-apple*" atload'!eval $(starship init zsh)'
+zinit as"null" wait"2" lucid from"gh-r" for \
+    sbin"exa" ogham/exa \
+    sbin"fzf" junegunn/fzf-bin
+
+zinit ice as"command" \
+  from"gh-r" \
+  bpick"*aarch64-apple*" \
+  atload'!eval $(starship init zsh)'
 zinit light starship/starship
 
 # Shell Configuration
