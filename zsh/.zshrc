@@ -1,21 +1,33 @@
-# Start configuration added by Zim install {{{
-
-ZIM_HOME=${ZDOTDIR:-${HOME}}/.zim
-
-# Download zimfw plugin manager if missing.
-[[ -e ${ZIM_HOME}/zimfw.zsh ]] || {
-  curl -fsSL --create-dirs -o ${ZIM_HOME}/zimfw.zsh \
-      https://github.com/zimfw/zimfw/releases/latest/download/zimfw.zsh
+# Load ZI if it exists, if not then install it. 
+# https://github.com/z-shell/zi/
+[[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/zi/init.zsh" ]] && {
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/zi/init.zsh" && zzinit
+} || {
+  sh -c "$(curl -fsSL https://git.io/get-zi)" -- -a annex
 }
 
-# Install missing modules, and update ${ZIM_HOME}/init.zsh if missing or outdated.
-if [[ ! ${ZIM_HOME}/init.zsh -nt ${ZDOTDIR:-${HOME}}/.zimrc ]]; then
-  source ${ZIM_HOME}/zimfw.zsh init -q
-fi
+zi light-mode for z-shell/z-a-meta-plugins @annexes
 
-source ${ZIM_HOME}/init.zsh
+zi wait lucid light-mode for \
+  atinit"zicompinit; zicdreplay" \
+    z-shell/F-Sy-H \
+  atload"_zsh_autosuggest_start" \
+    zsh-users/zsh-autosuggestions \
+  blockf atpull'zi creinstall -q .' \
+    zsh-users/zsh-completions
 
-zmodload -F zsh/terminfo +p:terminfo
+# GitHub Release Plugin Loading
+zi as'null' wait'2' from'gh-r' for \
+  sbin'fzf' junegunn/fzf \
+  sbin'**/fd' @sharkdp/fd \
+  sbin'**/bat' @sharkdp/bat \
+  sbin'**/exa -> exa' ogham/exa \
+  atload'eval "$(starship init zsh)"' starship/starship
+
+# Generic GitHub Plugin Loading
+zi for as'program' \
+  pick'bin/git-dsf' z-shell/zsh-diff-so-fancy \
+  wfxr/forgit
 
 # Plugin Configuration
 ZSH_AUTOSUGGEST_MANUAL_REBIND=1
@@ -36,8 +48,6 @@ setopt glob_dots              # no special treatment for file names with a leadi
 setopt no_auto_menu           # require an extra TAB press to open the completion menu
 setopt CORRECT                # Prompt for spelling correction of commands.
 bindkey -e                    # Set editor default keymap to emacs (`-e`) or vi (`-v`)
-
-eval "$(starship init zsh)"
 
 # Aliases, Functions & Environment Variables
 [ -f ~/.zsh-env ] && source ~/.zsh-env
