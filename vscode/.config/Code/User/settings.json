@@ -1,35 +1,190 @@
 {
-    // User Interface
+    // Theme 
+    "workbench.colorTheme": "One Dark Pro",
+    "workbench.iconTheme": "vikings-icon-theme",
+    // Editor
+    "window.zoomLevel": 1.5,
+    "editor.fontFamily": "Hack Nerd Font, Menlo, Monaco, monospace",
+    "editor.minimap.enabled": false,
+    "explorer.openEditors.visible": 0,
     "breadcrumbs.enabled": false,
-    "zenMode.hideTabs": false,
-    "workbench.activityBar.visible": false,
+    "workbench.settings.useSplitJSON": false,
+    "telemetry.telemetryLevel": "off",
+    // UI 
+    "workbench.editor.showTabs": false,
+    "window.titleBarStyle": "native",
+    // Tabs
     "workbench.editor.limit.perEditorGroup": true,
     "workbench.editor.limit.enabled": true,
     "workbench.editor.limit.value": 5,
-    "workbench.settings.useSplitJSON": true,
-    "window.zoomLevel": 1,
-    "explorer.openEditors.visible": 0,
-    "telemetry.telemetryLevel": "off",
-
-    // Editor
-    "editor.fontLigatures": true,
-    "editor.formatOnPaste": true,
-    "editor.minimap.enabled": false,
-    "editor.insertSpaces": true,
-    "editor.tabSize": 2,
-    "editor.rulers": [ 120 ],
-    "editor.wordWrapColumn": 140,
-
-    // Theme
-    "workbench.colorTheme": "City Lights",
-    "workbench.iconTheme": "vikings-icon-theme",
-
     // Extensions
     "extensions.autoUpdate": true,
-    "svelte.enable-ts-plugin": true,
-    "javascript.updateImportsOnFileMove.enabled": "always",
-    "errorLens.excludeBySource": [
-        "cSpell"
+    "gitlens.codeLens.enabled": false,
+    "yaml.format.enable": true,
+    "editor.formatOnSave": true,
+    "customizeUI.activityBar": "bottom",
+    "customizeUI.titleBar": "inline",
+    "customizeUI.listRowHeight": 26,
+    "customizeUI.statusBarPosition": "under-panel",
+    // Vim
+    "vim.easymotion": true,
+    "vim.incsearch": true,
+    "vim.useSystemClipboard": true,
+    "vim.useCtrlKeys": true,
+    "vim.hlsearch": true,
+    "vim.insertModeKeyBindings": [
+        {
+            "before": [
+                "j",
+                "j"
+            ],
+            "after": [
+                "<Esc>"
+            ]
+        }
     ],
-    "tabnine.experimentalAutoImports": true
+    "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": [
+                "<leader>",
+                "s",
+                "f"
+            ],
+            "commands": [
+                "workbench.action.quickOpen"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "s",
+                "b"
+            ],
+            "commands": [
+                "workbench.action.showAllEditorsByMostRecentlyUsed",
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "h"
+            ],
+            "commands": [
+                ":nohl"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "e",
+                "s"
+            ],
+            "after": [
+                "leader",
+                "leader",
+                "s"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "e",
+                "j"
+            ],
+            "after": [
+                "leader",
+                "leader",
+                "j"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "e",
+                "k"
+            ],
+            "after": [
+                "leader",
+                "leader",
+                "k"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "j",
+            ],
+            "after": [
+                "leader",
+                "leader",
+                "leader",
+                "j"
+            ]
+        },
+        {
+            "before": [
+                "<space>"
+            ],
+            "commands": [
+                "whichkey.show"
+            ]
+        }
+    ],
+    "vim.leader": "<space>",
+    "vim.handleKeys": {
+        "<C-a>": false,
+        "<C-f>": false,
+        "<C-r>": false,
+    },
+    "whichkey.bindingOverrides": [
+        {
+            "keys": "s",
+            "name": "Search",
+            "type": "bindings",
+            "bindings": [
+                {
+                    "key": "f",
+                    "name": "Search Files",
+                    "type": "command",
+                    "command": "workbench.action.quickOpen"
+                },
+                {
+                    "key": "b",
+                    "name": "Search Buffers",
+                    "type": "command",
+                }
+            ]
+        }
+    ],
+    // Syntax Specific 
+    "[terraform]": {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[terraform-vars]": {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "rvest.vs-code-prettier-eslint",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[dockercompose]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "redhat.telemetry.enabled": false,
+    "workbench.tree.indent": 16,
+    "workbench.tree.renderIndentGuides": "always",
+    "workbench.tips.enabled": false,
+    "workbench.editor.autoLockGroups": {
+        "terminalEditor": false
+    }
 }
