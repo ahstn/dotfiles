@@ -12,6 +12,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
 
 alias ll='exa -lmha --no-user --git'
+alias tf='terraform'
 
 function dc {
   if [ $# -lt 1 ]; then
@@ -20,11 +21,31 @@ function dc {
   fi
 
   if [[ $1 == "krm" ]]; then
-    docker-compose rm -s
+    docker-compose rm -sfv $2
   elif [[ $1 == "sh" ]]; then
     docker-compose exec $2 ${3:-bash}
   else
     echo '[dc]: no args matched, forwarding to docker-compose'
     docker-compose $@
   fi
+}
+
+function awx() {
+  login_profile="aws-bv"
+  profile=${1:-"cas-qa"}
+  aws sts get-caller-identity --profile aws-bv || aws sso login --profile aws-bv
+  export {AWS_PROFILE,AWS_DEFAULT_PROFILE}=$profile
+}
+
+function awsso() {
+    profile=${1:-"aws-bv"}
+    echo "Using profile=['$profile'] from ~/.aws/config"
+
+    export AWS_PAGER=""
+    aws sts get-caller-identity --profile $profile || aws sso login --profile $profile
+    FILE=~/.aws/cli/cache/$(ls -t ~/.aws/cli/cache | head -n 1)
+
+    export AWS_ACCESS_KEY_ID="$(jq -r '.Credentials.AccessKeyId' $FILE)" \
+      AWS_SECRET_ACCESS_KEY="$(jq -r '.Credentials.SecretAccessKey' $FILE)" \
+      AWS_SESSION_TOKEN="$(jq -r '.Credentials.SessionToken' $FILE)"
 }

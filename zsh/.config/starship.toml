@@ -13,6 +13,7 @@ format = '[⛵ $context \($namespace\)](dimmed green) '
 disabled = false
 [kubernetes.context_aliases]
 "qa-eu-a" = "qa"
+"arn:aws:eks:us-east-1:783191644494:cluster/cas-platform-eks" = "cas-qa"
 
 [git_branch]
 ignore_branches = ["master", "main"]
