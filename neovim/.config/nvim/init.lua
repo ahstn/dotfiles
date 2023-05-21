@@ -1,19 +1,21 @@
--- ore Settings
+--
+-- Core Settings
 -- --
 
+vim.g.mapleader = ' '    -- <space bar> as leader
 
-vim.opt.updatetime = 500  -- faster updates
-vim.opt.timeoutlen = 250  -- lower keypress timeout for 'which-key'
+vim.opt.updatetime = 500 -- faster updates
+vim.opt.timeoutlen = 250 -- lower keypress timeout for 'which-key'
 vim.opt.mouse = 'nv'
 
-vim.opt.termguicolors = true  -- Truecolor when possible
+vim.opt.termguicolors = true -- Truecolor when possible
 vim.g.t_Co = 256
 vim.g.syntax_on = true
 
 vim.opt.relativenumber = true
 vim.wo.scrolloff = 10
 vim.wo.sidescrolloff = 30
-vim.wo.cursorline = true -- Enable highlighting of the current line
+vim.wo.cursorline = true  -- Enable highlighting of the current line
 vim.wo.signcolumn = 'yes' -- Always show the signcolumn, otherwise it would shift the text each time
 
 -- 2 spaces with auto-indenting
@@ -60,40 +62,48 @@ require('lazy').setup({
     branch = 'v2.x',
     dependencies = {
       -- LSP Support
-      {'neovim/nvim-lspconfig'},             -- Required
-      {                                      -- Optional
-        'williamboman/mason.nvim',
-        build = function()
-          pcall(vim.cmd, 'MasonUpdate')
-        end,
-      },
-      {'williamboman/mason-lspconfig.nvim'}, -- Optional
+      { 'neovim/nvim-lspconfig' },
+      { 'williamboman/mason.nvim',          build = ':MasonUpdate' },
+      { 'williamboman/mason-lspconfig.nvim' },
       -- Autocompletion
-      {'hrsh7th/nvim-cmp'},     -- Required
-      {'hrsh7th/cmp-nvim-lsp'}, -- Required
-      {'L3MON4D3/LuaSnip'},     -- Required
+      { 'hrsh7th/nvim-cmp' },   -- Required
+      { 'hrsh7th/cmp-nvim-lsp' }, -- Required
+      { 'L3MON4D3/LuaSnip' },   -- Required
+      { 'hrsh7th/cmp-path' },
+      { 'hrsh7th/cmp-buffer' },
+    }
+  },
+  { 'folke/which-key.nvim' },
+  { 'folke/trouble.nvim' },
+  {
+    'nvim-treesitter/nvim-treesitter',
+    build = ':TSUpdate',
+    opts = {
+      ensure_installed = {
+        'typescript',
+        'rust',
+        'lua',
+        'dockerfile',
+        'terraform',
+        'yaml'
+      }
     }
   },
   {
-    "folke/which-key.nvim",
+    'numToStr/Comment.nvim',
     config = function()
-      vim.o.timeout = true
-      vim.o.timeoutlen = 300
-      require("which-key").setup({
-        -- your configuration comes here
-      })
-    end,
+      require('Comment').setup {}
+    end
   },
-  { 'folke/trouble.nvim' },
   {
-    'nvim-telescope/telescope.nvim', 
+    'nvim-telescope/telescope.nvim',
     tag = '0.1.1',
-    dependencies = { 
+    dependencies = {
       'nvim-lua/plenary.nvim',
       'nvim-treesitter/nvim-treesitter'
     }
   },
-  { 
+  {
     'nvim-tree/nvim-tree.lua',
     dependencies = {
       "nvim-tree/nvim-web-devicons",
@@ -102,7 +112,11 @@ require('lazy').setup({
       require("nvim-tree").setup {}
     end
   },
-  { 
+  {
+    'stevearc/dressing.nvim',
+    opts = {},
+  },
+  {
     'nvim-lualine/lualine.nvim',
     config = function()
       require('lualine').setup {
@@ -112,7 +126,7 @@ require('lazy').setup({
           component_separators = ''
         },
         sections = {
-          lualine_x = {'filetype'},
+          lualine_x = { 'filetype' },
         },
       }
     end
@@ -123,20 +137,33 @@ require('lazy').setup({
 vim.cmd.colorscheme('onedark')
 
 
--- LSP Setup 
+-- LSP Setup
 local lsp = require('lsp-zero').preset({})
 lsp.ensure_installed({
-	"tsserver",
-	"rust_analyzer",
+  "tsserver",
+  "rust_analyzer",
   "dockerls",
   "terraformls",
 })
 
 lsp.on_attach(function(client, bufnr)
-  lsp.default_keymaps({buffer = bufnr})
+  lsp.default_keymaps({ buffer = bufnr })
 end)
 
 lsp.setup()
+
+local cmp = require('cmp')
+cmp.setup({
+  sources = {
+    { name = 'path' },
+    { name = 'nvim_lsp' },
+    { name = 'buffer',  keyword_length = 3 },
+  },
+  mapping = {
+    -- `Enter` key to confirm completion
+    ['<CR>'] = cmp.mapping.confirm({ select = false }),
+  }
+})
 
 
 -- --
@@ -166,11 +193,11 @@ require("which-key").register({
   },
   l = {
     name = 'LSP',
-    f = { name = 'Format'},
-    r = { name = 'Rename Reference'},
-    s = { name = 'Signature Help'},
-    D = { name = 'Type Definition'},
-    e = { name = 'Show Diagnostics'}
+    f = { name = 'Format' },
+    r = { name = 'Rename Reference' },
+    s = { name = 'Signature Help' },
+    D = { name = 'Type Definition' },
+    e = { name = 'Show Diagnostics' }
   },
   L = {
     name = 'Telescope LSP',
@@ -193,10 +220,13 @@ require("which-key").register({
     f = { '<cmd>lua require("telescope.builtin").find_files()<CR>', 'Files' },
     o = { '<cmd>lua require("telescope.builtin").oldfiles()<CR>', 'Prev Open Files' },
     g = { '<cmd>lua require("telescope.builtin").live_grep()<CR>', 'Live Grep' },
+    l = { '<cmd>lua require("telescope.builtin").loclist()<CR>', 'Location List' },
+    r = { '<cmd>lua require("telescope.builtin").registers()<CR>', 'Registers' },
     j = { '<cmd>lua require("telescope.builtin").jumplist()<CR>', 'Jump List' },
     O = { '<cmd>lua require("telescope.builtin").vim_options()<CR>', 'Vim Options' },
     k = { '<cmd>lua require("telescope.builtin").keymaps()<CR>', 'Keymaps' },
     c = { '<cmd>lua require("telescope.builtin").commands()<CR>', 'Commands' },
+    t = { '<cmd>lua require("telescope.builtin").treesitter()<CR>', 'Treesitter' },
   },
   g = {
     name = 'Git',
