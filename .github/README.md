@@ -61,9 +61,23 @@ etc, etc..
     - <kbd>ds)</kbd> : remove surrounding parentheses
     - <kbd>cs)}</kbd> : change surrounding parentheses to braces
   - [nvim-telescope/telescope.nvim]
-    - <kbd><C-x></kbd> : open file as a horizontal split
-    - <kbd><C-v></kbd> : open file as a vertical split
+    - <kbd>ctrl + x</kbd> : open file as a horizontal split
+    - <kbd>ctrl + v</kbd> : open file as a vertical split
     - <kbd>?</kbd> : show mappings
+  - [VonHeikemen/lsp-zero.nvim]
+    - <kbd>K</kbd> : symbol info, see [:help vim.lsp.buf.hover()]
+    - <kbd>gd</kbd> : jump to definition, see [:help vim.lsp.buf.definition()]
+    - <kbd>gD</kbd> : jump to declaration, see [:help vim.lsp.buf.declaration()]
+    - <kbd>gi</kbd> : list all symbol implementations, see [:help vim.lsp.buf.implementation()]
+    - <kbd>go</kbd> : jumps to symbol's type definition, see [:help vim.lsp.buf.type_definition()]
+    - <kbd>gr</kbd> : list all references to symbol, see [:help vim.lsp.buf.references()]
+    - <kbd>gs</kbd> : display symbol signature info, see [:help vim.lsp.buf.signature_help()]
+    - <kbd><F2></kbd> : rename, see [:help vim.lsp.buf.rename()]
+    - <kbd><F3></kbd> : format code, see [:help vim.lsp.buf.format()]
+    - <kbd><F4></kbd> : code actions, see [:help vim.lsp.buf.code_action()]
+    - <kbd>gl</kbd> : show diagnostics, see [:help vim.diagnostic.open_float()]
+    - <kbd>[d</kbd> : Move to the previous diagnostic in the current buffer. See [:help vim.diagnostic.goto_prev()]
+    - <kbd>]d</kbd> : Move to the next diagnostic. See [:help vim.diagnostic.goto_next()]
 </details>
 
 <details>
@@ -97,6 +111,21 @@ etc, etc..
 [nvim-telescope/telescope.nvim]: https://github.com/nvim-telescope/telescope.nvim
 [phaazon/hop.nvim]: https://github.com/phaazon/hop.nvim
 [tpope/vim-surround]: https://github.com/tpope/vim-surround
+[VonHeikemen/lsp-zero.nvim]: https://github.com/VonHeikemen/lsp-zero.nvim
+
+[:help vim.lsp.buf.hover()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.hover()).
+[:help vim.lsp.buf.definition()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.definition()).
+[:help vim.lsp.buf.declaration()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.declaration()).
+[:help vim.lsp.buf.implementation()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.implementation()).
+[:help vim.lsp.buf.type_definition()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.type_definition()).
+[:help vim.lsp.buf.references()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.references()).
+[:help vim.lsp.buf.signature_help()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.signature_help()). If a mapping already exists for this key this function is not bound.
+[:help vim.lsp.buf.rename()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.rename()).
+[:help vim.lsp.buf.format()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.format()).
+[:help vim.lsp.buf.code_action()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.code_action()).
+[:help vim.diagnostic.open_float()](https://neovim.io/doc/user/diagnostic.html#vim.diagnostic.open_float()).
+[:help vim.diagnostic.goto_prev()](https://neovim.io/doc/user/diagnostic.html#vim.diagnostic.goto_prev()).
+[:help vim.diagnostic.goto_next()](https://neovim.io/doc/user/diagnostic.html#vim.diagnostic.goto_next()).
 
 [`meain`]: https://github.com/meain/dotfiles
 [`posquit0`]: https://github.com/posquit0/dotfiles
