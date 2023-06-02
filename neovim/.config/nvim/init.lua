@@ -139,7 +139,6 @@ require('lazy').setup({
 
 vim.cmd.colorscheme('onedark')
 
-
 -- LSP Setup
 local lsp = require('lsp-zero').preset({})
 lsp.ensure_installed({

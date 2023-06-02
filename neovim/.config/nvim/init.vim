@@ -1,5 +1,0 @@
-lua require('plugins')
-lua require('core')
-lua require('mappings')
-lua require('lsp.setup')
-" lua require('ts')
