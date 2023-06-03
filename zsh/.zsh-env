@@ -7,9 +7,6 @@ export FZF_DEFAULT_OPTS='
 '
 export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
 export MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC"
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
 
 alias ll='exa -lmha --no-user --git'
 alias tf='terraform'
@@ -30,22 +27,18 @@ function dc {
   fi
 }
 
-function awx() {
-  login_profile="aws-bv"
-  profile=${1:-"cas-qa"}
+function awz() {
+  FZF_DEFAULT_OPTS="--border --height=20% --reverse --disabled --margin 0,50,0,0 --exit-0"
+  items=("cas-qa" "cas-prod")
+  profile=$(printf "%s\n" "${items[@]}" | fzf --prompt=" AWS Account:  " --border --exit-0)
+  if [[ -z $profile ]]; then
+    echo "Nothing selected"
+    return 0
+  fi
+
+  echo "Refreshing SSO session if necessary"
+  set +x
   aws sts get-caller-identity --profile aws-bv || aws sso login --profile aws-bv
   export {AWS_PROFILE,AWS_DEFAULT_PROFILE}=$profile
-}
-
-function awsso() {
-    profile=${1:-"aws-bv"}
-    echo "Using profile=['$profile'] from ~/.aws/config"
-
-    export AWS_PAGER=""
-    aws sts get-caller-identity --profile $profile || aws sso login --profile $profile
-    FILE=~/.aws/cli/cache/$(ls -t ~/.aws/cli/cache | head -n 1)
-
-    export AWS_ACCESS_KEY_ID="$(jq -r '.Credentials.AccessKeyId' $FILE)" \
-      AWS_SECRET_ACCESS_KEY="$(jq -r '.Credentials.SecretAccessKey' $FILE)" \
-      AWS_SESSION_TOKEN="$(jq -r '.Credentials.SessionToken' $FILE)"
+  set -x
 }
