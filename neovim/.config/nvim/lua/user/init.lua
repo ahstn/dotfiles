@@ -1,5 +1,4 @@
 return {
-  -- Configure AstroNvim updates
   updater = {
     remote = "origin", -- remote to use
     channel = "stable", -- "stable" or "nightly"
@@ -8,9 +7,7 @@ return {
     skip_prompts = false, -- skip prompts about breaking changes
     show_changelog = true, -- show the changelog after performing an update
   },
-
-  -- Set colorscheme to use
-  colorscheme = "astrodark",
+  colorscheme = "onedark",
   diagnostics = {
     virtual_text = true,
     underline = true,
@@ -19,20 +16,16 @@ return {
     formatting = {
       format_on_save = {
         enabled = true, -- enable or disable format on save globally
-        ignore_filetypes = { 
-          "markdown"
+        ignore_filetypes = {
+          "markdown",
         },
       },
       timeout_ms = 1000, -- default format timeout
     },
-    -- enable servers that you already have installed without mason
-    servers = {
-      -- "pyright"
-    },
+    servers = {}, -- externally installed servers
   },
-
-  -- Configure require("lazy").setup() options
   lazy = {
+    -- Configure require("lazy").setup() options
     defaults = { lazy = true },
     performance = {
       rtp = {
@@ -42,28 +35,25 @@ return {
     },
   },
   plugins = {
+    {
+      "navarasu/onedark.nvim",
+      name = "onedark.nvim",
+      config = function() require("onedark").load() end,
+    },
     "AstroNvim/astrocommunity",
+    { import = "astrocommunity.motion.hop-nvim" },
+    { import = "astrocommunity.motion.nvim-surround" },
+    { import = "astrocommunity.pack.lua" },
     { import = "astrocommunity.pack.rust" },
-    { import = "astrocommunity.colorscheme.catppuccin" }
-    -- ... import any community contributed plugins here
-  }, 
-
-
-  -- This function is run last and is a good place to configuring
-  -- augroups/autocommands and custom filetypes also this just pure lua so
-  -- anything that doesn't fit in the normal config locations above can go here
+    { import = "astrocommunity.pack.terraform" },
+    { import = "astrocommunity.pack.typescript" },
+  },
   polish = function()
     -- Set up custom filetypes
-    -- vim.filetype.add {
-    --   extension = {
-    --     foo = "fooscript",
-    --   },
-    --   filename = {
-    --     ["Foofile"] = "fooscript",
-    --   },
-    --   pattern = {
-    --     ["~/%.config/foo/.*"] = "fooscript",
-    --   },
-    -- }
+    vim.filetype.add {
+      extension = {
+        tfvars = "terraform",
+      },
+    }
   end,
 }
