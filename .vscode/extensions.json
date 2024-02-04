@@ -1,0 +1,29 @@
+{
+  "recommendations": [
+    // UI 
+    "drcika.apc-extension",
+    "sainnhe.gruvbox-material",
+    "willi84.vikings-icon-theme",
+    
+    // General
+    "editorconfig.editorconfig",
+    "usernamehw.errorlens",
+    "github.copilot",
+    "github.copilot-chat",
+    "christian-kohler.path-intellisense",
+
+    // Python
+    "ms-python.vscode-pylance",
+    "ms-python.python",
+    "ms-python.isort",
+    "charliermarsh.ruff",
+    
+    // Rust 
+    "1yib.rust-bundle",
+    "dustypomerleau.rust-syntax",
+    "rust-lang.rust-analyzer",
+    
+    // Typescript
+    "yoavbls.pretty-ts-errors"
+  ]
+}
