@@ -23,6 +23,10 @@ for key ('^[[A' '^P' ${terminfo[kcuu1]}) bindkey ${key} history-substring-search
 for key ('^[[B' '^N' ${terminfo[kcud1]}) bindkey ${key} history-substring-search-down
 for key ('k') bindkey -M vicmd ${key} history-substring-search-up
 for key ('j') bindkey -M vicmd ${key} history-substring-search-down
+for key ('[C' "\e[1;3D") bindkey  ${key} backward-word    # ⌥←
+for key ('[D' "\e[1;3C") bindkey  ${key} forward-word     # ⌥→
+bindkey "^[[1;9D" beginning-of-line # cmd+←
+bindkey "^[[1;9C" end-of-line       # cmd+→
 unset key
 #
 
@@ -60,3 +64,4 @@ bindkey -e                    # Set editor default keymap to emacs (`-e`) or vi 
 
 # Fast Node Manager - https://github.com/Schniz/fnm
 eval "$(fnm env --use-on-cd)"
+source "$HOME/.rye/env"
