@@ -5,15 +5,14 @@ if [[ ! -e ${ZIM_HOME}/zimfw.zsh ]]; then
   if (( ${+commands[curl]} )); then
     curl -fsSL --create-dirs -o ${ZIM_HOME}/zimfw.zsh \
         https://github.com/zimfw/zimfw/releases/latest/download/zimfw.zsh
-  else
-    mkdir -p ${ZIM_HOME} && wget -nv -O ${ZIM_HOME}/zimfw.zsh \
-        https://github.com/zimfw/zimfw/releases/latest/download/zimfw.zsh
   fi
 fi
+
 # Install missing modules, and update ${ZIM_HOME}/init.zsh if missing or outdated.
 if [[ ! ${ZIM_HOME}/init.zsh -nt ${ZDOTDIR:-${HOME}}/.zimrc ]]; then
   source ${ZIM_HOME}/zimfw.zsh init -q
 fi
+
 # Initialize modules.
 source ${ZIM_HOME}/init.zsh
 zmodload -F zsh/terminfo +p:terminfo
@@ -28,7 +27,6 @@ for key ('[D' "\e[1;3C") bindkey  ${key} forward-word     # ⌥→
 bindkey "^[[1;9D" beginning-of-line # cmd+←
 bindkey "^[[1;9C" end-of-line       # cmd+→
 unset key
-#
 
 # Plugin Configuration
 ZSH_AUTOSUGGEST_MANUAL_REBIND=1
@@ -52,7 +50,6 @@ setopt always_to_end          # Move to the end of a word when completing
 setopt glob_dots              # no special treatment for file names with a leading dot
 setopt no_auto_menu           # require an extra TAB press to open the completion menu
 setopt CORRECT                # Prompt for spelling correction of commands.
-bindkey -e                    # Set editor default keymap to emacs (`-e`) or vi (`-v`)
 
 # Aliases, Functions & Environment Variables
 [ -f ~/.zsh-env ] && source ~/.zsh-env
@@ -60,8 +57,8 @@ bindkey -e                    # Set editor default keymap to emacs (`-e`) or vi 
 # Private & Sensitive Values
 [ -f ~/.zsh-private ] && source ~/.zsh-private
 
+# Environment specific tooling
+[ ${commands[fnm]} ] && eval "$(fnm env --use-on-cd)"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-# Fast Node Manager - https://github.com/Schniz/fnm
-eval "$(fnm env --use-on-cd)"
-source "$HOME/.rye/env"
+[ -f ~/.cargo/env ] && source ~/.cargo/env
+[ -f ~/.rye/env ] && source ~/.rye/env
