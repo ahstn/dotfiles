@@ -1,0 +1,7 @@
+# tab title: basename $(git rev-parse --show-toplevel 2> /dev/null || pwd)
+
+macos-titlebar-style = "tabs"
+copy-on-select = clipboard
+
+keybind = super+comma=prompt_surface_title
+keybind = ctrl+space>r=reload_config
