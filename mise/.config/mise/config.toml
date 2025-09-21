@@ -12,6 +12,7 @@ tmux = "latest"
 node = "lts"
 zoxide = "latest"
 "npm:opencode-ai" = "latest"
+"github:joshmedeski/sesh" = "latest"
 
 [hooks]
 enter = "mise i -q"
