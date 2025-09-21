@@ -1,0 +1,20 @@
+[tools]
+python = "latest"
+ripgrep = "latest"
+rust = "latest"
+fzf = "latest"
+starship = "latest"
+eza = "latest"
+ruff = "latest"
+uv = "latest"
+terraform = "latest"
+tmux = "latest"
+node = "lts"
+zoxide = "latest"
+"npm:opencode-ai" = "latest"
+
+[hooks]
+enter = "mise i -q"
+
+[settings]
+idiomatic_version_file_enable_tools = ["python"]
