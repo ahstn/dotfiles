@@ -13,7 +13,6 @@ zmodule starship/starship --cmd 'eval "$(starship init zsh)"'
 
 # Zim Modules
 zmodule exa
-zmodule asdf
 zmodule fzf
 zmodule input
 zmodule wfxr/forgit

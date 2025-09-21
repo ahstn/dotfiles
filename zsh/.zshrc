@@ -59,6 +59,16 @@ setopt CORRECT                # Prompt for spelling correction of commands.
 
 # Environment specific tooling
 [ ${commands[fnm]} ] && eval "$(fnm env --use-on-cd)"
+[ ${commands[mise]} ] && eval "$(~/.local/bin/mise activate zsh)" && . "$HOME/.local/bin/env"
+[ ${commands[zoxide]} ] && eval "$(zoxide init zsh)"
+
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f ~/.cargo/env ] && source ~/.cargo/env
-[ -f ~/.rye/env ] && source ~/.rye/env
+
+# opencode
+export PATH=/Users/ahstn/.opencode/bin:$PATH
+
+# bun
+[ -s "/Users/ahstn/.bun/_bun" ] && source "/Users/ahstn/.bun/_bun"
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
