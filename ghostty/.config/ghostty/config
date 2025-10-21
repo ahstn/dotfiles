@@ -1,5 +1,7 @@
 # tab title: basename $(git rev-parse --show-toplevel 2> /dev/null || pwd)
 
+theme = catppuccin-frappe.conf
+
 macos-titlebar-style = "tabs"
 copy-on-select = clipboard
 
