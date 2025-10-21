@@ -1,0 +1,12 @@
+[[session]]
+name = "dotfiles"
+path = "~/git/dotfiles"
+
+[[session]]
+name = "pyquant"
+path = "~/git/pyquant"
+windows = [ "dagster" ]
+
+[[window]]
+name = "dagster"
+startup_script = "mise run -f dagster_dev"
