@@ -1,9 +1,14 @@
 # Completions
+zmodule zsh-users/zsh-completions --fpath src
+zmodule completion
+
+# Auto complete & Syntax- must be sourced after complete
 zmodule zsh-users/zsh-autosuggestions
 zmodule zsh-users/zsh-syntax-highlighting
 zmodule zsh-users/zsh-history-substring-search
-zmodule zsh-users/zsh-completions --fpath src
-zmodule completion
+
+# Keybinds
+zmodule input
 
 # Community Plugins
 zmodule Aloxaf/fzf-tab
@@ -12,7 +17,5 @@ zmodule Aloxaf/fzf-tab
 zmodule starship/starship --cmd 'eval "$(starship init zsh)"'
 
 # Zim Modules
-zmodule exa
 zmodule fzf
-zmodule input
 zmodule wfxr/forgit

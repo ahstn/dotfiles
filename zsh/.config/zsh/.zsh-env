@@ -7,6 +7,7 @@ export FZF_DEFAULT_OPTS='
 '
 export GOROOT="${$(readlink /usr/bin/go)%/bin/go}"
 export MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC"
+export BUN_INSTALL="$HOME/.bun"
 
 alias ll='eza --long --icons always --git --header --total-size'
 alias tf='terraform'
