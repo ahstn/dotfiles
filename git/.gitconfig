@@ -12,6 +12,7 @@
   sub = submodule update --init --recursive
   info = remote show origin
   url = ls-remote --get-url
+  please = push --force-with-lease
 
 [color]
   ui = always
@@ -37,3 +38,6 @@
   insteadOf = "gh:"
   pushInsteadOf = "github:"
   pushInsteadOf = "git://github.com/"
+[pull]
+	rebase = true
+	autoStash = true
