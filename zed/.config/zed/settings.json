@@ -1,0 +1,86 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+{
+  "ssh_connections": [
+    {
+      "host": "192.168.1.11",
+      "args": [],
+      "projects": [
+        {
+          "paths": ["/home/ahstn/services"],
+        },
+      ],
+    },
+  ],
+  "edit_predictions": {
+    "provider": "copilot",
+  },
+  "icon_theme": "Material Icon Theme",
+  "agent": {
+    "tool_permissions": {
+      "default": "allow",
+    },
+    "default_model": {
+      "provider": "openrouter",
+      "model": "openai/gpt-5",
+    },
+  },
+
+  // User Interface
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "Catppuccin Frappé",
+  },
+  "use_system_window_tabs": true,
+  "toolbar": {
+    "breadcrumbs": false,
+    "quick_actions": false,
+  },
+
+  // Fonts
+  "buffer_font_family": "JuliaMono",
+  "buffer_font_fallbacks": ["Hack", ".ZedMono"],
+  "ui_font_size": 14.0,
+  "buffer_font_size": 14.0,
+
+  "which_key": {
+    "delay_ms": 300,
+    "enabled": true,
+  },
+  "telemetry": {
+    "metrics": false,
+  },
+  "diagnostics": {
+    "inline": {
+      "enabled": true,
+      "padding": 6,
+      "min_column": 50,
+      "max_severity": "error",
+    },
+  },
+
+  // Language Specifics
+  "languages": {
+    "Python": {
+      "code_actions_on_format": {
+        "source.fixAll.ruff": true,
+        "source.organizeImports.ruff": true,
+      },
+      "language_servers": [
+        "ruff",
+        "ty",
+        "!pyrefly",
+        "!basedpyright",
+        "!pyright",
+      ],
+      "format_on_save": "on",
+    },
+  },
+}
