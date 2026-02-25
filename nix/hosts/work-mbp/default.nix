@@ -1,16 +1,27 @@
 { pkgs, self, ... }:
+let
+  username = "adam.houston";
+in
 {
   imports = [ ./system.nix ];
 
+  nixpkgs.config.allowUnfree = true;
+
   networking.hostName = "AHOUSTO-123";
 
-  environment.systemPackages = [
+  environment.systemPackages = (import ../common/cli-packages.nix { inherit pkgs; }) ++ [
     pkgs.neovim
     pkgs.tmux
     pkgs.zsh
+    pkgs.zed-editor
+    pkgs.ghostty
+    pkgs.obsidian
+    pkgs.prek
   ];
 
-  environment.variables.DOTFILES_USERNAME = "adam.houston";
+  environment.variables.DOTFILES_USERNAME = username;
+
+  system.primaryUser = username;
 
   programs.zsh.enable = true;
 

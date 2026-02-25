@@ -1,16 +1,27 @@
 { pkgs, self, ... }:
+let
+  username = "ahstn";
+in
 {
   imports = [ ./system.nix ];
 
+  nixpkgs.config.allowUnfree = true;
+
   # List packages installed in system profile.
-  environment.systemPackages = [
+  environment.systemPackages = (import ../common/cli-packages.nix { inherit pkgs; }) ++ [
     pkgs.neovim
     pkgs.tmux
     pkgs.zsh
     pkgs.yazi
+    pkgs.zed-editor
+    pkgs.ghostty
+    pkgs.obsidian
+    pkgs.prek
   ];
 
-  environment.variables.DOTFILES_USERNAME = "ahstn";
+  environment.variables.DOTFILES_USERNAME = username;
+
+  system.primaryUser = username;
 
   programs.zsh.enable = true;
 

@@ -23,6 +23,6 @@
     tilesize = 48;
 
     # disable hot corner - bottom right
-    wvous-br-corner = 1
+    wvous-br-corner = 1;
   };
 }
