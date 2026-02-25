@@ -1,5 +1,7 @@
 { pkgs, self, ... }:
 {
+  imports = [ ./system.nix ];
+
   # List packages installed in system profile.
   environment.systemPackages = [
     pkgs.neovim

@@ -1,5 +1,7 @@
 { pkgs, self, ... }:
 {
+  imports = [ ./system.nix ];
+
   networking.hostName = "AHOUSTO-123";
 
   environment.systemPackages = [
