@@ -9,36 +9,39 @@
 
   outputs = inputs@{ self, nix-darwin, nixpkgs }:
   let
-    configuration = { pkgs, ... }: {
-      # List packages installed in system profile. To search by name, run:
-      # $ nix-env -qaP | grep wget
-      environment.systemPackages = [
-        pkgs.neovim
-        pkgs.tmux
-        pkgs.yazi
-      ];
-
-      programs.zsh.enable = true;
-
-      # Necessary for using flakes on this system.
-      nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-      # Set Git commit hash for darwin-version.
-      system.configurationRevision = self.rev or self.dirtyRev or null;
-
-      # Used for backwards compatibility, please read the changelog before changing.
-      # $ darwin-rebuild changelog
-      system.stateVersion = 6;
-
-      # The platform the configuration will be used on.
-      nixpkgs.hostPlatform = "aarch64-darwin";
+    personalMbp = nix-darwin.lib.darwinSystem {
+      modules = [ ./hosts/personal-mbp ];
+      specialArgs = { inherit self; };
     };
+
+    workMbp = nix-darwin.lib.darwinSystem {
+      modules = [ ./hosts/work-mbp ];
+      specialArgs = { inherit self; };
+    };
+
+    mkHogsmeadProfile = system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in
+      pkgs.symlinkJoin {
+        name = "hogsmead";
+        paths = import ./hosts/hogsmead { inherit pkgs; };
+      };
   in
   {
-    # Build darwin flake using:
-    # $ darwin-rebuild build --flake .#Adams-MacBook-Pro
-    darwinConfigurations."Adams-MacBook-Pro" = nix-darwin.lib.darwinSystem {
-      modules = [ configuration ];
+    darwinConfigurations = {
+      # Laptop (folder alias)
+      "personal-mbp" = personalMbp;       # folder alias
+      "Adams-MacBook-Pro" = personalMbp;  # hostname alias
+
+      # Work laptop
+      "work-mbp" = workMbp;     # folder alias
+      "AHOUSTO-123" = workMbp;  # hostname alias
+    };
+
+    packages = {
+      "x86_64-linux".hogsmead = mkHogsmeadProfile "x86_64-linux";
+      "aarch64-linux".hogsmead = mkHogsmeadProfile "aarch64-linux";
     };
   };
 }
