@@ -123,16 +123,6 @@ Formatting reference:
 
 - `gh help formatting`
 
-## Refreshing This Index
-
-Rebuild local command help snapshots:
-
-```bash
-bash scripts/refresh_gh_help_snapshot.sh
-```
-
-This script writes raw help output to a timestamped directory under `/tmp`.
-
 ## Manual Pages
 
 - https://cli.github.com/manual/gh_pr_view

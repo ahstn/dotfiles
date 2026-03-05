@@ -1,9 +1,13 @@
 ---
-name: gh-cross-repo-research
+name: github-librarian
 description: Research GitHub APIs, SDK/library implementations, and cross-repo references before implementing features or integrations. Use when tasks require studying adjacent repositories (microservices, split frontend/backend), inspecting PRs in other repos, searching implementation patterns with gh search, retrieving repo files via gh api, or building evidence-backed implementation plans.
+compatibility: Requires GitHub CLI and JQ. Designed for OpenCode and Codex.
+metadata: 
+  author: Adam Houston <@ahstn>
+  version: "0.1.0"
 ---
 
-# GH Cross-Repo Research
+# GitHub Librarian
 
 ## Overview
 
@@ -16,12 +20,8 @@ Use this skill to collect implementation evidence across repositories and docs b
    ```bash
    gh <command> --help
    ```
-3. If command behavior is uncertain, refresh local help snapshots:
-   ```bash
-   bash scripts/refresh_gh_help_snapshot.sh
-   ```
-4. For external documentation and API behavior, use web research (EXA MCP when available), not memory alone.
-5. Keep outputs concise and evidence-backed; avoid speculative conclusions.
+3. For external documentation and API behavior, use web research (EXA MCP when available), not memory alone.
+4. Keep outputs concise and evidence-backed; avoid speculative conclusions.
 
 ## Workflow
 
@@ -36,10 +36,6 @@ For detailed command patterns and sequencing, read:
 
 - `references/research-workflow.md`
 - `references/gh-cli-command-index.md`
-
-For prompt composition and scope-control guidance, read:
-
-- `references/prompting-and-skill-design.md`
 
 ## Output Contract
 
