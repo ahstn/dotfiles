@@ -1,1 +1,5 @@
 packer_compiled.lua
+
+zsh/.config/zsh/.zim
+zsh/.config/zsh/.zsh_history
+zsh/.config/zsh/*.zcompdump*

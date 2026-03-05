@@ -2,6 +2,7 @@
   "$schema": "https://opencode.ai/config.json",
   // "enabled_providers": ["openrouter", "openai", "github-copilot", "opencode"],
   "autoupdate": "notify",
+  "theme": "catppuccin-macchiato",
   "server": {
     "port": 34521,
     "hostname": "0.0.0.0"
@@ -29,38 +30,74 @@
         "claude-sonnet-4": {}
       }
     },
-    "minimax": {
-      "npm": "@ai-sdk/anthropic",
-      "options": {
-        "baseURL": "https://api.minimax.io/anthropic/v1"
-      },
-      "models": {
-        "MiniMax-M2": {
-          "name": "MiniMax-M2"
-        }
-      }
-    }
   },
   "mcp": {
     "context7": {
-      "enabled": true,
+      "enabled": false,
       "type": "local",
       "command": ["npx", "-y", "@upstash/context7-mcp"]
     },
-    "fetch": {
-      "enabled": true,
-      "type": "local",
-      "command": ["uvx", "mcp-server-fetch"]
-    }
   },
   "permission": {
+    "webfetch": "allow",
+    "question": "allow",
+    "external-directory": {
+      "*": "ask",
+      "~/git/dotfiles/": "allow"
+      "~/.local/bin/": "allow"
+    },
     "bash": {
+      "*": "ask",
+
+      // general
       "rm -rf*": "deny",
-      "git status": "allow",
-      "git diff": "allow",
-      "npm run build": "allow",
-      "ls": "allow",
+      "ls*": "allow",
+      "tail*": "allow",
+      "head*": "allow",
+      "grep*": "allow",
+      "rg*": "allow",
+      "find*": "allow",
+      "fd*": "allow",
+      "which*": "allow",
+      "mkdir*": "allow",
       "pwd": "allow"
+
+      // git
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git add*": "ask", // catch intentional untracked files
+      "git log*": "allow",
+      "git branch*": "allow",
+
+      // mise
+      "mise activate*": "allow",
+      "mise use*": "allow",
+      "mise run*": "allow",
+
+      // typescript
+      "npm info*": "allow",
+      "npm view*": "allow",
+      "npm run *": "allow", // allow project commands but block random npm calls
+      "npx oxlint*": "allow"
+      "npx oxfmt*": "allow"
+      "npx jest*": "allow"
+      "npx vitest*": "allow"
+      "npx tsx*": "allow"
+      "npx *": "ask",
+
+      // rust
+      "cargo build*": "allow",
+      "cargo clean*": "allow",
+      "cargo clippy*": "allow",
+      "cargo doc*": "allow",
+      "cargo fetch*": "allow",
+      "cargo fix*": "allow",
+      "cargo test*": "allow",
+      "cargo package*": "allow",
+      "cargo add*": "allow",
+      "cargo tree*": "allow",
+      "cargo init*": "allow",
+      "cargo new*": "allow"
     }
   }
 }
