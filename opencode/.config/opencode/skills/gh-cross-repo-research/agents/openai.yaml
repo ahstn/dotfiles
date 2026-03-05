@@ -1,0 +1,4 @@
+interface:
+  display_name: "GH Cross-Repo Research"
+  short_description: "Use GH CLI to research APIs and code references"
+  default_prompt: "Use $gh-cross-repo-research to gather adjacent-repo references, API docs, and PR context before implementing this integration."
