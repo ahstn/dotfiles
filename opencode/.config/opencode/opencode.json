@@ -35,7 +35,11 @@
     "context7": {
       "enabled": false,
       "type": "local",
-      "command": ["npx", "-y", "@upstash/context7-mcp"]
+      "command": [
+        "npx",
+        "-y",
+        "@upstash/context7-mcp"
+      ]
     },
   },
   "permission": {
@@ -43,12 +47,11 @@
     "question": "allow",
     "external-directory": {
       "*": "ask",
-      "~/git/dotfiles/": "allow"
+      "~/git/dotfiles/": "allow",
       "~/.local/bin/": "allow"
     },
     "bash": {
       "*": "ask",
-
       // general
       "rm -rf*": "deny",
       "ls*": "allow",
@@ -60,14 +63,21 @@
       "fd*": "allow",
       "which*": "allow",
       "mkdir*": "allow",
-      "pwd": "allow"
+      "pwd": "allow",
+      "podman*": "allow",
+      "docker*": "allow",
+      "buildctl*": "allow",
 
       // git
       "git status*": "allow",
       "git diff*": "allow",
       "git add*": "ask", // catch intentional untracked files
+      "git commit*": "allow",
       "git log*": "allow",
       "git branch*": "allow",
+      "gh label *": "allow",
+      "gh pr *": "allow",
+      "gh pr create*": "ask",
 
       // mise
       "mise activate*": "allow",
@@ -76,20 +86,27 @@
 
       // typescript
       "npm info*": "allow",
+      "npm ls*": "allow",
       "npm view*": "allow",
       "npm run *": "allow", // allow project commands but block random npm calls
-      "npx oxlint*": "allow"
-      "npx oxfmt*": "allow"
-      "npx jest*": "allow"
-      "npx vitest*": "allow"
-      "npx tsx*": "allow"
+      "npx oxlint*": "allow",
+      "npx oxfmt*": "allow",
+      "npx jest*": "allow",
+      "npx vitest*": "allow",
+      "npx turbo*": "allow",
+      "npx tsx*": "allow",
       "npx *": "ask",
+      "bun run *": "allow",
+      "bun add *": "allow",
+      "bun install *": "allow",
 
       // rust
       "cargo build*": "allow",
       "cargo clean*": "allow",
       "cargo clippy*": "allow",
       "cargo doc*": "allow",
+      "cargo search*": "allow",
+      "cargo info*": "allow",
       "cargo fetch*": "allow",
       "cargo fix*": "allow",
       "cargo test*": "allow",
@@ -97,7 +114,13 @@
       "cargo add*": "allow",
       "cargo tree*": "allow",
       "cargo init*": "allow",
-      "cargo new*": "allow"
+      "cargo new*": "allow",
+
+      // python
+      "uv run pytest*": "allow",
+      "uv run ruff*": "allow",
+      "uv run ty*": "allow",
+      "maturin build*": "allow"
     }
   }
 }
