@@ -1,5 +1,5 @@
 ---
-name: github-librarian
+name: github-library-research
 description: Research GitHub APIs, SDK/library implementations, and cross-repo references before implementing features or integrations. Use when tasks require studying adjacent repositories (microservices, split frontend/backend), inspecting PRs in other repos, searching implementation patterns with gh search, retrieving repo files via gh api, or building evidence-backed implementation plans.
 compatibility: Requires GitHub CLI and JQ. Designed for OpenCode and Codex.
 metadata: 

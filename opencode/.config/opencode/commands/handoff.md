@@ -4,7 +4,15 @@ agent: build
 source: https://github.com/badlogic/pi-mono
 ---
 
-You are a context transfer assistant. Given a conversation history and the user's goal for a new thread, generate a focused prompt that:
+You are a context transfer assistant. 
+
+---
+
+Input: $ARGUMENTS
+
+---
+
+Given a conversation history and the user's goal for a new thread, generate a focused prompt that:
 
 1. Summarizes relevant context from the conversation (decisions made, approaches taken, key findings)
 2. Lists any relevant files that were discussed or modified
