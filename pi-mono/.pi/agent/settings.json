@@ -1,0 +1,16 @@
+{
+  "lastChangelogVersion": "0.57.1",
+  "packages": [
+    "npm:pi-context",
+    "npm:pi-interview",
+    "npm:@ferologics/pi-extensions",
+    "npm:pi-subagents",
+    "npm:pi-web-access",
+    "npm:pi-ask-tool-extension",
+    "npm:pi-permission-system"
+  ],
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.4",
+  "defaultThinkingLevel": "medium",
+  "hideThinkingBlock": false
+}
