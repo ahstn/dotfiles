@@ -1,21 +1,33 @@
 [tools]
+
+# languages and tooling
 python = "latest"
-ripgrep = "latest"
 rust = "latest"
-fzf = "latest"
+ruff = "latest"
+node = "lts"
+uv = "latest"
+opencode = "latest"
+terraform = "latest"
+pitchfork = "latest"
+
+# general cli
+ripgrep = "latest"
 starship = "latest"
 eza = "latest"
-ruff = "latest"
-uv = "latest"
-terraform = "latest"
+bat = "latest"
 tmux = "latest"
-node = "lts"
+difftastic = "latest"
+"github:jnsahaj/lumen" = "latest"
+
+# fuzzy finders and navigation
 zoxide = "latest"
-"npm:opencode-ai" = "latest"
-"github:joshmedeski/sesh" = "latest"
+fzf = "latest"
+television = "latest"
+
 
 [hooks]
 enter = "mise i -q"
 
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
+experimental = true
