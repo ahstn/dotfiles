@@ -5,3 +5,5 @@ if status is-interactive
   # Keep startup quiet.
   set -g fish_greeting
 end
+
+fish_config theme choose "catppuccin-frappe" --color-theme=dark
