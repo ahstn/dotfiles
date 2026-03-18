@@ -26,3 +26,11 @@ fi
 source ${PLUGIN_DIR}/fysh/fast-syntax-highlighting.plugin.zsh
 source ${PLUGIN_DIR}/zsh-autosuggestions/zsh-autosuggestions.zsh
 source ${PLUGIN_DIR}/forgit/forgit.plugin.zsh
+
+# Plugin Configuration - outdated with fysh
+ZSH_AUTOSUGGEST_MANUAL_REBIND=1
+ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=()
+ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS+=( forward-char forward-word end-of-line )
+ZSH_AUTOSUGGEST_STRATEGY=( history )
+ZSH_AUTOSUGGEST_HISTORY_IGNORE=$'(*\n*|?(#c80,)|*\\#:hist:push-line:)'
+ZSH_HIGHLIGHT_HIGHLIGHTERS=( main brackets )

@@ -16,7 +16,6 @@ if (( $+commands[mise] )); then
 fi
 
 (( $+commands[brew] )) && eval "$(brew shellenv zsh)"
-(( $+commands[fnm] )) && eval "$(fnm env --use-on-cd)"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[wt] )) && eval "$(wt config shell init zsh)"
 [[ -r ~/.fzf.zsh ]] && source ~/.fzf.zsh
@@ -29,9 +28,12 @@ fi
 [[ -d /usr/local/share/zsh/site-functions ]] && fpath=(/usr/local/share/zsh/site-functions $fpath)
 [[ -d "$HOME/.local/share/zsh/site-functions" ]] && fpath=("$HOME/.local/share/zsh/site-functions" $fpath)
 
+
 # Enable the completion system after PATH/fpath setup
 autoload -Uz compinit && compinit
-(( $+functions[zcompile-many] )) && [[ ~/.zcompdump.zwc -nt ~/.zcompdump ]] || (( $+functions[zcompile-many] )) && zcompile-many ~/.zcompdump
+if (( $+functions[zcompile-many] )) && [[ ! ~/.zcompdump.zwc -nt ~/.zcompdump ]]; then
+  zcompile-many ~/.zcompdump
+fi
 (( $+functions[zcompile-many] )) && unfunction zcompile-many
 
 # Tool-specific completions
@@ -40,17 +42,6 @@ autoload -Uz compinit && compinit
 (( $+commands[gh] )) && source <(gh completion -s zsh 2>/dev/null)
 (( $+commands[mise] )) && source <(mise completion zsh 2>/dev/null)
 (( $+commands[uv] )) && source <(uv generate-shell-completion zsh 2>/dev/null)
-
-# Cargo completion via rustup when available
-if (( $+commands[rustup] )) && (( $+commands[cargo] )); then
-  source <(rustup completions zsh cargo 2>/dev/null)
-fi
-
-# npm does not provide native zsh completion; use bash completion bridge
-if (( $+commands[npm] )); then
-  autoload -Uz +X bashcompinit && bashcompinit
-  source <(npm completion 2>/dev/null)
-fi
 
 # Bind ^[[A/^[[B manually so up/down works both before and after zle-line-init
 # NB: run `cat` then press keys to see shortcodes :)
@@ -64,25 +55,33 @@ bindkey "^[[1;9D" beginning-of-line # cmd+←
 bindkey "^[[1;9C" end-of-line       # cmd+→
 unset key
 
-# Plugin Configuration
-ZSH_AUTOSUGGEST_MANUAL_REBIND=1
-ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=()
-ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS+=( forward-char forward-word end-of-line )
-ZSH_AUTOSUGGEST_STRATEGY=( history )
-ZSH_AUTOSUGGEST_HISTORY_IGNORE=$'(*\n*|?(#c80,)|*\\#:hist:push-line:)'
-ZSH_HIGHLIGHT_HIGHLIGHTERS=( main brackets )
-
 # Shell Configuration
 SAVEHIST=10000
 HISTFILE=~/.zsh_history
 WORDCHARS=${WORDCHARS//[\/]}
-setopt auto_cd
-setopt share_history
-setopt extended_history
-setopt hist_ignore_all_dups
-setopt hist_no_store
-setopt complete_in_word
-setopt always_to_end
-setopt glob_dots
-setopt no_auto_menu
-setopt CORRECT
+
+# History
+setopt append_history          # Append history to file instead of overwriting on shell exit
+setopt share_history           # Share history across running shell sessions
+setopt extended_history        # Save timestamp and command duration in history
+setopt hist_ignore_all_dups    # Remove older duplicate commands from history
+setopt hist_no_store           # Do not store the `history` command itself
+setopt hist_ignore_space       # Do not record commands prefixed with a space
+setopt hist_reduce_blanks      # Trim superfluous blanks from each history entry
+setopt hist_verify             # Show history-expanded command before execution
+setopt hist_expire_dups_first  # Expire duplicate history entries before unique ones
+setopt hist_find_no_dups       # Skip duplicates while searching history
+
+# Navigation
+setopt auto_cd                 # Change to a directory by typing its path directly
+setopt auto_pushd              # Push previous directory onto stack on every `cd`
+setopt pushd_ignore_dups       # Do not store duplicate directories in the stack
+setopt pushd_silent            # Suppress pushd/popd directory stack output
+setopt auto_list               # Automatically list choices after an ambiguous completion
+
+# Completion/Globbing/Editing behavior
+setopt complete_in_word        # Allow completion from the cursor position within a word
+setopt always_to_end           # Move cursor to end of completed word
+setopt glob_dots               # Include dotfiles in pathname expansion (globbing)
+setopt no_auto_menu            # Require an extra TAB to open completion menu
+setopt CORRECT                 # Prompt to correct mistyped commands
