@@ -18,6 +18,7 @@ fi
 (( $+commands[brew] )) && eval "$(brew shellenv zsh)"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[wt] )) && eval "$(wt config shell init zsh)"
+(( $+commands[starship] )) && eval "$(starship init zsh)"
 [[ -r ~/.fzf.zsh ]] && source ~/.fzf.zsh
 [[ -r ~/.cargo/env ]] && source ~/.cargo/env
 [[ -d ~/.opencode ]] && export PATH="$HOME/.opencode/bin:$PATH"
@@ -45,10 +46,6 @@ fi
 
 # Bind ^[[A/^[[B manually so up/down works both before and after zle-line-init
 # NB: run `cat` then press keys to see shortcodes :)
-for key ('^[[A' '^P' ${terminfo[kcuu1]}) bindkey ${key} history-substring-search-up
-for key ('^[[B' '^N' ${terminfo[kcud1]}) bindkey ${key} history-substring-search-down
-for key ('k') bindkey -M vicmd ${key} history-substring-search-up
-for key ('j') bindkey -M vicmd ${key} history-substring-search-down
 for key ('[C' "\e[1;3D" "^[b") bindkey  ${key} backward-word    # ⌥←
 for key ('[D' "\e[1;3C" "^[f") bindkey  ${key} forward-word     # ⌥→
 bindkey "^[[1;9D" beginning-of-line # cmd+←
