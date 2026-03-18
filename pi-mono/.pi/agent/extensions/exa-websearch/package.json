@@ -1,0 +1,11 @@
+{
+  "name": "pi-exa-websearch-extension",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "exa-js": "^1.8.20"
+  },
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}
