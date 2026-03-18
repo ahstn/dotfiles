@@ -1,0 +1,28 @@
+# Plugin bootstrap and loading
+# Inspired by: https://github.com/romkatv/zsh-bench/tree/master
+
+function zcompile-many() {
+  local f
+  for f; do zcompile -R -- "$f".zwc "$f"; done
+}
+
+PLUGIN_DIR="$HOME/.config/zsh/plugins"
+
+if [[ ! -e ${PLUGIN_DIR}/fysh ]]; then
+  git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting.git ${PLUGIN_DIR}/fysh
+  zcompile-many ${PLUGIN_DIR}/fysh/{fast*,.fast*,**/*.ch,**/*.zsh}
+fi
+
+if [[ ! -e ${PLUGIN_DIR}/zsh-autosuggestions ]]; then
+  git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git ${PLUGIN_DIR}/zsh-autosuggestions
+  zcompile-many ${PLUGIN_DIR}/zsh-autosuggestions/{zsh-autosuggestions.zsh,src/**/*.zsh}
+fi
+
+if [[ ! -e ${PLUGIN_DIR}/forgit ]]; then
+  git clone --depth=1 https://github.com/wfxr/forgit.git ${PLUGIN_DIR}/forgit
+  zcompile-many ${PLUGIN_DIR}/forgit/forgit.plugin.zsh
+fi
+
+source ${PLUGIN_DIR}/fysh/fast-syntax-highlighting.plugin.zsh
+source ${PLUGIN_DIR}/zsh-autosuggestions/zsh-autosuggestions.zsh
+source ${PLUGIN_DIR}/forgit/forgit.plugin.zsh
