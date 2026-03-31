@@ -19,7 +19,7 @@ fi
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[wt] )) && eval "$(wt config shell init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
-[[ -r ~/.fzf.zsh ]] && source ~/.fzf.zsh
+(( $+commands[fzf] )) && source <(fzf --zsh) 
 [[ -r ~/.cargo/env ]] && source ~/.cargo/env
 [[ -d ~/.opencode ]] && export PATH="$HOME/.opencode/bin:$PATH"
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun" && export PATH="$BUN_INSTALL/bin:$PATH"
