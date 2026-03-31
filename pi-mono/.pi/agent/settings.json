@@ -1,17 +1,18 @@
 {
-  "lastChangelogVersion": "0.57.1",
+  "lastChangelogVersion": "0.62.0",
   "packages": [
     "npm:pi-context",
     "npm:@ferologics/pi-extensions",
     "npm:pi-subagents",
-    "npm:pi-web-access",
     "npm:pi-ask-tool-extension",
+    "npm:pi-permission-system",
     "npm:pi-extmgr",
-    "npm:pi-permission-system"
+    "npm:pi-markdown-preview"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
-  "defaultThinkingLevel": "medium",
+  "defaultThinkingLevel": "high",
   "hideThinkingBlock": false,
-  "theme": "catppuccin-frappe"
+  "theme": "catppuccin-frappe",
+  "transport": "sse"
 }

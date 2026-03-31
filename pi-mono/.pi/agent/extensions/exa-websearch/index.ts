@@ -35,8 +35,10 @@ export default function exaWebsearchExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "exa_websearch",
     label: "Exa Web Search",
-    description: "Search the web with Exa and return ranked results with optional highlights or text.",
-    promptSnippet: "Search the web with Exa when the user asks for external web results, especially for recent pages, research papers, or domain-filtered search.",
+    description:
+      "Search the web with Exa and return ranked results with optional highlights or text.",
+    promptSnippet:
+      "Search the web with Exa when the user asks for external web results, especially for recent pages, research papers, or domain-filtered search.",
     promptGuidelines: [
       "Use exa_websearch for web searches when EXA_API_KEY is configured.",
       "Prefer highlights for concise snippets; enable full text only when the user needs more page content.",
@@ -44,26 +46,92 @@ export default function exaWebsearchExtension(pi: ExtensionAPI) {
     ],
     parameters: Type.Object({
       query: Type.String({ description: "The search query." }),
-      numResults: Type.Optional(Type.Number({ minimum: 1, maximum: 10, description: "Number of results to return. Exa basic plans typically allow up to 10." })),
+      numResults: Type.Optional(
+        Type.Number({
+          minimum: 1,
+          maximum: 10,
+          description:
+            "Number of results to return. Exa basic plans typically allow up to 10.",
+        }),
+      ),
       type: Type.Optional(SearchType),
       category: Type.Optional(SearchCategory),
-      includeDomains: Type.Optional(Type.Array(Type.String({ description: "A domain to include, e.g. arxiv.org" }))),
-      excludeDomains: Type.Optional(Type.Array(Type.String({ description: "A domain to exclude, e.g. pinterest.com" }))),
-      includeText: Type.Optional(Type.Boolean({ description: "Include extracted page text in each result." })),
-      includeHighlights: Type.Optional(Type.Boolean({ description: "Include highlighted snippets in each result." })),
-      highlightQuery: Type.Optional(Type.String({ description: "Optional query used to generate highlights. Defaults to the main query." })),
-      maxTextCharacters: Type.Optional(Type.Number({ minimum: 100, maximum: 20000, description: "Maximum extracted text characters per result when includeText is true." })),
-      maxHighlightCharacters: Type.Optional(Type.Number({ minimum: 100, maximum: 10000, description: "Maximum highlight characters per result when includeHighlights is true." })),
-      startPublishedDate: Type.Optional(Type.String({ description: "ISO start date filter for published date, e.g. 2024-01-01" })),
-      endPublishedDate: Type.Optional(Type.String({ description: "ISO end date filter for published date, e.g. 2024-12-31" })),
-      startCrawlDate: Type.Optional(Type.String({ description: "ISO start date filter for crawl date." })),
-      endCrawlDate: Type.Optional(Type.String({ description: "ISO end date filter for crawl date." })),
-      useAutoprompt: Type.Optional(Type.Boolean({ description: "Let Exa expand the query automatically." })),
-      userLocation: Type.Optional(Type.String({ description: "Two-letter ISO country code, e.g. US." })),
+      includeDomains: Type.Optional(
+        Type.Array(
+          Type.String({ description: "A domain to include, e.g. arxiv.org" }),
+        ),
+      ),
+      excludeDomains: Type.Optional(
+        Type.Array(
+          Type.String({
+            description: "A domain to exclude, e.g. pinterest.com",
+          }),
+        ),
+      ),
+      includeText: Type.Optional(
+        Type.Boolean({
+          description: "Include extracted page text in each result.",
+        }),
+      ),
+      includeHighlights: Type.Optional(
+        Type.Boolean({
+          description: "Include highlighted snippets in each result.",
+        }),
+      ),
+      highlightQuery: Type.Optional(
+        Type.String({
+          description:
+            "Optional query used to generate highlights. Defaults to the main query.",
+        }),
+      ),
+      maxTextCharacters: Type.Optional(
+        Type.Number({
+          minimum: 100,
+          maximum: 20000,
+          description:
+            "Maximum extracted text characters per result when includeText is true.",
+        }),
+      ),
+      maxHighlightCharacters: Type.Optional(
+        Type.Number({
+          minimum: 100,
+          maximum: 10000,
+          description:
+            "Maximum highlight characters per result when includeHighlights is true.",
+        }),
+      ),
+      startPublishedDate: Type.Optional(
+        Type.String({
+          description:
+            "ISO start date filter for published date, e.g. 2024-01-01",
+        }),
+      ),
+      endPublishedDate: Type.Optional(
+        Type.String({
+          description:
+            "ISO end date filter for published date, e.g. 2024-12-31",
+        }),
+      ),
+      startCrawlDate: Type.Optional(
+        Type.String({ description: "ISO start date filter for crawl date." }),
+      ),
+      endCrawlDate: Type.Optional(
+        Type.String({ description: "ISO end date filter for crawl date." }),
+      ),
+      useAutoprompt: Type.Optional(
+        Type.Boolean({
+          description: "Let Exa expand the query automatically.",
+        }),
+      ),
+      userLocation: Type.Optional(
+        Type.String({ description: "Two-letter ISO country code, e.g. US." }),
+      ),
     }),
     async execute(toolCallId, params, _signal, onUpdate) {
       if (!process.env.EXA_API_KEY) {
-        throw new Error("EXA_API_KEY is not set. Add it to your environment before using exa_websearch.");
+        throw new Error(
+          "EXA_API_KEY is not set. Add it to your environment before using exa_websearch.",
+        );
       }
 
       onUpdate?.({
@@ -88,33 +156,39 @@ export default function exaWebsearchExtension(pi: ExtensionAPI) {
         userLocation: params.userLocation,
       };
 
-      const response = includeHighlights || includeText
-        ? await exa.searchAndContents(params.query, {
-            ...baseOptions,
-            text: includeText
-              ? (params.maxTextCharacters ? { maxCharacters: params.maxTextCharacters } : true)
-              : undefined,
-            highlights: includeHighlights
-              ? {
-                  query: params.highlightQuery || params.query,
-                  maxCharacters: params.maxHighlightCharacters ?? 1200,
-                }
-              : undefined,
-          })
-        : await exa.search(params.query, baseOptions);
+      const response =
+        includeHighlights || includeText
+          ? await exa.searchAndContents(params.query, {
+              ...baseOptions,
+              text: includeText
+                ? params.maxTextCharacters
+                  ? { maxCharacters: params.maxTextCharacters }
+                  : true
+                : undefined,
+              highlights: includeHighlights
+                ? {
+                    query: params.highlightQuery || params.query,
+                    maxCharacters: params.maxHighlightCharacters ?? 1200,
+                  }
+                : undefined,
+            })
+          : await exa.search(params.query, baseOptions);
 
       const lines: string[] = [];
       lines.push(`Exa search results for: ${params.query}`);
       lines.push(`Results: ${response.results.length}`);
-      if ((response as any).resolvedSearchType) lines.push(`Resolved type: ${(response as any).resolvedSearchType}`);
+      if ((response as any).resolvedSearchType)
+        lines.push(`Resolved type: ${(response as any).resolvedSearchType}`);
       if (response.requestId) lines.push(`Request ID: ${response.requestId}`);
-      if ((response as any).costDollars?.total != null) lines.push(`Cost: $${(response as any).costDollars.total}`);
+      if ((response as any).costDollars?.total != null)
+        lines.push(`Cost: $${(response as any).costDollars.total}`);
       lines.push("");
 
       response.results.forEach((result: any, index: number) => {
         lines.push(`${index + 1}. ${result.title || "Untitled"}`);
         lines.push(`   URL: ${result.url}`);
-        if (result.publishedDate) lines.push(`   Published: ${result.publishedDate}`);
+        if (result.publishedDate)
+          lines.push(`   Published: ${result.publishedDate}`);
         if (result.author) lines.push(`   Author: ${result.author}`);
         if (Array.isArray(result.highlights) && result.highlights.length > 0) {
           lines.push(`   Highlights:`);

@@ -1,9 +1,9 @@
 {
   "defaultPolicy": {
-    "tools": "ask",
+    "tools": "allow",
     "bash": "ask",
     "mcp": "ask",
-    "skills": "ask",
+    "skills": "allow",
     "special": "ask",
   },
   "tools": {
@@ -17,9 +17,6 @@
     "external_directory": "ask",
   },
   "bash": {
-    "git *": "ask",
-    "git status": "allow",
-    "rm -rf *": "deny",
     // general
     "rm -rf*": "deny",
     "ls*": "allow",
@@ -32,6 +29,7 @@
     "which*": "allow",
     "mkdir*": "allow",
     "pwd": "allow",
+    "eval \"$(/Users/ahstn/.local/bin/mise activate zsh)\"": "allow",
     // devops
     "helm lint*": "allow",
     "helm template*": "allow",
@@ -42,6 +40,7 @@
     // git
     "git status*": "allow",
     "git diff*": "allow",
+    "git rev-parse*": "allow",
     "git add*": "ask", // catch intentional untracked files
     "git commit*": "allow",
     "git log*": "allow",
@@ -49,10 +48,12 @@
     "gh label *": "allow",
     "gh pr *": "allow",
     "gh pr create*": "ask",
-    // mise
+    // mise & ptchfork
     "mise activate*": "allow",
     "mise use*": "allow",
     "mise run*": "allow",
+    "mise ls-remote*": "allow",
+    "pitchfork *": "allow",
     // typescript
     "npm info*": "allow",
     "npm ls*": "allow",

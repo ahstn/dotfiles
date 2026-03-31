@@ -1,5 +1,6 @@
 Using the GitHub CLI and `.github/pull_request_template.md` , create a new pull request, focusing on the how and why of this change in a concise manner. Reference issues closed by this PR.
 
+
 If no PR template exists, use the following as a guideline template:
 
 ```md
