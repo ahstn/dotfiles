@@ -2,6 +2,5 @@
 
 export ZDOTDIR="$HOME/.config/zsh"
 
-export PATH="/opt/homebrew/sbin:$PATH"
-export PATH="/opt/homebrew/bin:$PATH"
-[ -x "$HOME/.local/bin/mise" ] && eval "$("$HOME/.local/bin/mise" activate zsh)"
+[[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv zsh)" && export PATH="/opt/homebrew/bin:$PATH"
+[[ -x "$HOME/.local/bin/mise" ]] && eval "$("$HOME/.local/bin/mise" activate zsh)"

@@ -10,12 +10,8 @@ ZSH_HOME="${HOME}/.config/zsh"
 [[ -r "${ZSH_HOME}/.zsh-private" ]] && source "${ZSH_HOME}/.zsh-private"
 
 # Tool/runtime environment first (before completion init)
-if (( $+commands[mise] )); then
-  eval "$(mise activate zsh)"
-  [[ -r "$HOME/.local/bin/env" ]] && source "$HOME/.local/bin/env"
-fi
-
-(( $+commands[brew] )) && eval "$(brew shellenv zsh)"
+[[ -x "$HOME/.local/bin/mise" ]] && eval "$("$HOME/.local/bin/mise" activate zsh)"
+[[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv zsh)" && export PATH="/opt/homebrew/bin:$PATH"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[wt] )) && eval "$(wt config shell init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
