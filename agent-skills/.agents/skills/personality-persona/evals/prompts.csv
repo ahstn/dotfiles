@@ -1,0 +1,15 @@
+id,should_trigger,expected_primary_reference,prompt
+dm-explicit,true,guidance-direct-messages.md,Use the pragmatic-engineering-writer skill to draft a Slack DM asking the on-call engineer to verify the rollback.
+dm-implicit,true,guidance-direct-messages.md,"Write a quick Teams message: migration is done, but cache warmup still needs another 15 minutes."
+pr-review,true,guidance-pull-request-review.md,Draft three PR review comments for a change that moved auth checks behind a feature flag and removed a regression test.
+email-internal,true,guidance-email-internal.md,Draft an internal email to the platform team explaining the database cutover window and the owner handoff.
+email-external,true,guidance-email-external.md,Write an email to a vendor asking for confirmation of maintenance timing and expected customer impact.
+blog-post,true,guidance-blog-post.md,Write a short blog post explaining why hardcoded prompts become brittle in production systems.
+memo-broadcast,true,guidance-memo-broadcast.md,Draft an internal broadcast announcing that the legacy deployment path will be removed next month.
+technical-docs,true,guidance-technical-documentation.md,Write a runbook page for rotating an API key with zero downtime.
+rfc-design,true,guidance-rfc-design-doc.md,Draft an RFC proposing a move from polling to event-driven reconciliation.
+style-analysis,true,guidance-style-analysis.md,Compare these two writing samples and extract a reusable house style with measurable traits.
+negative-translate,false,,Translate this sentence to German: The deploy finished successfully.
+negative-ad-copy,false,,Write playful ad copy for our spring sale with lots of energy and excitement.
+hybrid-email-blog,true,guidance-email-internal.md,Rewrite this internal email so it keeps the email format but borrows a little of the cadence of a blog post.
+docs-vs-rfc,true,guidance-rfc-design-doc.md,"Write a design proposal for replacing local cron jobs with a central scheduler, including tradeoffs and rollout risks."
