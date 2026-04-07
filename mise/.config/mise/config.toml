@@ -9,6 +9,7 @@ uv = "latest"
 opencode = "latest"
 terraform = "latest"
 pitchfork = "latest"
+bun = "latest"
 
 # general cli
 ripgrep = "latest"
@@ -23,6 +24,7 @@ difftastic = "latest"
 zoxide = "latest"
 fzf = "latest"
 television = "latest"
+"github:wfxr/forgit" = "latest"
 
 
 [hooks]
@@ -31,3 +33,8 @@ enter = "mise i -q"
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
 experimental = true
+
+trusted_config_paths = [
+  '~/git/',
+  '~/.codex/worktrees/'
+]
