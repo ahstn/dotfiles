@@ -1,17 +1,20 @@
 {
   "lastChangelogVersion": "0.62.0",
   "packages": [
-    "npm:pi-context",
-    "npm:@ferologics/pi-extensions",
     "npm:pi-subagents",
     "npm:pi-ask-tool-extension",
     "npm:pi-permission-system",
     "npm:pi-extmgr",
-    "npm:pi-markdown-preview"
+    "npm:pi-markdown-preview",
+    "npm:pi-token-burden"
+  ],
+  "skills": [
+    "~/.agents/skills",
+    "~/.codex/skills"
   ],
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "hideThinkingBlock": false,
   "theme": "catppuccin-frappe",
   "transport": "sse"

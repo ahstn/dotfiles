@@ -66,7 +66,7 @@ class SkillAutocompleteProvider implements AutocompleteProvider {
 	constructor(
 		private readonly base: AutocompleteProvider,
 		private readonly getSkillItems: () => AutocompleteItem[],
-	) {}
+	) { }
 
 	getSuggestions(lines: string[], cursorLine: number, cursorCol: number) {
 		const currentLine = lines[cursorLine] ?? "";
