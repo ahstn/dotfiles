@@ -7,3 +7,8 @@ zsh/.config/zsh/.zsh-private
 zsh/.config/zsh/plugins/
 
 fish/.config/fish/conf.d/25-private-env.fish
+
+**/node_modules/
+
+pi-mono/.pi/agent/auth.json
+pi-mono/.pi/agent/sessions/*

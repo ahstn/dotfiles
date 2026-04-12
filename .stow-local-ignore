@@ -1,1 +1,14 @@
-**/README.md
+# Docs
+README\.md
+
+# macOS junk
+\.DS_Store
+
+# JS deps / build outputs
+node_modules
+dist
+build
+
+# Python caches
+__pycache__
+\.pytest_cache
