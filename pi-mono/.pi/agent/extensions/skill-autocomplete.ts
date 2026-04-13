@@ -13,7 +13,12 @@ import {
 	type ExtensionAPI,
 	type SlashCommandInfo,
 } from "@mariozechner/pi-coding-agent";
-import { matchesKey, type AutocompleteItem, type AutocompleteProvider } from "@mariozechner/pi-tui";
+import {
+	matchesKey,
+	type AutocompleteItem,
+	type AutocompleteProvider,
+	type AutocompleteSuggestions,
+} from "@mariozechner/pi-tui";
 
 const SKILL_COMMAND_PREFIX = "skill:";
 const SKILL_TRIGGER = "$";
@@ -68,13 +73,24 @@ class SkillAutocompleteProvider implements AutocompleteProvider {
 		private readonly getSkillItems: () => AutocompleteItem[],
 	) { }
 
-	getSuggestions(lines: string[], cursorLine: number, cursorCol: number) {
+	shouldTriggerFileCompletion(lines: string[], cursorLine: number, cursorCol: number): boolean {
+		return (this.base as AutocompleteProvider & {
+			shouldTriggerFileCompletion?: (lines: string[], cursorLine: number, cursorCol: number) => boolean;
+		}).shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true;
+	}
+
+	async getSuggestions(
+		lines: string[],
+		cursorLine: number,
+		cursorCol: number,
+		options: { signal: AbortSignal; force?: boolean },
+	): Promise<AutocompleteSuggestions | null> {
 		const currentLine = lines[cursorLine] ?? "";
 		const textBeforeCursor = currentLine.slice(0, cursorCol);
 		const prefix = extractSkillPrefix(textBeforeCursor);
 
 		if (!prefix) {
-			return this.base.getSuggestions(lines, cursorLine, cursorCol);
+			return this.base.getSuggestions(lines, cursorLine, cursorCol, options);
 		}
 
 		const query = prefix.slice(SKILL_TRIGGER.length);
