@@ -1,0 +1,35 @@
+# inputrc configures line editing functionality provided by the readline
+# library, used by many interactive programs such as the bash shell. See:
+#    info '(bash)Readline Init File Syntax'
+# https://www.gnu.org/software/bash/manual/html_node/Readline-Init-File-Syntax.html
+#
+# BSDs and macOS use editline, with a readline compatibility layer at least in
+# the case of macOS. See `man editrc` and `man editline`.
+
+# Filetype colors in completion lists
+set colored-stats on
+
+# Case-insensitive filesystems be damned
+set completion-ignore-case on
+
+# Hyphen can be used to complete underscores
+set completion-map-case on
+
+# With multiple matches, only show the remaining part.
+# Unsupported in editline  >:-(
+set completion-prefix-display-length 2
+
+# Try to avoid accidental multi-line pastes being interpreted as commands
+set enable-bracketed-paste on
+
+# Completion when in middle of word doesn't duplicate existing input.
+# Like many useful GNU things, seems unsupported in editline.
+set skip-completed-text On
+
+# Allow UTF-8 input and output, instead of showing stuff like $'\0123\0456'
+set input-meta on
+set output-meta on
+set convert-meta off
+
+# Adds punctuation as word delimiters
+set bind-tty-special-chars off
