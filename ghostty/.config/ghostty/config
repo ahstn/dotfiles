@@ -1,9 +1,21 @@
 # tab title: basename $(git rev-parse --show-toplevel 2> /dev/null || pwd)
 
 theme = catppuccin-frappe.conf
-
 macos-titlebar-style = "tabs"
+
 copy-on-select = clipboard
+
+working-directory = "~/git/"
+
+# Scrollback
+scrollback-limit = 50000
+
+# Splits
+unfocused-split-opacity = 0.75
+split-divider-color = #3e4451
 
 keybind = super+comma=prompt_surface_title
 keybind = ctrl+space>r=reload_config
+
+custom-shader = shaders/cursor_warp.glsl
+custom-shader = shaders/ripple_cursor.glsl
