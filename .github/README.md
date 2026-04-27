@@ -9,6 +9,11 @@
 [![Terminal](https://img.shields.io/badge/Terminal-Kitty-orange.svg)](https://sw.kovidgoyal.net/kitty/)
 [![Font](https://img.shields.io/badge/Font-Hack-lightgrey.svg)](https://sourcefoundry.org/hack/)
 
+
+> [!NOTE]
+>
+> LLM Harness and Pi config is located at [ahstn/pi](https://github.com/ahstn/pi)
+
 ## :rocket: Usage
 Structured to work with `GNU Stow`
 ```
