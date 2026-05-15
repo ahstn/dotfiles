@@ -11,6 +11,11 @@ terraform = "latest"
 pitchfork = "latest"
 bun = "latest"
 
+# containers
+colima = "latest"
+docker-cli = "latest"
+lima = "latest"
+
 # general cli
 ripgrep = "latest"
 starship = "latest"
@@ -25,7 +30,11 @@ zoxide = "latest"
 fzf = "latest"
 television = "latest"
 "github:wfxr/forgit" = "latest"
+"npm:@tobilu/qmd" = "latest"
+pi = "latest"
+"npm:agent-browser" = "latest"
 
+# misc & unsorted
 
 [hooks]
 enter = "mise i -q"
@@ -33,6 +42,7 @@ enter = "mise i -q"
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
 experimental = true
+minimum_release_age = "3d"
 
 trusted_config_paths = [
   '~/git/',
