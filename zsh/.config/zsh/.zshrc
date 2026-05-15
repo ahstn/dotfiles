@@ -46,6 +46,7 @@ for key ('[C' "\e[1;3D" "^[b") bindkey  ${key} backward-word    # ⌥←
 for key ('[D' "\e[1;3C" "^[f") bindkey  ${key} forward-word     # ⌥→
 bindkey "^[[1;9D" beginning-of-line # cmd+←
 bindkey "^[[1;9C" end-of-line       # cmd+→
+bindkey -e   # Don't use vi mode with ZSH
 unset key
 
 # Shell Configuration
