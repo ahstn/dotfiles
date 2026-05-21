@@ -7,6 +7,69 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "completions": {
+    "lsp_fetch_timeout_ms": 200,
+  },
+  "active_pane_modifiers": {
+    "border_size": 1.0,
+  },
+  "centered_layout": {
+    "right_padding": 0.2,
+    "left_padding": 0.2,
+  },
+  "bottom_dock_layout": "full",
+  "tabs": {
+    "show_diagnostics": "errors",
+  },
+  "tab_bar": {
+    "show_tab_bar_buttons": false,
+  },
+  "title_bar": {
+    "show_user_picture": false,
+    "show_sign_in": false,
+  },
+  "agent_servers": {
+    "codex-acp": {
+      "type": "registry",
+    },
+    "pi-acp": {
+      "type": "registry",
+    },
+  },
+  "project_panel": {
+    "dock": "left",
+    "button": true,
+    "diagnostic_badges": true,
+  },
+  "outline_panel": {
+    "dock": "left",
+    "button": false,
+  },
+  "collaboration_panel": {
+    "dock": "left",
+    "button": false,
+  },
+  "git_panel": {
+    "folder_icons": true,
+    "file_icons": false,
+    "status_style": "icon",
+    "dock": "right",
+    "button": true,
+  },
+  "agent": {
+    "dock": "right",
+    "sidebar_side": "left",
+    "button": true,
+    "tool_permissions": {
+      "default": "allow",
+    },
+    "default_model": {
+      "provider": "openrouter",
+      "model": "openai/gpt-5",
+    },
+  },
+
+  //
   "ssh_connections": [
     {
       "host": "192.168.1.11",
@@ -17,20 +80,21 @@
         },
       ],
     },
+    {
+      "host": "192.168.1.135",
+      "username": "ahstn",
+      "args": [],
+      "projects": [
+        {
+          "paths": ["/home/ahstn/git"],
+        },
+      ],
+    },
   ],
   "edit_predictions": {
     "provider": "copilot",
   },
-  "icon_theme": "Material Icon Theme",
-  "agent": {
-    "tool_permissions": {
-      "default": "allow",
-    },
-    "default_model": {
-      "provider": "openrouter",
-      "model": "openai/gpt-5",
-    },
-  },
+  "icon_theme": "Catppuccin Frappé",
 
   // User Interface
   "theme": {
@@ -38,7 +102,9 @@
     "light": "One Light",
     "dark": "Catppuccin Frappé",
   },
+  "max_tabs": 4,
   "use_system_window_tabs": true,
+  "cli_default_open_behavior": "existing_window",
   "toolbar": {
     "breadcrumbs": false,
     "quick_actions": false,
@@ -47,7 +113,8 @@
   // Fonts
   "buffer_font_family": "JuliaMono",
   "buffer_font_fallbacks": ["Hack", ".ZedMono"],
-  "ui_font_size": 14.0,
+  "ui_font_family": ".ZedSans",
+  "ui_font_size": 15.0,
   "buffer_font_size": 14.0,
 
   "which_key": {
@@ -55,6 +122,7 @@
     "enabled": true,
   },
   "telemetry": {
+    "diagnostics": false,
     "metrics": false,
   },
   "diagnostics": {
