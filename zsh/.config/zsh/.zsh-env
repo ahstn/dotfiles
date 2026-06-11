@@ -14,6 +14,9 @@ export FZF_DEFAULT_OPTS='
 '
 export BUN_INSTALL="$HOME/.bun"
 
+export CARGO_TARGET_DIR="$HOME/.cache/cargo/target/"
+export CARGO_BUILD_BUILD_DIR="$HOME/.cache/cargo/build/"
+
 alias ll='eza --long --icons always --git --header --total-size'
 alias tf='terraform'
 
