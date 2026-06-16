@@ -1,6 +1,7 @@
 [settings]
-idiomatic_version_file_enable_tools = ["python"]
 experimental = true
+color_theme = "catppuccin"
+idiomatic_version_file_enable_tools = ["python", "node"]
 minimum_release_age = "3d"
 trusted_config_paths = ['~/git/', '~/.codex/worktrees/']
 
