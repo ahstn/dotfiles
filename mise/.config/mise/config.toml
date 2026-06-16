@@ -1,15 +1,19 @@
-[tools]
+[settings]
+idiomatic_version_file_enable_tools = ["python"]
+experimental = true
+minimum_release_age = "3d"
+trusted_config_paths = ['~/git/', '~/.codex/worktrees/']
 
+[tools]
 # languages and tooling
 python = "latest"
 rust = "latest"
 ruff = "latest"
 node = "lts"
 uv = "latest"
-opencode = "latest"
+pi = "latest"
 terraform = "latest"
 pitchfork = "latest"
-bun = "latest"
 
 # containers
 colima = "latest"
@@ -23,7 +27,6 @@ eza = "latest"
 bat = "latest"
 tmux = "latest"
 difftastic = "latest"
-"github:jnsahaj/lumen" = "latest"
 
 # fuzzy finders and navigation
 zoxide = "latest"
@@ -31,7 +34,6 @@ fzf = "latest"
 television = "latest"
 "github:wfxr/forgit" = "latest"
 "npm:@tobilu/qmd" = "latest"
-pi = "latest"
 "npm:agent-browser" = "latest"
 
 # misc & unsorted
@@ -39,12 +41,24 @@ pi = "latest"
 [hooks]
 enter = "mise i -q"
 
-[settings]
-idiomatic_version_file_enable_tools = ["python"]
-experimental = true
-minimum_release_age = "3d"
+[shell_alias]
+ll = "eza -la --icons --group-directories-first"
 
-trusted_config_paths = [
-  '~/git/',
-  '~/.codex/worktrees/'
-]
+[bootstrap.packages]
+"brew:coreutils" = "latest"
+"brew:zsh" = "latest"
+
+[bootstrap.user]
+login_shell = "/bin/zsh"
+
+# MacOS specific configuration
+[bootstrap.macos.dock]
+autohide = true
+orientation = "left"
+tilesize = 48
+
+[bootstrap.macos.finder]
+show_pathbar = true
+
+[bootstrap.macos.defaults]
+"com.apple.finder" = { AppleShowAllFiles = true }
