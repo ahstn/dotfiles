@@ -3,7 +3,7 @@ experimental = true
 color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
 minimum_release_age = "3d"
-trusted_config_paths = ['~/git/', '~/.codex/worktrees/']
+trusted_config_paths = ['~/git/', '~/.codex/worktrees/', '~/.herder/worktrees/']
 
 [tools]
 # languages and tooling
@@ -12,7 +12,7 @@ rust = "latest"
 ruff = "latest"
 node = "lts"
 uv = "latest"
-pi = "latest"
+pi = { version = "latest", postinstall = "pi update --extensions" }
 terraform = "latest"
 pitchfork = "latest"
 
