@@ -3,7 +3,7 @@ experimental = true
 color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
 minimum_release_age = "3d"
-trusted_config_paths = ['~/git/', '~/.codex/worktrees/', '~/.herder/worktrees/']
+trusted_config_paths = ['~/git/', '~/.codex/worktrees/', '~/.herdr/worktrees/']
 
 [tools]
 # languages and tooling
@@ -36,6 +36,7 @@ television = "latest"
 "github:wfxr/forgit" = "latest"
 "npm:@tobilu/qmd" = "latest"
 "npm:agent-browser" = "latest"
+"github:can1357/oh-my-pi" = "latest"
 
 # misc & unsorted
 
@@ -46,8 +47,22 @@ enter = "mise i -q"
 ll = "eza -la --icons --group-directories-first"
 
 [bootstrap.packages]
+# macOS
 "brew:coreutils" = "latest"
+"brew:weave" = "latest"
 "brew:zsh" = "latest"
+"brew-cask:keepingyouawake" = "latest"
+
+# linux servers
+"apt:curl" = "latest"
+"apt:neovim" = "latest"
+"apt:git" = "latest"
+"apt:gcc" = "latest"
+"apt:fzf" = "latest"
+"apt:libfuse-dev" = "latest"
+"apt:libssl-dev" = "latest"
+"apt:zsh" = "latest"
+"apt:ripgrep" = "latest"
 
 [bootstrap.user]
 login_shell = "/bin/zsh"

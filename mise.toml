@@ -1,0 +1,15 @@
+[settings]
+experimental = true
+minimum_release_age = "3d"
+
+dotfiles.root = "~/"
+dotfiles.default_mode = "symlink"
+
+[dotfiles]
+"~/.config/mise/config.toml" = { source = ".config/mise/config.toml", mode = "symlink" }
+
+
+# 1. Install mise
+# 2. Apply dotfiles - mise dotfiles apply
+# 3. Install system packages - mise bootstrap packages apply
+# 4. Install tools - mise install
