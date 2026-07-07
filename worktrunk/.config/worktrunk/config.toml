@@ -1,7 +1,0 @@
-[commit.generation]
-command = "opencode run --model=opencode/opencode/gpt-5-nano"
-
-
-[commit]
-# require explicit staging for untracked files
-stage = "tracked"
