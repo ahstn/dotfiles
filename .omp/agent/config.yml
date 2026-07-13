@@ -1,0 +1,45 @@
+providers: 
+  webSearch: exa
+  openaiWebsockets: "on"
+  openrouterVariant: default
+symbolPreset: unicode
+theme: 
+  dark: dark-catppuccin
+setupVersion: 1
+statusLine: 
+  separator: pipe
+  preset: default
+  transparent: true
+  compactThinkingLevel: false
+power: 
+  sleepPrevention: idle
+lsp: 
+  enabled: false
+task: 
+  maxRecursionDepth: 2
+  isolation: 
+    mode: none
+    commits: ai
+  maxConcurrency: 12
+exa: 
+  enableResearcher: true
+todo: 
+  eager: default
+tools: 
+  discoveryMode: mcp-only
+mcp: 
+  discoveryMode: true
+bashInterceptor: 
+  enabled: true
+bash: 
+  autoBackground: 
+    enabled: true
+retry: 
+  maxRetries: 2
+modelRoles: 
+  default: openai-codex/gpt-5.6-sol:high
+  smol: openai-codex/gpt-5.6-luna:high
+  vision: openai-codex/gpt-5.6-luna:high
+  advisor: anthropic/claude-fable-5:medium
+tier: 
+  openai: auto

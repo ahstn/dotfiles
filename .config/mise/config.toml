@@ -69,6 +69,7 @@ ll = "eza -la --icons --group-directories-first"
 "apt:libfuse-dev" = "latest"
 "apt:libssl-dev" = "latest"
 "apt:zsh" = "latest"
+"apt:rsync" = "latest"
 "apt:ripgrep" = "latest"
 
 [bootstrap.user]

@@ -15,6 +15,9 @@ dotfiles.default_mode = "symlink"
 "~/.config/tmux" = { source = ".config/tmux" }
 "~/.config/zsh" = { source = ".config/zsh" }
 
+# Oh-my-pi 
+"~/.omp/agent/config.yml" = { source = ".omp/agent/config.yml" }
+
 # Standalone files - sourced in ~/.config/ for organization, but symlinked to home
 "~/.bash_profile" = { source = ".config/.bash_profile" }
 "~/.inputrc" = { source = ".config/.inputrc" }
