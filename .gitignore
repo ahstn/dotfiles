@@ -7,11 +7,6 @@ packer_compiled.lua
 **/.config/zsh/.zsh-private
 **/.config/zsh/plugins/
 
-./config/herdr/session.json
-
-fish/.config/fish/conf.d/25-private-env.fish
+.config/herdr/session.json
 
 **/node_modules/
-
-pi-mono/.pi/agent/auth.json
-pi-mono/.pi/agent/sessions/*

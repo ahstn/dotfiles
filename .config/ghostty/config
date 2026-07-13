@@ -1,6 +1,8 @@
 # tab title: basename $(git rev-parse --show-toplevel 2> /dev/null || pwd)
+#
+# reload config with cmd+shift+,
 
-theme = catppuccin-frappe.conf
+theme = Catppuccin Frappe # now bundled into Ghostty
 macos-titlebar-style = "tabs"
 
 copy-on-select = clipboard
@@ -15,7 +17,7 @@ unfocused-split-opacity = 0.75
 split-divider-color = #3e4451
 
 keybind = super+comma=prompt_surface_title
-keybind = ctrl+space>r=reload_config
+keybind = super+shift+,=reload_config
 
 custom-shader = shaders/cursor_warp.glsl
 custom-shader = shaders/ripple_cursor.glsl
