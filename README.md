@@ -16,43 +16,20 @@
 
 ## :rocket: Usage
 
-Structured to work with `GNU Stow`
-```
-$ git clone https://github.com/ahstn/dotfiles.git
-$ cd dotfiles/
-$ stow --target $HOME zsh
-```
-etc, etc..
+Setup and based on [mise](https://mise.jdx.dev/) with it's dotfile and bootstrap management.
 
-In progress switch to [mise](https://mise.jdx.dev/), [Installing Mise | Mise](https://mise.jdx.dev/installing-mise.html).
-
-1. Install mise - `curl https://mise.run/zsh | sh`
+1. Install mise, see [Installing Mise | Mise](https://mise.jdx.dev/installing-mise.html) - `curl https://mise.run/zsh | sh`
 2. Apply dotfiles - `mise dotfiles apply`
 3. Install system packages - `mise bootstrap packages apply`
 4. Install tools - `mise install`
 
+Dotfile management is handled by [`mise.toml`] currently, while bootstrap and system wide configuration is handled by [`.config/mise/config.toml`]. 
+
 ## :sparkles: Setup & Application Specifics
 
-<details>
-<summary><strong>Dependencies & Install Commands</strong></summary>
-
-  General tools:
-  ```bash
-  brew install rg fzf zsh gpg2 git tmux neovim stow exa
-  brew install kitty
-  brew install --cask font-hack-nerd-font font-jetbrains-mono
-  brew install --cask raycast
-  ```
-
-  Specific development tools:
-  ```bash
-  brew install golang nodejs rust yarn coreutils kubectl kubectx helm
-  brew install --cask visual-studio-code
-  ```
-</details>
 
 <details>
-<summary><strong>NeoVim TLDR</strong></summary>
+<summary><strong>Legacy NeoVim TLDR</strong></summary>
 
   Requires [wbthomason/packer.nvim] for plugin management, and will install on start-up.
 
@@ -109,13 +86,8 @@ In progress switch to [mise](https://mise.jdx.dev/), [Installing Mise | Mise](ht
   - <leader> ctrl+r : restore sessions (tmux-ressurect)
 </details>
 
-## :raised_hands: Acknowledgements
-- [`meain`] - for layout inspo and vim config
-- [`posquit0`] - for layout inspo
-- [`kutsan`] - for cool vim stuff
-- [`augustocdias`] - neovim setup
-- [`thanhvule0310`] - tmux & neovim setup
-
+[`mise.toml`]: ./mise.toml
+[`.config/mise/config.toml`]: ./.config/mise/config.toml
 
 [wbthomason/packer.nvim]: https://github.com/wbthomason/packer.nvim
 [tmux-plugins/tpm]: https://github.com/tmux-plugins/tpm
@@ -123,9 +95,3 @@ In progress switch to [mise](https://mise.jdx.dev/), [Installing Mise | Mise](ht
 [nvim-telescope/telescope.nvim]: https://github.com/nvim-telescope/telescope.nvim
 [phaazon/hop.nvim]: https://github.com/phaazon/hop.nvim
 [tpope/vim-surround]: https://github.com/tpope/vim-surround
-
-[`meain`]: https://github.com/meain/dotfiles
-[`posquit0`]: https://github.com/posquit0/dotfiles
-[`kutsan`]: https://github.com/kutsan/dotfiles
-[`augustocdias`]: https://github.com/augustocdias/dotfiles/
-[`thanhvule0310`]: https://github.com/thanhvule0310/dotfiles
