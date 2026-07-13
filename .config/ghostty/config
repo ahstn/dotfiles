@@ -19,3 +19,11 @@ keybind = ctrl+space>r=reload_config
 
 custom-shader = shaders/cursor_warp.glsl
 custom-shader = shaders/ripple_cursor.glsl
+
+quick-terminal-autohide = false
+quick-terminal-size = 60%,60%
+quick-terminal-keyboard-interactivity = exclusive
+
+# omp
+keybind = alt+backspace=text:\x1b\x7f
+keybind = shift+enter=text:\n

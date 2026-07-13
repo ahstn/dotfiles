@@ -15,6 +15,7 @@
 > LLM Harness and Pi config is located at [ahstn/pi](https://github.com/ahstn/pi)
 
 ## :rocket: Usage
+
 Structured to work with `GNU Stow`
 ```
 $ git clone https://github.com/ahstn/dotfiles.git
@@ -22,6 +23,13 @@ $ cd dotfiles/
 $ stow --target $HOME zsh
 ```
 etc, etc..
+
+In progress switch to [mise](https://mise.jdx.dev/), [Installing Mise | Mise](https://mise.jdx.dev/installing-mise.html).
+
+1. Install mise - `curl https://mise.run/zsh | sh`
+2. Apply dotfiles - `mise dotfiles apply`
+3. Install system packages - `mise bootstrap packages apply`
+4. Install tools - `mise install`
 
 ## :sparkles: Setup & Application Specifics
 

@@ -1,2 +1,5 @@
 # Mise local environment configuration
 mise.local.toml
+    
+.DS_Store
+**/DS_Store

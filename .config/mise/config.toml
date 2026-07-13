@@ -43,8 +43,15 @@ television = "latest"
 [hooks]
 enter = "mise i -q"
 
+[tasks.gh-auth]
+run = "gh auth status || gh auth login"
+
 [shell_alias]
 ll = "eza -la --icons --group-directories-first"
+
+[bootstrap.repos]
+"~/git/dotfiles" = { url = "git@github.com:ahstn/dotfiles.git", ref = "main" }
+"~/.pi" = { url = "git@github.com:ahstn/pi.git", ref = "main" }
 
 [bootstrap.packages]
 # macOS
@@ -75,6 +82,10 @@ tilesize = 48
 
 [bootstrap.macos.finder]
 show_pathbar = true
+show_all_files = true
 
 [bootstrap.macos.defaults]
 "com.apple.finder" = { AppleShowAllFiles = true }
+
+[bootstrap.hooks.post-defaults]
+run = "killall Dock || true"

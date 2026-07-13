@@ -1,11 +1,11 @@
 packer_compiled.lua
 **/.DS_Store
 
-zsh/.config/zsh/.zim
-zsh/.config/zsh/.zsh_history
-zsh/.config/zsh/*.zcompdump*
-zsh/.config/zsh/.zsh-private
-zsh/.config/zsh/plugins/
+**/.config/zsh/.zim
+**/.config/zsh/.zsh_history
+**/.config/zsh/*.zcompdump*
+**/.config/zsh/.zsh-private
+**/.config/zsh/plugins/
 
 fish/.config/fish/conf.d/25-private-env.fish
 

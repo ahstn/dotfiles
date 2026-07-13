@@ -1,15 +1,25 @@
+# :schema https://mise.en.dev/schema/mise.json
+
 [settings]
 experimental = true
 minimum_release_age = "3d"
 
-dotfiles.root = "~/"
+dotfiles.root = "~/git/dotfiles"
 dotfiles.default_mode = "symlink"
 
 [dotfiles]
-"~/.config/mise/config.toml" = { source = ".config/mise/config.toml", mode = "symlink" }
+# Listing only directories & files to inherit, ignoring others that shouldn't be tracked (e.g. `~/.aws`)
+"~/.config/mise/config.toml" = { source = ".config/mise/config.toml" }
+"~/.config/ghostty" = { source = ".config/ghostty" }
+"~/.config/herdr" = { source = ".config/herdr" }
+"~/.config/tmux" = { source = ".config/tmux" }
+"~/.config/zsh" = { source = ".config/zsh" }
 
+# Standalone files - sourced in ~/.config/ for organization, but symlinked to home
+"~/.bash_profile" = { source = ".config/.bash_profile" }
+"~/.inputrc" = { source = ".config/.inputrc" }
+"~/.zshenv" = { source = ".config/.zshenv" }
 
-# 1. Install mise
-# 2. Apply dotfiles - mise dotfiles apply
-# 3. Install system packages - mise bootstrap packages apply
-# 4. Install tools - mise install
+# Avoid clashing with repo level Git config
+"~/.gitconfig" = { source = "./.config/git/.gitconfig", mode = "symlink" }
+"~/.gitignore" = { source = "./.config/git/.gitignore", mode = "symlink" }

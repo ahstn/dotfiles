@@ -1,7 +1,7 @@
 [user]
   email = phazyy9@gmail.com
   name = Adam Houston
-  signingkey = 68ACEF7D05786644
+	signingkey = /Users/ahstn/.ssh/github-signing-key.pub
 
 [alias]
   lg = log --graph --oneline --decorate
@@ -32,6 +32,7 @@
 
 [gpg]
   program = gpg
+	format = ssh
 
 # allows: git clone gh:ahstn/dotfiles
 [url "git@github.com:"]
@@ -41,3 +42,7 @@
 [pull]
 	rebase = true
 	autoStash = true
+; [commit]
+; 	gpgsign = true
+[commit]
+	gpgsign = true

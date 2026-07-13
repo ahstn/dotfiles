@@ -1,5 +1,6 @@
 # For non-interactive shells that don't read `~/.zshrc` 
 
+# XDG_CONFIG_HOME
 export ZDOTDIR="$HOME/.config/zsh"
 
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv zsh)" && export PATH="/opt/homebrew/bin:$PATH"

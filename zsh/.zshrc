@@ -1,2 +1,2 @@
-# Redirect to XDG_CONFIG_HOME
+# Redirect to 
 export ZDOTDIR="$HOME/.config/zsh"
