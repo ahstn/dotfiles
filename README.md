@@ -27,6 +27,11 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
 
 ## :sparkles: Setup & Application Specifics
 
+### ZSH
+
+Rather than a single `~/.zshrc` file, `~/.config/zsh/` is used to organize configuration into multiple files and support a gitignored `~/.config/zsh/zsh-private` for sensitive and local configuration. 
+
+With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory via `ZDOTDIR`. See [Zsh Startup Files | Zsh](https://zsh.sourceforge.io/Doc/Release/Files.html) for more information.
 
 <details>
 <summary><strong>Legacy NeoVim TLDR</strong></summary>
@@ -88,6 +93,7 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
 
 [`mise.toml`]: ./mise.toml
 [`.config/mise/config.toml`]: ./.config/mise/config.toml
+[`~/.zshenv`]: ./.config/.zshenv
 
 [wbthomason/packer.nvim]: https://github.com/wbthomason/packer.nvim
 [tmux-plugins/tpm]: https://github.com/tmux-plugins/tpm
@@ -95,3 +101,4 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
 [nvim-telescope/telescope.nvim]: https://github.com/nvim-telescope/telescope.nvim
 [phaazon/hop.nvim]: https://github.com/phaazon/hop.nvim
 [tpope/vim-surround]: https://github.com/tpope/vim-surround
+[startup files | zsh]: https://zsh.sourceforge.io/Doc/Release/Files.html#Startup_002fShutdown-Files

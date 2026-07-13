@@ -13,11 +13,9 @@ ZSH_HOME="${HOME}/.config/zsh"
 [[ -x "$HOME/.local/bin/mise" ]] && eval "$("$HOME/.local/bin/mise" activate zsh)"
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv zsh)" && export PATH="/opt/homebrew/bin:$PATH"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
-(( $+commands[wt] )) && eval "$(wt config shell init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[fzf] )) && source <(fzf --zsh) 
 [[ -r ~/.cargo/env ]] && source ~/.cargo/env
-[[ -d ~/.opencode ]] && export PATH="$HOME/.opencode/bin:$PATH"
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun" && export PATH="$BUN_INSTALL/bin:$PATH"
 
 # Completion search paths
