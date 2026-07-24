@@ -19,7 +19,8 @@
 Setup and based on [mise](https://mise.jdx.dev/) with it's dotfile and bootstrap management.
 
 1. Install mise, see [Installing Mise | Mise](https://mise.jdx.dev/installing-mise.html) - `curl https://mise.run/zsh | sh`
-2. Apply dotfiles - `mise dotfiles apply`
+2. Apply dotfiles - `mise dotfiles apply --dry-run` (remove `--dry-run` to apply)
+  1. Optionally, apply for specific tools, e.g. `mise dotfiles apply '~/.config/herdr'`
 3. Install system packages - `mise bootstrap packages apply`
 4. Install tools - `mise install`
 

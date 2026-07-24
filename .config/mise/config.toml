@@ -13,8 +13,10 @@ ruff = "latest"
 node = "lts"
 uv = "latest"
 pi = { version = "latest", postinstall = "pi update --extensions" }
+"github:can1357/oh-my-pi" = { version = "latest", postinstall = "omp update --plugins" }
 terraform = "latest"
 pitchfork = "latest"
+gcloud = "latest"
 
 # containers
 colima = "latest"
@@ -24,7 +26,8 @@ lima = "latest"
 # general cli
 ripgrep = "latest"
 starship = "latest"
-eza = "latest"
+eza = "0.23.4"
+fd = "latest"
 bat = "latest"
 tmux = "latest"
 difftastic = "latest"
@@ -32,13 +35,12 @@ difftastic = "latest"
 # fuzzy finders and navigation
 zoxide = "latest"
 fzf = "latest"
-television = "latest"
 "github:wfxr/forgit" = "latest"
-"npm:@tobilu/qmd" = "latest"
-"npm:agent-browser" = "latest"
-"github:can1357/oh-my-pi" = "latest"
 
 # misc & unsorted
+"npm:@tobilu/qmd" = "latest"
+"npm:agent-browser" = "latest"
+
 
 [hooks]
 enter = "mise i -q"
