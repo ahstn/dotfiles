@@ -12,11 +12,15 @@ rust = "latest"
 ruff = "latest"
 node = "lts"
 uv = "latest"
-pi = { version = "latest", postinstall = "pi update --extensions" }
-"github:can1357/oh-my-pi" = { version = "latest", postinstall = "omp update --plugins" }
 terraform = "latest"
 pitchfork = "latest"
 gcloud = "latest"
+github-cli = "latest"
+
+# llm and ai
+codex = "latest"
+pi = { version = "latest", postinstall = "pi update --extensions" }
+"github:can1357/oh-my-pi" = { version = "latest", postinstall = "omp update --plugins" }
 
 # containers
 colima = "latest"
