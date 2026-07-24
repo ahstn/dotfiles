@@ -25,6 +25,21 @@ Setup and based on [mise](https://mise.jdx.dev/) with it's dotfile and bootstrap
 
 Dotfile management is handled by [`mise.toml`] currently, while bootstrap and system wide configuration is handled by [`.config/mise/config.toml`]. 
 
+## Agent Skills
+
+This repo uses [mise] dotfiles to link each skill into both shared and Claude-specific global skill directories:
+
+```sh
+mise dotfiles apply
+```
+
+Alternatively, install skills with the [Skills CLI]:
+
+```sh
+npx skills add ahstn/dotfiles
+npx skills add ahstn/dotfiles --skill code-review-and-quality
+```
+
 ## :sparkles: Setup & Application Specifics
 
 ### ZSH
@@ -94,6 +109,7 @@ With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory vi
 [`mise.toml`]: ./mise.toml
 [`.config/mise/config.toml`]: ./.config/mise/config.toml
 [`~/.zshenv`]: ./.config/.zshenv
+[mise]: https://mise.jdx.dev/
 
 [wbthomason/packer.nvim]: https://github.com/wbthomason/packer.nvim
 [tmux-plugins/tpm]: https://github.com/tmux-plugins/tpm

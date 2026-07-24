@@ -16,13 +16,26 @@ accent = "cyan"
 sidebar_width = 32
 sidebar_min_width = 22
 agent_panel_scope = "all"
-show_agent_labels_on_pane_borders = true
+pane_gaps = false
+show_agent_labels_on_pane_borders = false
+prompt_new_tab_name = false
+hide_tab_bar_when_single_tab = true
+agent_panel_sort = "priority"
+
+[ui.sidebar.agents]
+row_gap = 0
+
+
+[ui.sidebar.spaces]
+row_gap = 1
+rows = [["workspace", "git_status"], ["state_icon", "state_text"]]
 
 [ui.sound]
 enabled = true
 
 [ui.toast]
-enabled = true
+delivery = "system"
+
 
 [experimental]
 allow_nested = true

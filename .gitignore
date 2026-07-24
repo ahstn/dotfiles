@@ -7,6 +7,13 @@ packer_compiled.lua
 **/.config/zsh/.zsh-private
 **/.config/zsh/plugins/
 
+# herdr
 .config/herdr/session.json
+.config/herdr/release-notes.json
+.config/herdr/*.log
+.config/herdr/*.sock
 
 **/node_modules/
+
+# private files, config and skills
+skills/personality-persona/*
