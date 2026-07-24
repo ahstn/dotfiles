@@ -77,6 +77,7 @@ ll = "eza -la --icons --group-directories-first"
 "apt:zsh" = "latest"
 "apt:rsync" = "latest"
 "apt:ripgrep" = "latest"
+"apt:btop" = "latest"
 
 [bootstrap.user]
 login_shell = "/bin/zsh"
