@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Structure Rubric"
+  short_description: "Guidelines for cohesive files, modules, and public boundaries."
+  default_prompt: "Use $code-structure-rubric to plan or review the structure of this code change."

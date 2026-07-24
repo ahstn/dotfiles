@@ -1,7 +1,8 @@
 ---
-name: computer-use
+name: computer-use-cua-driver
 description: Operate native macOS, Windows, or Linux GUI applications on the host with Cua Driver from Pi. Always use for requests to click, type, scroll, inspect, or automate a live desktop app or browser UI. Pi has no native MCP support, so this skill uses one-shot `cua-driver call ...` commands through the shell.
 compatibility: Requires cua-driver on PATH, a running desktop session, and platform permissions. On macOS, CuaDriver needs Accessibility and Screen Recording access.
+disable-model-invocation: true
 ---
 
 # Computer Use with Cua Driver in Pi
