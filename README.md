@@ -32,16 +32,7 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
 
 ## Pi 
 
-### "Custom" Extensions
-
-- From [badlogic/pi-mono]
-  - [`.pi/agent/extensions/handoff.ts`] - extract current session to a hand-off prompt and open it in a new session.
-  - [`.pi/agent/extensions/notify.ts`] - send desktop notifications when waiting for input
-
-- From [mitsuhiko/agent-stuff]
-  - [`.pi/agent/extensions/summarize.ts`] - summarize the current session/thread.
-
-- Personal extensions
+### Personal Extensions
   - [`.pi/agent/extensions/exa-websearch/`] - single Exa web/search contents tool with highlights-first results, deep search modes, summaries, and URL content retrieval.
       - Alternative, with no API Key required and [kepano/defuddle] sanitization: [thinkscape/agent-smart-fetch]
   - [`.pi/agent/extensions/skill-autocomplete.ts`] - press `$` in the editor to open an autocomplete menu of loaded skills.
