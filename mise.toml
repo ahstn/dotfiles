@@ -15,8 +15,11 @@ dotfiles.default_mode = "symlink"
 "~/.config/tmux" = { source = ".config/tmux" }
 "~/.config/zsh" = { source = ".config/zsh" }
 
-# Oh-my-pi 
+# Pi & Oh-my-pi 
+# Pi for everyday, small tasks. Oh-my-pi for more complex, multi-step tasks.
+"~/.pi/" = { source = ".pi" }
 "~/.omp/agent/config.yml" = { source = ".omp/agent/config.yml" }
+"~/.omp/agent/APPEND_SYSTEM.md" = { source = ".omp/agent/APPEND_SYSTEM.md" }
 
 # Skills - NB: Some harnesses don't resolve symlinks.
 "~/.agents/skills" = { source = "skills", mode = "copy" }

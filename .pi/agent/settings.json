@@ -1,0 +1,56 @@
+{
+  "defaultModel": "gpt-5.6-sol",
+  "defaultProvider": "openai-codex",
+  "defaultThinkingLevel": "medium",
+  "lastChangelogVersion": "0.82.0",
+  "npmCommand": [
+    "mise",
+    "exec",
+    "node@lts",
+    "--",
+    "npm",
+    "--min-release-age=7",
+    "--ignore-scripts"
+  ],
+  "packages": [
+    "npm:pi-subagents",
+    "npm:pi-extmgr",
+    "npm:pi-token-burden",
+    "npm:pi-ask-tool-extension"
+  ],
+  "subagents": {
+    "agentOverrides": {
+      "context-builder": {
+        "model": "openai-codex/gpt-5.5"
+      },
+      "delegate": {
+        "model": "openai-codex/gpt-5.5"
+      },
+      "oracle": {
+        "model": "openai-codex/gpt-5.5"
+      },
+      "planner": {
+        "model": "openai-codex/gpt-5.5"
+      },
+      "researcher": {
+        "model": "openai-codex/gpt-5.5"
+      },
+      "reviewer": {
+        "fallbackModels": [
+          "github-copilot/gpt-5.5",
+          "opencode-zen/gpt-5.5"
+        ],
+        "model": "openai-codex/gpt-5.5",
+        "thinking": "medium"
+      },
+      "scout": {
+        "model": "openai-codex/gpt-5.5",
+        "thinking": "low"
+      },
+      "worker": {
+        "model": "openai-codex/gpt-5.5"
+      }
+    }
+  },
+  "theme": "catppuccin-frappe"
+}

@@ -7,6 +7,17 @@ packer_compiled.lua
 **/.config/zsh/.zsh-private
 **/.config/zsh/plugins/
 
+# pi
+.pi/agent/auth.json
+.pi/agent/trust.json
+.pi/agent/models-store.json
+.pi/agent/sessions
+.pi/agent/bin
+.pi/agent/npm
+**/node_modules
+exa-usage.json
+run-history.jsonl
+
 # herdr
 .config/herdr/session.json
 .config/herdr/release-notes.json
