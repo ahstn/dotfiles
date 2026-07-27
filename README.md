@@ -26,6 +26,36 @@ Setup and based on [mise](https://mise.jdx.dev/) with it's dotfile and bootstrap
 
 Dotfile management is handled by [`mise.toml`] currently, while bootstrap and system wide configuration is handled by [`.config/mise/config.toml`]. 
 
+## Pi 
+
+### "Custom" Extensions
+
+- From [badlogic/pi-mono]
+  - [`.pi/agent/extensions/handoff.ts`] - extract current session to a hand-off prompt and open it in a new session.
+  - [`.pi/agent/extensions/notify.ts`] - send desktop notifications when waiting for input
+
+- From [mitsuhiko/agent-stuff]
+  - [`.pi/agent/extensions/summarize.ts`] - summarize the current session/thread.
+
+- Personal extensions
+  - [`.pi/agent/extensions/exa-websearch/`] - single Exa web/search contents tool with highlights-first results, deep search modes, summaries, and URL content retrieval.
+      - Alternative, with no API Key required and [kepano/defuddle] sanitization: [thinkscape/agent-smart-fetch]
+  - [`.pi/agent/extensions/skill-autocomplete.ts`] - press `$` in the editor to open an autocomplete menu of loaded skills.
+
+### Packages
+
+- [ayagmar/pi-extmgr] - UI for managing extensions.
+- [nicobailon/pi-subagents] - Powerful sub-agent system with recursion and pipelining support
+    - Alternatives: [tintinweb/pi-subagents] and [pasky/pi-side-agents]
+- [pi-token-burden] - Claude-like context command with granular token counts per tool, mcp, etc
+    - Alternatives: [pi-context]
+
+### Acknowledgements
+
+#### Feynman
+
+The `research-*` agents and [agent/prompts/deepresearch.md] prompt are copied from [getcompanion-ai/feynman].
+
 ## Agent Skills
 
 This repo uses [mise] dotfiles to link each skill into both shared and Claude-specific global skill directories:
