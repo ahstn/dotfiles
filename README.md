@@ -1,18 +1,22 @@
 <img src="http://i.imgur.com/9PHYl04.png" align="left" width="128px" height="128px"/>
 
 ### **dotfiles**
-> *my dotfiles for development on macOS*
-
-[![Distro](https://img.shields.io/badge/Distro-macOS-blue.svg)](https://apple.com/)
-[![Editor](https://img.shields.io/badge/Editor-neovim-brightgreen.svg)](https://github.com/neovim/neovim)
-[![Shell](https://img.shields.io/badge/Shell-zsh-yellow.svg)](https://github.com/zplug/zplug)
-[![Terminal](https://img.shields.io/badge/Terminal-Kitty-orange.svg)](https://sw.kovidgoyal.net/kitty/)
-[![Font](https://img.shields.io/badge/Font-Hack-lightgrey.svg)](https://sourcefoundry.org/hack/)
 
 
-> [!NOTE]
->
-> LLM Harness and Pi config is located at [ahstn/pi](https://github.com/ahstn/pi)
+[![Shell](https://img.shields.io/badge/harness-pi-red.svg)](#)
+[![Quality](https://img.shields.io/badge/quality-404%20not%20found-green)](#)
+[![Monster](https://img.shields.io/badge/monster%20energy%20drunk-814%20L-31C)](#)
+
+</br></br>
+
+- [Usage](#rocket-usage)
+- [Pi](#pi)
+  - ["Custom" Extensions](#custom-extensions)
+  - [Packages](#packages)
+  - [Acknowledgements](#acknowledgements)
+- [Agent Skills](#agent-skills)
+- [Setup & Application Specifics](#sparkles-setup--application-specifics)
+  - [ZSH](#zsh)
 
 ## :rocket: Usage
 
