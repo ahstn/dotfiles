@@ -141,6 +141,16 @@ With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory vi
   - <leader> ctrl+r : restore sessions (tmux-ressurect)
 </details>
 
+<!-- Reference Links -->
+
+[`.pi/agent/extensions/handoff.ts`]: ./.pi/agent/extensions/handoff.ts
+[`.pi/agent/extensions/notify.ts`]: ./.pi/agent/extensions/notify.ts
+[`.pi/agent/extensions/summarize.ts`]: ./.pi/agent/extensions/summarize.ts
+[`.pi/agent/pi-permissions.jsonc`]: ./.pi/agent/pi-permissions.jsonc
+[`.pi/agent/extensions/exa-websearch/`]: ./.pi/agent/extensions/exa-websearch/
+[`.pi/agent/extensions/skill-autocomplete.ts`]: ./.pi/agent/extensions/skill-autocomplete.ts
+[`.pi/agent/prompts/deepresearch.md`]: ./.pi/agent/prompts/deepresearch.md
+
 [`mise.toml`]: ./mise.toml
 [`.config/mise/config.toml`]: ./.config/mise/config.toml
 [`~/.zshenv`]: ./.config/.zshenv
@@ -153,3 +163,20 @@ With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory vi
 [phaazon/hop.nvim]: https://github.com/phaazon/hop.nvim
 [tpope/vim-surround]: https://github.com/tpope/vim-surround
 [startup files | zsh]: https://zsh.sourceforge.io/Doc/Release/Files.html#Startup_002fShutdown-Files
+[badlogic/pi-mono]: https://github.com/badlogic/pi-mono
+[mitsuhiko/agent-stuff]: https://github.com/mitsuhiko/agent-stuff
+[MasuRii/pi-permission-system]: https://github.com/MasuRii/pi-permission-system
+[ayagmar/pi-extmgr]: https://github.com/ayagmar/pi-extmgr
+[nicobailon/pi-subagents]: https://github.com/nicobailon/pi-subagents
+[pi-context]: https://github.com/ttttmr/pi-context
+[pi-token-burden]: https://github.com/Whamp/pi-token-burden
+[agent skills]: https://skills.sh/
+[Skills CLI]: https://skills.sh/
+[mise]: https://mise.jdx.dev/
+[getcompanion-ai/feynman]: https://github.com/getcompanion-ai/feynman
+[kepano/defuddle]: https://github.com/kepano/defuddle
+[thinkscape/agent-smart-fetch]: https://github.com/Thinkscape/agent-smart-fetch
+
+
+[tintinweb/pi-subagents]: https://x.com/nicht_tintin/status/2031119030224920979
+[pasky/pi-side-agents]: https://x.com/xpasky/status/2028273594782855267
