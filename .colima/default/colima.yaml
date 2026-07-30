@@ -1,0 +1,65 @@
+cpu: 4
+disk: 100
+memory: 4
+arch: aarch64
+runtime: docker
+hostname: colima
+rosetta: false
+nestedVirtualization: false
+
+# Auto-activate on the Host for client access.
+autoActivate: true
+
+# Forward the host's SSH agent to the virtual machine.
+forwardAgent: false
+
+# vz is macOS virtualization framework and requires macOS 13. (krunkit, qemu or vz)
+vmType: vz
+
+# Enable foreign architecture emulation via binfmt (e.g. amd64 on arm64, arm64 on amd64)
+binfmt: true
+
+# Size of the disk in GiB for the root filesystem of the virtual machine.
+rootDisk: 20
+
+# Custom provision scripts - https://colima.run/docs/configuration/#provisioning
+provision: null
+
+# Modify ~/.ssh/config automatically to include a SSH config for the virtual machine.
+# SSH config will still be generated in $COLIMA_HOME/ssh_config regardless.
+sshConfig: true
+
+# VM mounts - https://colima.run/docs/configuration/#volume-mounts
+mounts: []
+
+# VM environment variables - https://colima.run/docs/configuration/#environment-variables 
+env: {}
+
+kubernetes:
+  enabled: false
+  version: v1.35.0+k3s1
+  k3sArgs:
+    - --disable=traefik
+  # Kubernetes port to listen on (default: random port)
+  port: 0
+
+network:
+  address: false
+  mode: shared
+  interface: en0
+  # Custom DNS resolvers for the virtual machine.
+  dns: null
+  gatewayAddress: 192.168.5.2
+
+# Docker daemon configuration that maps directly to daemon.json.
+docker:
+  features:
+    buildkit: true
+
+# Volume mount driver for the virtual machine (virtiofs, 9p, sshfs).
+# virtiofs is limited to macOS and vz VMs
+mountType: virtiofs
+
+# Propagate inotify file events to the VM.
+# NOTE: this is experimental.
+mountInotify: true
