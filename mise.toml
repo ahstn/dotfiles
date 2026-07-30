@@ -13,7 +13,10 @@ dotfiles.default_mode = "symlink"
 "~/.config/ghostty" = { source = ".config/ghostty" }
 "~/.config/herdr" = { source = ".config/herdr" }
 "~/.config/tmux" = { source = ".config/tmux" }
+
+# ZSH - Separate handling for SSH & local sessions.
 "~/.config/zsh" = { source = ".config/zsh" }
+"~/.zshenv" = { source = ".config/zsh/.zshenv" }
 
 # Pi & Oh-my-pi 
 # Pi for everyday, small tasks. Oh-my-pi for more complex, multi-step tasks.
@@ -28,7 +31,6 @@ dotfiles.default_mode = "symlink"
 # Standalone files - sourced in ~/.config/ for organization, but symlinked to home
 "~/.bash_profile" = { source = ".config/.bash_profile" }
 "~/.inputrc" = { source = ".config/.inputrc" }
-"~/.zshenv" = { source = ".config/.zshenv" }
 
 # Avoid clashing with repo level Git config
 "~/.gitconfig" = { source = "./.config/git/.gitconfig", mode = "symlink" }

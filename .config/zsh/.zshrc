@@ -4,7 +4,7 @@ ZSH_HOME="${HOME}/.config/zsh"
 [[ -r "${ZSH_HOME}/.zsh-plugins" ]] && source "${ZSH_HOME}/.zsh-plugins"
 
 # Aliases, Functions & Environment Variables
-[[ -r "${ZSH_HOME}/.zsh-env" ]] && source "${ZSH_HOME}/.zsh-env"
+[[ -r "${ZSH_HOME}/.zsh-interactive-env.sh" ]] && source "${ZSH_HOME}/.zsh-interactive-env.sh"
 
 # Private & Sensitive Values
 [[ -r "${ZSH_HOME}/.zsh-private" ]] && source "${ZSH_HOME}/.zsh-private"
@@ -16,20 +16,22 @@ ZSH_HOME="${HOME}/.config/zsh"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[fzf] )) && source <(fzf --zsh) 
 [[ -r ~/.cargo/env ]] && source ~/.cargo/env
-[[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun" && export PATH="$BUN_INSTALL/bin:$PATH"
 
 # Completion search paths
 [[ -d /opt/homebrew/share/zsh/site-functions ]] && fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
 [[ -d /usr/local/share/zsh/site-functions ]] && fpath=(/usr/local/share/zsh/site-functions $fpath)
 [[ -d "$HOME/.local/share/zsh/site-functions" ]] && fpath=("$HOME/.local/share/zsh/site-functions" $fpath)
 
-
 # Enable the completion system after PATH/fpath setup
-autoload -Uz compinit && compinit
-if (( $+functions[zcompile-many] )) && [[ ! ~/.zcompdump.zwc -nt ~/.zcompdump ]]; then
-  zcompile-many ~/.zcompdump
+autoload -Uz compinit && compinit -d "${ZSH_HOME}/.zcompdump"
+if (( $+functions[zcompile-many] )) && [[ ! "${ZSH_HOME}/.zcompdump.zwc" -nt "${ZSH_HOME}/.zcompdump" ]]; then
+  zcompile-many "${ZSH_HOME}/.zcompdump"
 fi
 (( $+functions[zcompile-many] )) && unfunction zcompile-many
+
+# Bun registers its completion with compinit; source it after compinit so it
+# does not initialize the completion system a second time.
+[[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun" && export PATH="$BUN_INSTALL/bin:$PATH"
 
 # Tool-specific completions
 (( $+commands[kubectl] )) && source <(kubectl completion zsh 2>/dev/null)
