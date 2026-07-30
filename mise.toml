@@ -10,6 +10,7 @@ dotfiles.default_mode = "symlink"
 [dotfiles]
 # Listing only directories & files to inherit, ignoring others that shouldn't be tracked (e.g. `~/.aws`)
 "~/.config/mise/config.toml" = { source = ".config/mise/config.toml" }
+"~/.config/cron" = { source = ".config/cron" }
 "~/.config/ghostty" = { source = ".config/ghostty" }
 "~/.config/herdr" = { source = ".config/herdr" }
 "~/.config/tmux" = { source = ".config/tmux" }
@@ -35,3 +36,7 @@ dotfiles.default_mode = "symlink"
 # Avoid clashing with repo level Git config
 "~/.gitconfig" = { source = "./.config/git/.gitconfig", mode = "symlink" }
 "~/.gitignore" = { source = "./.config/git/.gitignore", mode = "symlink" }
+
+[tasks.bootstrap]
+description = "Install user crontab"
+run = "crontab ~/.config/cron/ahstn.crontab"

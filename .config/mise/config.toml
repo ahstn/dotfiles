@@ -30,7 +30,7 @@ lima = "latest"
 # general cli
 ripgrep = "latest"
 starship = "latest"
-eza = "0.23.4"
+eza = "0.23.5"
 fd = "latest"
 bat = "latest"
 tmux = "latest"
@@ -68,6 +68,7 @@ ll = "eza -la --icons --group-directories-first"
 
 # linux servers
 "apt:curl" = "latest"
+"apt:cron" = "latest"
 "apt:neovim" = "latest"
 "apt:git" = "latest"
 "apt:gcc" = "latest"

@@ -1,0 +1,5 @@
+SHELL=/bin/zsh
+PATH=/Users/ahstn/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+# Update mise-managed tools every Monday at 09:00 local time.
+0 9 * * 1 /Users/ahstn/.local/bin/mise up --bump --yes --minimum-release-age 3d
