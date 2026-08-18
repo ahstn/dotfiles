@@ -14,6 +14,7 @@ dotfiles.default_mode = "symlink"
 "~/.config/ghostty" = { source = ".config/ghostty" }
 "~/.config/herdr" = { source = ".config/herdr" }
 "~/.config/tmux" = { source = ".config/tmux" }
+"~/.config/dcg" = { source = ".config/dcg" }
 
 # ZSH - Separate handling for SSH & local sessions.
 "~/.config/zsh" = { source = ".config/zsh" }
