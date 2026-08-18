@@ -12,6 +12,6 @@ Can another engineer (or agent) understand this code without the author explaini
 - **Are abstractions earning their complexity?** (Don't generalize until the third use case)
 - Would comments help clarify non-obvious intent? (But don't comment obvious code.)
 - Are there dead code artifacts: no-op variables (`_unused`), backwards-compat shims, or `// removed` comments?
-
+- Search for `AGENTS.md` files, does this change adhere to the project conventions and patterns? (If not, why not?)
 
 Do not turn this axis into formatting review.

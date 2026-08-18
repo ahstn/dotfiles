@@ -29,7 +29,7 @@ Common commands:
 
 ## Commenting rules
 
-- Prefer inline comments on the changed line or smallest valid diff range.
+- Always use inline comments, commenting on the changed line or smallest valid diff range.
 - Keep one comment per distinct issue.
 - Do not post top-level `LGTM` or `no issues` comments unless explicitly requested.
 - Draft findings first, then post only after aggregation and deduplication.
@@ -52,3 +52,27 @@ Before sending comments:
 3. verify each posted comment is still relevant to the latest patch
 
 If these checks fail, refresh the review context before posting.
+
+
+## Formatting
+
+Use a single `shields.io` badge to indicate the comment and finding severity followed by the review axis, e.g.
+
+```md
+![Static Badge](https://img.shields.io/badge/severity-P1-red)
+
+**Correctness**
+```
+
+```md
+![Static Badge](https://img.shields.io/badge/severity-P2-orange)
+
+**Performance**
+```
+
+Where valid badges are:
+
+- `/badge/severity-P1-red`
+- `/badge/severity-P2-orange`
+- `/badge/severity-P3-yellow`
+- `/badge/severity-nitpick-blue`

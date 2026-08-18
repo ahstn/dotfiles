@@ -108,6 +108,8 @@ The main agent is responsible for synthesis.
 - do not report speculative or weakly grounded concerns
 - do not restate obvious code or existing comments unless adding new value
 
+Comment(s) posted should follow a Flesch–Kincaid readability score between 60 and 80 and use ASD-STE100 Technical English.
+
 ### 5. Verify before finalizing
 
 Before returning or posting findings, confirm:
