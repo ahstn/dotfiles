@@ -1,12 +1,24 @@
-# Structural Quality and Simplification
+# Dead Code & Simplification Axis
 
-Use this reference when a change affects module structure, control flow, type contracts, ownership boundaries, orchestration, a large file, or dead code. Apply it as a strict review rubric, not as permission to demand speculative rewrites.
+Focus on code and concepts the patch can remove or avoid. This axis owns dead code, obsolete paths, unnecessary abstractions, state-space growth, avoidable branching, and concrete structural simplifications across every changed file.
 
 ## Core standard
 
 Correct behavior is necessary but not sufficient. Prefer a design that preserves behavior while deleting concepts, branches, modes, wrappers, state, or cross-layer knowledge.
 
 Look for a concrete "code judo" move: a reframe that uses the existing architecture better and makes the implementation smaller, more direct, and easier to explain. A structural finding must identify the complexity added, a plausible simpler direction, and the material maintenance cost. Do not block on taste or an imagined rewrite.
+
+## Ownership boundary
+
+This axis decides whether code or a concept should exist and gives the simpler design direction. Other axes own the behavior and placement of code that remains:
+
+- correctness owns behavior, invariants, failure paths, ordering, and atomicity
+- maintainability owns local clarity, naming, comments, and scan cost
+- architecture owns canonical placement, dependency direction, coupling, and contract boundaries
+- security owns trust boundaries and exploit paths
+- performance owns measured or plausible runtime cost
+
+When one hunk raises several concerns, report it here only when the primary remedy deletes or collapses code, concepts, states, or paths. Otherwise leave the finding to the owning axis. The main reviewer deduplicates overlap.
 
 ## Required checks
 
@@ -35,25 +47,25 @@ Look for a concrete "code judo" move: a reframe that uses the existing architect
 - Flag thin wrappers, identity abstractions, pass-through helpers, and speculative layers that add indirection without clarity.
 - Do not replace one tangled function with many tiny helpers that preserve the same cognitive load.
 
-### 5. Type and boundary cleanliness
+### 5. State-space simplification
 
-- Question new `any`, `unknown`, casts, optional parameters, loosely shaped objects, and silent fallbacks when the real invariant can be explicit.
-- Prefer typed models and shared contracts that reduce possible states and simplify control flow.
-- Flag implementation details that leak through an API or feature logic that leaks into a general-purpose path.
+- Question new `any`, `unknown`, casts, optional parameters, loosely shaped objects, and silent fallbacks when they multiply possible states or force extra branches.
+- Prefer an explicit model or dispatcher when it removes invalid states and simplifies control flow.
+- Leave broken contract, boundary, and invariant findings to architecture or correctness unless the primary remedy is to collapse the state model.
 
-### 6. Canonical ownership and reuse
+### 6. Duplication and canonical reuse
 
-- Keep logic in the package, service, module, or layer that owns the concept.
-- Reuse an existing canonical helper when it matches the required semantics.
-- Flag bespoke near-duplicates, dependency-direction drift, and feature-specific logic scattered across shared code.
-- Do not force reuse when the semantics differ or sharing would create a broader abstraction than the use cases justify.
+- Reuse an existing canonical helper when it matches the required semantics and removes a duplicate path.
+- Flag bespoke near-duplicates, pass-through adapters, and feature-specific copies that increase the number of concepts or flows.
+- Do not force reuse when semantics differ or sharing would require a broader abstraction than the use cases justify.
+- Leave placement and dependency-direction findings to architecture unless relocation is part of a concrete simplification that deletes duplication.
 
-### 7. Orchestration and atomicity
+### 7. Orchestration simplification
 
-- Flag independent work that is serialized without a correctness or resource-ordering reason.
-- Flag related updates that can leave state partly applied when an atomic structure is available.
-- Prefer separation of orchestration from business logic when it makes ordering, failure, and rollback behavior explicit.
-- Do not recommend parallelism when it weakens determinism, rate control, transaction safety, or readability.
+- Flag orchestration layers, sequential stages, or intermediate state whose removal preserves behavior.
+- Prefer separating orchestration from business logic only when this reduces reachable states or makes whole failure branches unnecessary.
+- Leave atomicity and ordering failures to correctness, and runtime serialization costs to performance.
+- Do not recommend parallelism only to make the implementation look shorter.
 
 ### 8. Dead and obsolete paths
 
@@ -66,11 +78,11 @@ Look for a concrete "code judo" move: a reframe that uses the existing architect
 
 Compare the design before and after the change. Count or describe material changes in:
 
-- concepts, layers, wrappers, and ownership points
+- concepts, layers, wrappers, and indirection points
 - decision points, modes, flags, and reachable states
-- casts, optional values, fallbacks, and boundary translations
-- dependency edges and cross-module knowledge
-- sequential steps and partial-update windows
+- casts, optional values, fallbacks, and state translations
+- duplicate flows and cross-module feature knowledge
+- orchestration stages and intermediate states
 - file size, cohesion, and scan cost
 
 Use this delta to support findings. Static size or complexity in unchanged code is not a finding unless the patch worsens it or makes it directly relevant.
@@ -80,12 +92,11 @@ Use this delta to support findings. Static size or complexity in unchanged code 
 Prefer, in order:
 
 1. Reframe the model so complexity disappears.
-2. Move ownership to the canonical boundary.
-3. Collapse duplicate or special-case flows into one default path.
-4. Replace loose state with an explicit typed model or dispatcher.
-5. Delete an unearned wrapper, obsolete path, or layer.
+2. Collapse duplicate or special-case flows into one default path.
+3. Replace loose state with an explicit typed model or dispatcher.
+4. Delete an unearned wrapper, obsolete path, or layer.
+5. Reuse a canonical implementation that removes a duplicate path.
 6. Extract one cohesive helper, component, or module.
-7. Parallelize independent work or make related updates atomic when this also clarifies failure behavior.
 
 A remedy must fit the patch and surrounding architecture. Do not prescribe a broad rewrite when a smaller change removes the regression.
 
@@ -93,11 +104,11 @@ A remedy must fit the patch and surrounding architecture. Do not prescribe a bro
 
 Prioritize by severity. Within the same severity, prefer:
 
-1. structural regressions and architecture leaks
-2. missed concrete simplifications that delete substantial complexity
+1. substantial removable incidental complexity
+2. dead or obsolete code and paths
 3. branching and state-space growth
-4. type, contract, and ownership problems
-5. file decomposition and local legibility
+4. unearned abstractions, wrappers, and duplicate flows
+5. file decomposition opportunities
 
 Treat these as presumptive merge blockers when the evidence is concrete:
 
@@ -105,8 +116,7 @@ Treat these as presumptive merge blockers when the evidence is concrete:
 - a file crosses 1,000 lines without a strong cohesion reason or decomposition review
 - ad hoc branching tangles an existing flow
 - feature checks become scattered across shared code
-- a wrapper, generic mechanism, or cast-heavy contract makes a direct design more indirect
-- logic duplicates a canonical helper or lands in the wrong owning layer
-- related writes can leave invalid partial state
+- a wrapper, generic mechanism, or cast-heavy model makes a direct design more indirect
+- logic duplicates a canonical helper or preserves a redundant path
 
 Do not approve only because tests pass. Also do not block on an aesthetic preference. The final finding must name the added cost, show the relevant code, and give an actionable direction.

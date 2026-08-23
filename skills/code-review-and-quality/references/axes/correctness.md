@@ -8,7 +8,7 @@ Look for:
 - broken invariants, state transitions, or lifecycle assumptions
 - missing edge-case handling
 - missing error-path handling
-- races, ordering bugs, stale state, and off-by-one mistakes
+- races, ordering bugs, non-atomic related updates, stale state, and off-by-one mistakes
 - tests that miss the changed behavior or only test the happy path
 
 Do not spend time on style unless it obscures a correctness issue.

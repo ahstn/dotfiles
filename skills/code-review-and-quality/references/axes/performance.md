@@ -9,5 +9,6 @@ Look for:
 - unbounded loops, scans, or pagination gaps
 - extra allocations or large object churn in hot paths
 - synchronous blocking, unnecessary re-renders, or missing batching
+- independent work serialized without a correctness or resource-ordering reason
 
 Prefer concrete impact over vague "this may be slow" language.
