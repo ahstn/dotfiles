@@ -24,6 +24,18 @@ Do not block on personal taste.
 Do not approve blindly.
 Prefer discrete, actionable findings over exhaustive commentary.
 
+## Structural quality standard
+
+Correct behavior is necessary but not sufficient. For every non-trivial change, assess whether the design adds avoidable concepts, branches, modes, wrappers, state, or cross-layer knowledge.
+
+- Look for a concrete "code judo" reframe that preserves behavior while deleting complexity.
+- Reject ad hoc conditionals, scattered feature checks, magic behavior, and abstractions that do not earn their indirection.
+- Prefer direct, boring code with explicit types, clear boundaries, canonical ownership, and existing helpers.
+- Review independent orchestration for needless serialization and related updates for partial-state risk.
+- Treat a change that pushes a file from below 1,000 lines to above 1,000 lines as a strong decomposition smell, not an automatic line-count failure.
+
+Apply `references/dead-code-and-simplifying.md` when the diff materially changes structure, control flow, type contracts, ownership, orchestration, a large file, or obsolete paths. Keep structural findings evidence-based: name the added cost, point to the code, and give a plausible simpler direction. Do not demand a speculative rewrite or block on taste.
+
 ## Review frame
 
 Choose these three settings before reviewing:
@@ -98,6 +110,10 @@ Axis files for sub-agents:
 - `references/axes/security.md`
 - `references/axes/performance.md`
 
+#### Structural pass
+
+For every non-trivial diff, measure the structural delta before reporting findings. Compare concepts, decision points, modes, wrappers, type looseness, dependency edges, sequencing, atomicity, file growth, and cohesion before and after the patch.
+
 ### 4. Aggregate findings
 
 The main agent is responsible for synthesis.
@@ -107,6 +123,7 @@ The main agent is responsible for synthesis.
 - prefer issues the author would likely fix if made aware
 - do not report speculative or weakly grounded concerns
 - do not restate obvious code or existing comments unless adding new value
+- sort by severity; within the same severity, prioritize structural regressions and concrete simplifications over local legibility notes
 
 Comment(s) posted should follow a Flesch–Kincaid readability score between 60 and 80 and use ASD-STE100 Technical English.
 
@@ -118,6 +135,7 @@ Before returning or posting findings, confirm:
 - every finding is tied to a concrete file, line, symbol, or diff hunk
 - each finding includes a real failure mode or code-health cost
 - each finding has a severity label and primary axis
+- no clear structural regression remains merely because the changed behavior works or tests pass
 - delivery mode matches the request
 
 If posting to GitHub, verify inline anchors against the current PR diff before sending comments.
@@ -214,7 +232,7 @@ Read additional references only when needed:
 
 - `references/behaviour-communication.md` for comment style, severity, and disagreement handling
 - `references/github-review.md` for GitHub PR retrieval, inline anchors, stale comment handling, and posting rules
-- `references/dead-code-and-simplifying.md` when the review surfaces dead code, speculative abstraction, legacy fallbacks, or cleanup opportunities
+- `references/dead-code-and-simplifying.md` when the diff changes control flow, abstractions, type contracts, ownership, orchestration, large-file structure, or obsolete paths
 
 Keep the core review logic in this file.
 Use reference files for optional detail, not for core behavior.

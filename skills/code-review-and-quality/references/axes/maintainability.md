@@ -8,10 +8,11 @@ Can another engineer (or agent) understand this code without the author explaini
 - Is the control flow straightforward (avoid nested ternaries, deep callbacks)?
 - Is the code organized logically (related code grouped, clear module boundaries)?
 - Are there any "clever" tricks that should be simplified?
-- **Could this be done in fewer lines?** (1000 lines where 100 suffice is a failure)
-- **Are abstractions earning their complexity?** (Don't generalize until the third use case)
+- **Could this use fewer concepts, states, branches, or layers?** Prefer a simpler model over line-count reduction alone.
+- **Are abstractions earning their complexity?** Do not generalize before the use cases justify it.
+- If the change materially alters structure or pushes a file across 1,000 lines, also apply `../dead-code-and-simplifying.md`.
 - Would comments help clarify non-obvious intent? (But don't comment obvious code.)
 - Are there dead code artifacts: no-op variables (`_unused`), backwards-compat shims, or `// removed` comments?
-- Search for `AGENTS.md` files, does this change adhere to the project conventions and patterns? (If not, why not?)
+- Does the change follow all applicable project guidance and established local patterns? If it diverges, is the reason explicit?
 
 Do not turn this axis into formatting review.

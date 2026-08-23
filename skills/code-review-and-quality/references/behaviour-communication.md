@@ -54,6 +54,7 @@ Guidelines:
 - state conditionality explicitly when severity depends on inputs or environment
 - make inferences explicit rather than presenting them as facts
 - avoid praise, filler, and hedging
+- state material structural regressions directly; do not soften a merge blocker into an optional cleanup request
 
 Bad:
 

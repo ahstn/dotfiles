@@ -50,7 +50,7 @@ That gives you real progressive disclosure:
 - single-agent mode can stay on the core SKILL.md
 - parallel mode loads only the per-axis file relevant to each sub-agent
 - GitHub mode adds references/github-review.md
-- simplification only loads when the diff suggests it
+- structural review and simplification load `references/dead-code-and-simplifying.md` when the diff changes control flow, abstractions, ownership, types, orchestration, a large file, or obsolete paths
 - optional tone/style layers can be loaded later without contaminating core review logic
 
 ## GitHub PR Mode
