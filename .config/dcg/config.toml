@@ -1,0 +1,24 @@
+[packs]
+enabled = [
+  "database.postgresql", # Blocks DROP TABLE, TRUNCATE
+  "remote.rsync",
+  "containers.docker",   # Blocks docker system prune
+  "platform.github",
+  "system.disk",
+
+  #  Cloud Environments
+  "cloud.aws",
+  "storage.s3",
+  "kubernetes.kubectl",
+  "kubernetes.helm",
+  "infrastructure.terraform",
+]
+
+[agents.codex]
+trust_level = "medium"
+
+[agents.pi]
+trust_level = "medium"
+
+[agents.claude-code]
+trust_level = "low"

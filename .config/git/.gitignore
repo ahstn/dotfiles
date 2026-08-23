@@ -1,5 +1,8 @@
 # Mise local environment configuration
 mise.local.toml
-    
+
+# Sub-agent output and artifacts
+.pi-subagents/artifacts
+
 .DS_Store
 **/DS_Store

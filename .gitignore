@@ -10,9 +10,13 @@ packer_compiled.lua
 # pi
 .pi/agent/auth.json
 .pi/agent/models-store.json
+.pi/agent/mcp-cache.json
+.pi/agent/.extmgr-cache
 .pi/agent/sessions
+.pi/agent/missions
 .pi/agent/bin
 .pi/agent/npm
+.pi-subagents/artifacts
 **/node_modules
 exa-usage.json
 run-history.jsonl

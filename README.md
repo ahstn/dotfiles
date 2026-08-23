@@ -44,6 +44,8 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
     - Alternatives: [tintinweb/pi-subagents] and [pasky/pi-side-agents]
 - [pi-token-burden] - Claude-like context command with granular token counts per tool, mcp, etc
     - Alternatives: [pi-context]
+- [juicesharp/rpiv-ask-user-question] - Multi-question answer flow with recommendations and manual additional choice entry.
+    - Alternatives: [devkade/pi-ask-tool] (previously used) and [nicobailon/pi-interview]
 
 ### Acknowledgements
 
@@ -171,3 +173,5 @@ With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory vi
 
 [tintinweb/pi-subagents]: https://x.com/nicht_tintin/status/2031119030224920979
 [pasky/pi-side-agents]: https://x.com/xpasky/status/2028273594782855267
+[devkade/pi-ask-tool]: https://github.com/devkade/pi-ask-tool
+[nicobailon/pi-interview]: https://github.com/nicobailon/pi-interview-tool
