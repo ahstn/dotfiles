@@ -3,7 +3,12 @@ experimental = true
 color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
 minimum_release_age = "3d"
-trusted_config_paths = ['~/git/', '~/.codex/worktrees/', '~/.herdr/worktrees/']
+trusted_config_paths = [
+    '~/git/',
+    '~/.codex/worktrees/',
+    '~/.herdr/worktrees/',
+    '~/.bb/worktrees/',
+]
 
 [tools]
 # languages and tooling
@@ -44,6 +49,8 @@ fzf = "latest"
 # misc & unsorted
 "npm:@tobilu/qmd" = "latest"
 "npm:agent-browser" = "latest"
+"github:Dicklesworthstone/destructive_command_guard" = "latest"
+bun = "latest"
 
 
 [hooks]
@@ -54,10 +61,10 @@ run = "gh auth status || gh auth login"
 
 [shell_alias]
 ll = "eza -la --icons --group-directories-first"
+pi-update = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
 
 [bootstrap.repos]
 "~/git/dotfiles" = { url = "git@github.com:ahstn/dotfiles.git", ref = "main" }
-"~/.pi" = { url = "git@github.com:ahstn/pi.git", ref = "main" }
 
 [bootstrap.packages]
 # macOS
