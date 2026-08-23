@@ -1,5 +1,7 @@
 {
     "files.associations": {
         ".config/zsh/**": "shellscript",
-    }
+        "*.json": "jsonc",
+    },
+    "json.format.keepLines": true
 }
