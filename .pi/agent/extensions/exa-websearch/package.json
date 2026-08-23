@@ -2,6 +2,9 @@
   "name": "pi-exa-websearch-extension",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test index.test.ts"
+  },
   "dependencies": {
     "exa-js": "^2.13.0",
     "typebox": "^1.1.38"

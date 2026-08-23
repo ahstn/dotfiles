@@ -53,10 +53,20 @@ const PageSection = Type.Union([
   Type.Literal("metadata"),
 ]);
 
+const DEFAULT_HIGHLIGHT_CHARACTERS = 360;
+const DEFAULT_TEXT_CHARACTERS = 700;
+const MAX_VISIBLE_OUTPUT_CHARACTERS = 50_000;
+
 function compactSnippet(text: string, maxLength = 280) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function boundedOutput(text: string) {
+  if (text.length <= MAX_VISIBLE_OUTPUT_CHARACTERS) return text;
+  const notice = "\n\nOutput truncated at 50,000 characters.";
+  return `${text.slice(0, MAX_VISIBLE_OUTPUT_CHARACTERS - notice.length).trimEnd()}${notice}`;
 }
 
 function asList(value?: string[]) {
@@ -175,7 +185,13 @@ function sanitizeSearchOptions(params: any, options: Record<string, any>) {
   return warnings;
 }
 
-function appendResult(lines: string[], result: any, index: number, indent = "") {
+function appendResult(
+  lines: string[],
+  result: any,
+  index: number,
+  params: any,
+  indent = "",
+) {
   lines.push(`${indent}${index + 1}. ${result.title || "Untitled"}`);
   lines.push(`${indent}   URL: ${result.url}`);
   if (result.publishedDate) lines.push(`${indent}   Published: ${result.publishedDate}`);
@@ -185,9 +201,11 @@ function appendResult(lines: string[], result: any, index: number, indent = "") 
   }
 
   if (Array.isArray(result.highlights) && result.highlights.length > 0) {
+    const maxHighlightCharacters =
+      params.maxHighlightCharacters ?? DEFAULT_HIGHLIGHT_CHARACTERS;
     lines.push(`${indent}   Highlights:`);
     result.highlights.slice(0, 3).forEach((highlight: string) => {
-      lines.push(`${indent}   - ${compactSnippet(highlight, 360)}`);
+      lines.push(`${indent}   - ${compactSnippet(highlight, maxHighlightCharacters)}`);
     });
   }
 
@@ -196,7 +214,8 @@ function appendResult(lines: string[], result: any, index: number, indent = "") 
   }
 
   if (typeof result.text === "string" && result.text.trim()) {
-    lines.push(`${indent}   Text: ${compactSnippet(result.text, 700)}`);
+    const maxTextCharacters = params.maxTextCharacters ?? DEFAULT_TEXT_CHARACTERS;
+    lines.push(`${indent}   Text: ${compactSnippet(result.text, maxTextCharacters)}`);
   }
 
   if (result.extras?.links?.length) {
@@ -263,6 +282,38 @@ function appendStatuses(lines: string[], response: any) {
     lines.push(`- ${status.id}: ${status.status}${status.source ? ` (${status.source})` : ""}`);
   });
   lines.push("");
+}
+
+export function formatExaResponse(
+  operation: "search" | "contents",
+  params: any,
+  response: any,
+  warnings: string[] = [],
+) {
+  const lines: string[] = [];
+  lines.push(
+    operation === "contents"
+      ? `Exa contents for ${params.urls?.length ?? 0} URL(s)`
+      : `Exa search results for: ${params.query}`,
+  );
+  lines.push(`Operation: ${operation}`);
+  lines.push(`Results: ${response.results?.length ?? 0}`);
+  appendResponseMetadata(lines, response);
+  if (warnings.length > 0) {
+    lines.push("Warnings:");
+    warnings.forEach((warning) => lines.push(`- ${warning}`));
+  }
+  lines.push("");
+
+  appendSynthesizedOutput(lines, response);
+
+  (response.results ?? []).forEach((result: any, index: number) => {
+    appendResult(lines, result, index, params);
+  });
+
+  appendStatuses(lines, response);
+
+  return boundedOutput(lines.join("\n").trim());
 }
 
 export default function exaWebsearchExtension(pi: ExtensionAPI) {
@@ -527,31 +578,8 @@ export default function exaWebsearchExtension(pi: ExtensionAPI) {
         response = await exa.search(params.query, searchOptions as any);
       }
 
-      const lines: string[] = [];
-      lines.push(
-        operation === "contents"
-          ? `Exa contents for ${params.urls?.length ?? 0} URL(s)`
-          : `Exa search results for: ${params.query}`,
-      );
-      lines.push(`Operation: ${operation}`);
-      lines.push(`Results: ${response.results?.length ?? 0}`);
-      appendResponseMetadata(lines, response);
-      if (warnings.length > 0) {
-        lines.push("Warnings:");
-        warnings.forEach((warning) => lines.push(`- ${warning}`));
-      }
-      lines.push("");
-
-      appendSynthesizedOutput(lines, response);
-
-      (response.results ?? []).forEach((result: any, index: number) => {
-        appendResult(lines, result, index);
-      });
-
-      appendStatuses(lines, response);
-
       return {
-        content: [{ type: "text", text: lines.join("\n").trim() }],
+        content: [{ type: "text", text: formatExaResponse(operation, params, response, warnings) }],
         details: {
           toolCallId,
           operation,

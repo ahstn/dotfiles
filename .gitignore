@@ -9,7 +9,6 @@ packer_compiled.lua
 
 # pi
 .pi/agent/auth.json
-.pi/agent/trust.json
 .pi/agent/models-store.json
 .pi/agent/sessions
 .pi/agent/bin
