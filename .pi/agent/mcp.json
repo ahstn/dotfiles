@@ -1,0 +1,15 @@
+{
+  "settings": {
+    "outputGuard": {
+      "maxBytes": 51200,
+      "maxLines": 2000
+    },
+    // require approval for tools that match these patterns
+    "approveTools": [
+      "github_delete_*",
+      "notion_update_*",
+      "notion_create_*"
+    ]
+  },
+  "mcpServers": {}
+}
