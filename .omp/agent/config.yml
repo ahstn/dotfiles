@@ -1,11 +1,34 @@
 providers: 
-  webSearch: exa
   openaiWebsockets: "on"
   openrouterVariant: default
+  webSearchOrder: 
+    - exa
+    - perplexity
+    - gemini
+    - anthropic
+    - codex
+    - xai
+    - zai
+    - tinyfish
+    - jina
+    - kagi
+    - tavily
+    - firecrawl
+    - brave
+    - kimi
+    - parallel
+    - synthetic
+    - searxng
+    - startpage
+    - duckduckgo
+    - ecosia
+    - google
+    - mojeek
+    - public
 symbolPreset: unicode
 theme: 
   dark: dark-catppuccin
-setupVersion: 1
+setupVersion: 2
 statusLine: 
   separator: pipe
   preset: default
@@ -21,14 +44,12 @@ task:
     mode: none
     commits: ai
   maxConcurrency: 12
-exa: 
-  enableResearcher: true
 todo: 
   eager: default
 tools: 
-  discoveryMode: mcp-only
+  {}
 mcp: 
-  discoveryMode: true
+  {}
 bashInterceptor: 
   enabled: true
 bash: 
@@ -37,9 +58,13 @@ bash:
 retry: 
   maxRetries: 2
 modelRoles: 
-  default: openai-codex/gpt-5.6-sol:high
+  default: openai-codex/gpt-5.6-sol:medium
   smol: openai-codex/gpt-5.6-luna:high
   vision: openai-codex/gpt-5.6-luna:high
-  advisor: anthropic/claude-fable-5:medium
+  advisor: anthropic/claude-fable-5:high
 tier: 
   openai: auto
+dev: 
+  autoqaConsent: granted
+composer: 
+  shape: pi
