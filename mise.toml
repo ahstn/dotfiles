@@ -24,6 +24,8 @@ dotfiles.default_mode = "symlink"
 # Pi for everyday, small tasks. Oh-my-pi for more complex, multi-step tasks.
 "~/.pi/" = { source = ".pi" }
 "~/.omp/agent/config.yml" = { source = ".omp/agent/config.yml" }
+"~/.omp/agent/models.yml" = { source = ".omp/agent/models.yml" }
+"~/.omp/agent/extensions/openrouter-routing.ts" = { source = ".omp/agent/extensions/openrouter-routing.ts" }
 "~/.omp/agent/APPEND_SYSTEM.md" = { source = ".omp/agent/APPEND_SYSTEM.md" }
 
 # Skills - NB: Some harnesses don't resolve symlinks.
