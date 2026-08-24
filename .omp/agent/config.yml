@@ -68,3 +68,14 @@ dev:
   autoqaConsent: granted
 composer: 
   shape: pi
+
+# Ensure Claude Code's "superpower" skills are ignored.
+# `claude plugin uninstall superpowers@claude-plugins-official`
+skills:
+  enableClaudeUser: false
+  enableClaudeProject: false
+  ignoredSkills:
+    - "*superpower*"
+    - "subagent-driven-development"
+    - "brainstorming"
+    - "writing-plans"
