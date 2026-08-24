@@ -46,6 +46,8 @@ When one hunk raises several concerns, report it here only when the primary reme
 - Prefer direct, boring code over magic, generic machinery, or hidden data-shape assumptions.
 - Flag thin wrappers, identity abstractions, pass-through helpers, and speculative layers that add indirection without clarity.
 - Do not replace one tangled function with many tiny helpers that preserve the same cognitive load.
+- Prefer a language, framework, or project primitive over custom plumbing when it provides the exact required semantics and removes code.
+- If behavior is unconditional, encode it directly rather than preserving a hook, option, or callback whose only supported value enables that behavior.
 
 ### 5. State-space simplification
 
@@ -57,6 +59,7 @@ When one hunk raises several concerns, report it here only when the primary reme
 
 - Reuse an existing canonical helper when it matches the required semantics and removes a duplicate path.
 - Flag bespoke near-duplicates, pass-through adapters, and feature-specific copies that increase the number of concepts or flows.
+- Consolidate repeated literals, allowlists, encoders, and status tests only when one canonical definition can replace all copies without adding a generic framework.
 - Do not force reuse when semantics differ or sharing would require a broader abstraction than the use cases justify.
 - Leave placement and dependency-direction findings to architecture unless relocation is part of a concrete simplification that deletes duplication.
 
@@ -71,6 +74,7 @@ When one hunk raises several concerns, report it here only when the primary reme
 
 - Flag unreachable or unused code introduced or exposed by the change.
 - Flag fallback paths, compatibility shims, feature toggles, config knobs, dead comments, and removed-code markers kept without a current requirement.
+- Remove superseded tests, fixtures, docs, generated outputs, and comments with the obsolete path when the patch makes them unreachable or false.
 - Suggest removal only when code is clearly unused, superseded, or misleading.
 - Respect explicit migration and backward-compatibility requirements. If intent is unclear, report the ambiguity instead of assuming deletion is safe.
 

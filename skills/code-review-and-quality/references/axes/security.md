@@ -29,6 +29,7 @@ Treat client code, headers, filenames, URLs, queue messages, database content, c
 - Can stale sessions, revoked credentials, or privilege changes remain effective longer than the stated contract?
 - Are state-changing browser requests protected according to the application’s CSRF and cookie model?
 - Do administrative or service credentials cross into lower-trust code or logs?
+- Are roles, scopes, tenant claims, and token metadata validated for authority and meaning rather than accepted because the fields are present?
 
 Centralize policy decisions where practical, but verify that every entry path reaches the policy. A hidden route around a central check is still a defect.
 
@@ -41,6 +42,7 @@ Centralize policy decisions where practical, but verify that every entry path re
 - Are filenames and paths resolved and then constrained to the intended root?
 - Are archive entries, redirects, and nested content checked at each relevant boundary?
 - Does malformed input fail closed without exposing parser internals or partial trusted state?
+- Are identifiers, counts, prices, offsets, and other values returned by external providers validated before path construction, interpolation, aggregation, or allocation?
 
 Prefer allowlists for finite domains. Preserve the original value only when audit or signature verification requires it.
 
@@ -63,6 +65,8 @@ Sanitization is not a universal substitute for parameterization or contextual en
 - Is password storage adaptive, salted, and delegated to the project’s established password-hashing library?
 - Are nonces, initialization vectors, salts, and keys generated with cryptographic randomness and used according to the primitive’s contract?
 - Does data collection, persistence, caching, and response shaping expose more sensitive data than the operation needs?
+- If private-key or secret files can be mounted by path, are accepted roots, file type, permissions, and symlink behavior constrained before reading?
+- Are sensitive caches partitioned by identity, tenant, and authorization context, and cleared when those grants expire?
 
 Do not propose custom cryptography. Report the broken property and direct the author to the project’s approved primitive or security owner.
 
@@ -73,6 +77,7 @@ Do not propose custom cryptography. Report the broken property and direct the au
 - Do security-relevant actions record actor, action, target, outcome, and correlation data without recording secrets?
 - Can attackers suppress, flood, or bypass the audit path through an alternate flow?
 - Are authorization failures distinguishable to operators while remaining appropriately opaque to callers?
+- Are audit and request-log query endpoints authorized for the selected tenant and filters, with server-side bounds and field redaction?
 
 Logging is not a security control if the event cannot be tied to an actor and target or if sensitive data makes the log itself hazardous.
 
@@ -89,6 +94,8 @@ Logging is not a security control if the event cannot be tied to an actor and ta
 
 - Can an untrusted caller trigger unbounded work, storage, fan-out, recursion, retries, or concurrency?
 - Are request size, batch size, pagination, timeout, queue, and decompression limits enforced before resource exhaustion?
+- Are streaming and chunked bodies counted as they are read, so a missing or false declared length cannot bypass the request limit?
+- Are concurrency, retry, and polling limits enforced at the scope where an attacker would otherwise multiply them across requests or identities?
 - Can expensive authorization, search, regex, cryptographic, or parsing work be amplified cheaply?
 - Are rate limits keyed to an identity or resource that an attacker cannot rotate without cost?
 - Does failure release connections, locks, file descriptors, memory, and worker capacity?

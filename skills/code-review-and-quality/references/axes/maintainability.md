@@ -28,6 +28,7 @@ Report the point where comprehension fails and the change that restores it. Do n
 - Are units, coordinate systems, time bases, encodings, and ownership visible in names or types?
 - Does one concept use one term across code, tests, logs, and documentation?
 - Are abbreviations standard in the project and unambiguous to the intended reader?
+- Do names that cross a wire, schema, CLI, configuration, or logging boundary preserve the exact canonical spelling and meaning?
 
 Rename when the current name can lead a caller to use the value incorrectly. Do not churn established vocabulary for a synonym.
 
@@ -62,6 +63,7 @@ Prefer explicit inputs and outputs over hidden ambient state. Do not require dep
 - Are side effects visible from the name, receiver, or surrounding API?
 - Are errors handled or enriched where useful context exists, without repeated wrapping that hides the cause?
 - Does the function preserve project conventions for return values, errors, and ownership?
+- Do failures identify the action, relevant object, expected state, and observed state without exposing secrets?
 
 Architecture owns public boundary shape and dependency direction. This axis owns whether the local interface is understandable where it is used.
 
@@ -71,6 +73,9 @@ Architecture owns public boundary shape and dependency direction. This axis owns
 - Are invariants and surprising side effects documented at the narrowest useful location?
 - Do public comments describe the caller-visible contract rather than repeat the declaration?
 - Are stale comments, copied explanations, disabled code, or misleading examples left behind?
+- Are generated files changed through their source and regeneration path rather than patched as independent truth?
+- Do quantitative or historical claims name the authoritative artifact, command, version, or date needed to reproduce them?
+- Do examples use current flags, paths, and prerequisites, and can a reader run them in the stated context?
 - Can clearer code remove a comment that only translates syntax into prose?
 
 Treat a false comment as a defect. Do not request comments for code that can state the fact directly.
@@ -82,6 +87,8 @@ Treat a false comment as a defect. Do not request comments for code that can sta
 - Do assertions show the contract failure clearly?
 - Are repeated scenarios table-driven or parameterized when that improves comparison and preserves distinct failure output?
 - Are helper layers shallow enough that a failing test can be understood without tracing a miniature framework?
+- Does shared setup use the test harness lifecycle or a lazy fixture instead of import-time work and ambient process-state mutation?
+- When a helper or fixture fails, does the failure identify which contract probe did not reach its intended state?
 
 ## Finding bar
 

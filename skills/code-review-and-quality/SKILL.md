@@ -75,6 +75,19 @@ Local defaults:
 
 For GitHub PR review, read `references/github-review.md`.
 
+#### Existing review comments and historical findings
+
+When review comments or prior findings are available, use them as evidence leads, not as ground truth.
+
+- Inventory every accessible inline comment, reply, review body, and top-level comment before drawing conclusions from review history.
+- Classify each material concern as still valid, fixed or stale, outside the current diff, incorrect, or unverifiable from available evidence.
+- Inspect the referenced code and current patch. Do not infer a defect from comment text alone.
+- Generalize a concern only when it names an observable invariant, failure mode, trust boundary, cost shape, or maintenance burden that applies beyond one repository or implementation.
+- Map each valid generic concern to one owner axis. Add a new check only when the current rubric and finding bar would not already catch it.
+- Keep protocol- or framework-specific details only when that protocol or framework defines the contract under review.
+
+This pre-emption pass should improve recall without training the rubric to repeat stale comments or one-off implementation advice.
+
 ### 3. Inspect the change
 
 #### Single-agent mode
@@ -133,6 +146,7 @@ Before returning or posting findings, confirm:
 - each finding has a severity label and primary axis
 - no clear structural regression remains merely because the changed behavior works or tests pass
 - delivery mode matches the request
+- available review comments and historical findings were reconciled, and each valid recurring concern is covered once by its owner axis
 
 If posting to GitHub, verify inline anchors against the current PR diff before sending comments.
 

@@ -28,6 +28,7 @@ State the cost as a relationship when possible: one query per row, two full payl
 - Are full scans, global sorts, or repeated aggregations performed when the caller needs a bounded subset?
 - Is pagination stable, bounded, and applied before materializing or transforming the full result?
 - Can fan-out multiply by users, rows, partitions, plugins, or retries without a hard bound?
+- Does incremental or streaming code process each item once, or rescan and rebuild prior state for every chunk or event?
 
 Prefer the simplest data structure with the required access pattern. Include construction and memory cost; a map is not free when the collection is tiny or used once.
 
@@ -39,6 +40,8 @@ Prefer the simplest data structure with the required access pattern. Include con
 - Does code fetch a complete object or payload to use one field?
 - Are pagination, compression, connection reuse, and request coalescing used where payload or call count makes them material?
 - Do retries multiply non-idempotent work or overload an already failing dependency?
+- Do retries have an attempt or elapsed-time budget, exponential backoff with jitter where callers can synchronize, and `Retry-After` handling when the protocol defines it?
+- Are high-cardinality reads and writes batched within the datastore or provider's documented request and parameter limits?
 - Is cache invalidation explicit, and does the cache avoid turning fresh local work into stale global behavior?
 
 Do not recommend caching before removing avoidable work. A cache adds state, invalidation, memory, and cold-start costs.
@@ -64,6 +67,7 @@ Prefer eliminating work over making the same work faster. Avoid low-level rewrit
 - Are locks held across I/O, callbacks, sleeps, or expensive computation?
 - Does one global lock, queue, or coordinator serialize otherwise independent keys or tenants?
 - Can cancellation and timeout free worker capacity promptly?
+- Does cancellation stop queued retries, polling loops, subprocesses, and downstream calls instead of only abandoning their results?
 
 Use bounded parallelism, not unlimited task creation. More concurrency can reduce throughput through contention, queueing, or downstream overload.
 
@@ -74,6 +78,7 @@ Use bounded parallelism, not unlimited task creation. More concurrency can reduc
 - Can a cache, queue, map, listener list, or task registry grow without eviction or ownership cleanup?
 - Do closures, callbacks, or global registries retain large objects longer than intended?
 - Is streaming actually bounded, or does a downstream stage buffer the full payload?
+- Is cache initialization lazy when many executions never use it, and is cache lifetime no broader than the data's valid scope?
 - Does pooling reduce cost without retaining unsafe state or increasing contention?
 
 ### 6. UI and render paths
