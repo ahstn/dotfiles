@@ -101,7 +101,14 @@ Axis files:
 
 #### Axis ownership
 
-The dead code and simplification axis owns the structural delta: concepts, decision points, modes, wrappers, reachable states, and removable paths added or retained by the patch. Other axis agents should not report dead code or simplification findings unless that evidence is needed to explain a primary concern in their assigned axis.
+- **Correctness** owns behavior, contracts, invariants, state transitions, failure semantics, ordering, atomicity, concurrency, and regression coverage.
+- **Maintainability** owns local cognitive load: naming, control and data flow, comments, error context, and readable tests.
+- **Architecture** owns canonical placement, dependency direction, encapsulation, public contract shape, data ownership, and cross-layer coupling.
+- **Security** owns trust-boundary flows involving untrusted data, identity, authority, sensitive assets, and attacker-controlled resource use.
+- **Performance** owns normal-workload cost: complexity, I/O count, allocations and copies, contention, concurrency bounds, backpressure, and performance evidence.
+- **Dead code and simplification** owns the structural delta: concepts, decision points, modes, wrappers, reachable states, and removable paths added or retained by the patch.
+
+An axis agent may use evidence from another axis to explain its primary concern, but it should not emit that other axis's finding. The main agent resolves overlap and reports each distinct issue once.
 
 ### 4. Aggregate findings
 

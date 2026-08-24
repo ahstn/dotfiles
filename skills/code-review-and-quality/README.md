@@ -26,11 +26,11 @@ Easily isolated for sub-agents:
 
 Tests and verification are treated as a cross-cutting gate handled by the main agent, rather than as a seventh full axis.
 
-## Simple but sufficient guidelines
+## Evidence-first axis guides
 
-Use light heuristics for the general axes. Avoid long smell catalogs that make reviewers overfit to named patterns. The dedicated dead code and simplification axis is stricter because it must test concrete structural alternatives, not only scan for local defects.
+Each axis reference defines its scope, review method, required checks, useful patterns, and finding bar. Treat its checklist as questions to test against the changed behavior, not as a smell catalog or a demand to apply named patterns.
 
-Of course, there's a balance to strike here, which is why the skill exists.
+Trace the relevant contract, data, authority, dependency, or resource cost. Report only concrete defects or material change costs. The dead code and simplification axis remains stricter about structural alternatives because it must test whether code and concepts should exist at all.
 
 ## Parallel sub-agents
 
