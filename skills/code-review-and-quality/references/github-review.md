@@ -18,14 +18,18 @@ Otherwise prefer GitHub data.
 
 ## Retrieval
 
-Use GitHub CLI and API to gather review context before commenting.
+Use GitHub CLI and API to gather the full review context before commenting. Paginate endpoints that return lists.
 
 Common commands:
 
 - PR metadata and body: `gh pr view <pr> --json number,title,body,baseRefName,headRefName,headRefOid`
 - current diff: `gh pr diff <pr>`
 - changed files with patches: `gh api repos/<owner>/<repo>/pulls/<pr>/files --paginate`
-- existing comments and review state: `gh pr view <pr> --json comments,reviews,reviewThreads`
+- submitted reviews: `gh api repos/<owner>/<repo>/pulls/<pr>/reviews --paginate`
+- inline review comments and replies: `gh api repos/<owner>/<repo>/pulls/<pr>/comments --paginate`
+- top-level issue comments: `gh api repos/<owner>/<repo>/issues/<pr>/comments --paginate`
+
+Do not infer that no findings exist from an empty review body, one recent bot run, or a failed thread query. Inline comments and follow-up replies can exist independently of those surfaces. Use comment IDs, reply links, commit IDs, and current diff anchors to reconstruct the review state.
 
 ## Commenting rules
 

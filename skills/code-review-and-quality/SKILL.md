@@ -2,22 +2,23 @@
 name: code-review-and-quality
 description: >-
   Reviews local diffs and GitHub pull requests across correctness, maintainability,
-  architecture, security, and performance. Use before merging, when auditing changed
-  files, when triaging PR comments, or when you want structured multi-axis review with
-  optional parallel axis passes and inline review comments.
+  architecture, security, performance, and simplification. Use before merging, when
+  auditing changed files, triaging PR comments, or running structured multi-axis
+  review with optional parallel axis passes and inline review comments.
 ---
 
 # Code Review and Quality
 
 ## Overview
 
-Review changed code across five axes:
+Review changed code across six axes:
 
 1. Correctness & robustness
 2. Maintainability & readability
 3. Design & architecture
 4. Security & trust boundaries
 5. Performance & scalability
+6. Dead code & simplification
 
 Approve when the change clearly improves overall code health.
 Do not block on personal taste.
@@ -74,11 +75,24 @@ Local defaults:
 
 For GitHub PR review, read `references/github-review.md`.
 
+#### Existing review comments and historical findings
+
+When review comments or prior findings are available, use them as evidence leads, not as ground truth.
+
+- Inventory every accessible inline comment, reply, review body, and top-level comment before drawing conclusions from review history.
+- Classify each material concern as still valid, fixed or stale, outside the current diff, incorrect, or unverifiable from available evidence.
+- Inspect the referenced code and current patch. Do not infer a defect from comment text alone.
+- Generalize a concern only when it names an observable invariant, failure mode, trust boundary, cost shape, or maintenance burden that applies beyond one repository or implementation.
+- Map each valid generic concern to one owner axis. Add a new check only when the current rubric and finding bar would not already catch it.
+- Keep protocol- or framework-specific details only when that protocol or framework defines the contract under review.
+
+This pre-emption pass should improve recall without training the rubric to repeat stale comments or one-off implementation advice.
+
 ### 3. Inspect the change
 
 #### Single-agent mode
 
-Review all five axes in one pass.
+Review all six axes in one pass. Load all six axis files listed below.
 
 #### Parallel mode
 
@@ -90,13 +104,24 @@ Each sub-agent must:
 - return concise findings only
 - avoid editing files, staging changes, or posting comments
 
-Axis files for sub-agents:
-
+Axis files:
 - `references/axes/correctness.md`
 - `references/axes/maintainability.md`
 - `references/axes/architecture.md`
 - `references/axes/security.md`
 - `references/axes/performance.md`
+- `references/axes/dead-code-and-simplifying.md`
+
+#### Axis ownership
+
+- **Correctness** owns behavior, contracts, invariants, state transitions, failure semantics, ordering, atomicity, concurrency, and regression coverage.
+- **Maintainability** owns local cognitive load: naming, control and data flow, comments, error context, and readable tests.
+- **Architecture** owns canonical placement, dependency direction, encapsulation, public contract shape, data ownership, and cross-layer coupling.
+- **Security** owns trust-boundary flows involving untrusted data, identity, authority, sensitive assets, and attacker-controlled resource use.
+- **Performance** owns normal-workload cost: complexity, I/O count, allocations and copies, contention, concurrency bounds, backpressure, and performance evidence.
+- **Dead code and simplification** owns the structural delta: concepts, decision points, modes, wrappers, reachable states, and removable paths added or retained by the patch.
+
+An axis agent may use evidence from another axis to explain its primary concern, but it should not emit that other axis's finding. The main agent resolves overlap and reports each distinct issue once.
 
 ### 4. Aggregate findings
 
@@ -107,6 +132,7 @@ The main agent is responsible for synthesis.
 - prefer issues the author would likely fix if made aware
 - do not report speculative or weakly grounded concerns
 - do not restate obvious code or existing comments unless adding new value
+- sort by severity; within the same severity, prioritize structural regressions and concrete simplifications over local legibility notes
 
 Comment(s) posted should follow a Flesch–Kincaid readability score between 60 and 80 and use ASD-STE100 Technical English.
 
@@ -118,11 +144,13 @@ Before returning or posting findings, confirm:
 - every finding is tied to a concrete file, line, symbol, or diff hunk
 - each finding includes a real failure mode or code-health cost
 - each finding has a severity label and primary axis
+- no clear structural regression remains merely because the changed behavior works or tests pass
 - delivery mode matches the request
+- available review comments and historical findings were reconciled, and each valid recurring concern is covered once by its owner axis
 
 If posting to GitHub, verify inline anchors against the current PR diff before sending comments.
 
-## The five review axes
+## The six review axes
 
 ### 1. Correctness & robustness
 
@@ -132,15 +160,16 @@ Check whether the change behaves as intended under normal and failure conditions
 - Are edge cases, error paths, retries, ordering, and state transitions handled correctly?
 - Could this introduce races, off-by-one errors, stale state, or broken invariants?
 - Do the tests actually cover the changed behavior and catch regressions?
+- Could related writes leave invalid partial state?
 
 ### 2. Maintainability & readability
 
 Check whether the code will be easy to understand and safely change later.
 
 - Are names, control flow, and data flow clear?
-- Is the implementation simpler than the problem demands, or more complex?
-- Are there new layers, helpers, toggles, or abstractions that do not earn their cost?
-- Did the change leave dead code, fallback paths, parameter threading, or speculative structure behind?
+- Can a reader understand the code that remains without the author explaining it?
+- Is related code grouped so the local flow is easy to follow?
+- Do comments explain non-obvious intent without restating the implementation?
 
 ### 3. Design & architecture
 
@@ -148,8 +177,8 @@ Check whether the change fits the surrounding system.
 
 - Does it respect module boundaries, ownership, and dependency direction?
 - Does it follow an existing pattern, or is the new pattern justified?
-- Is there duplication that should stay local, or duplication that should become shared?
-- Does the abstraction level match the codebase, without over-generalizing?
+- Does responsibility stay with its canonical owner without coupling unrelated layers?
+- Are public API and contract boundaries narrow, explicit, and consistent with the codebase?
 
 ### 4. Security & trust boundaries
 
@@ -168,6 +197,16 @@ Check for avoidable latency, load, and memory cost.
 - Any unbounded scans, fetches, or loops?
 - Any synchronous blocking, unnecessary re-renders, or missing batching/pagination?
 - Does the change add cost in a hot path or high-cardinality path?
+- Is independent work serialized without a correctness or resource-ordering reason?
+
+### 6. Dead code & simplification
+
+Check whether the patch leaves removable code or adds avoidable incidental complexity.
+
+- Did the change leave unused code, obsolete paths, compatibility shims, or speculative structure behind?
+- Can a concrete reframe remove branches, modes, wrappers, layers, or reachable states?
+- Are new abstractions and helpers necessary, or do they add indirection without clarity?
+- Does file growth reveal a cohesive unit that should be extracted, without splitting by line count alone?
 
 ## Reporting contract
 
@@ -214,7 +253,6 @@ Read additional references only when needed:
 
 - `references/behaviour-communication.md` for comment style, severity, and disagreement handling
 - `references/github-review.md` for GitHub PR retrieval, inline anchors, stale comment handling, and posting rules
-- `references/dead-code-and-simplifying.md` when the review surfaces dead code, speculative abstraction, legacy fallbacks, or cleanup opportunities
 
 Keep the core review logic in this file.
-Use reference files for optional detail, not for core behavior.
+Axis reference files define core axis behavior. Use the remaining references for optional detail.
