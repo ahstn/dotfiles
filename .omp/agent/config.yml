@@ -1,7 +1,7 @@
-providers: 
+providers:
   openaiWebsockets: "on"
   openrouterVariant: default
-  webSearchOrder: 
+  webSearchOrder:
     - exa
     - perplexity
     - gemini
@@ -26,56 +26,56 @@ providers:
     - mojeek
     - public
 symbolPreset: unicode
-theme: 
+theme:
   dark: dark-catppuccin
 setupVersion: 2
-statusLine: 
+statusLine:
   separator: pipe
   preset: default
   transparent: true
   compactThinkingLevel: false
-power: 
+power:
   sleepPrevention: idle
-lsp: 
+lsp:
   enabled: false
-task: 
+task:
   maxRecursionDepth: 2
-  isolation: 
+  isolation:
     mode: none
     commits: ai
   maxConcurrency: 12
-todo: 
+todo:
   eager: default
-tools: 
+tools:
   {}
-mcp: 
+mcp:
   {}
-bashInterceptor: 
+bashInterceptor:
   enabled: true
-bash: 
-  autoBackground: 
+bash:
+  autoBackground:
     enabled: true
-retry: 
+retry:
   maxRetries: 2
-modelRoles: 
-  default: openai-codex/gpt-5.6-sol:medium
+modelRoles:
+  default: openrouter/google/gemini-3.7-flash:medium
   smol: openai-codex/gpt-5.6-luna:high
   vision: openai-codex/gpt-5.6-luna:high
   advisor: anthropic/claude-fable-5:high
-tier: 
+tier:
   openai: auto
-dev: 
+dev:
   autoqaConsent: granted
-composer: 
+composer:
   shape: pi
-
-# Ensure Claude Code's "superpower" skills are ignored.
-# `claude plugin uninstall superpowers@claude-plugins-official`
 skills:
   enableClaudeUser: false
   enableClaudeProject: false
   ignoredSkills:
     - "*superpower*"
-    - "subagent-driven-development"
-    - "brainstorming"
-    - "writing-plans"
+    - subagent-driven-development
+    - brainstorming
+    - writing-plans
+compaction:
+  thresholdTokens: 256000
+extendedContext: false
