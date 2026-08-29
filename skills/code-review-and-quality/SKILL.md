@@ -5,6 +5,7 @@ description: >-
   architecture, security, and performance. Use before merging, when auditing changed
   files, when triaging PR comments, or when you want structured multi-axis review with
   optional parallel axis passes and inline review comments.
+disable-model-invocation: true
 ---
 
 # Code Review and Quality
