@@ -31,3 +31,4 @@ run-history.jsonl
 
 # private files, config and skills
 skills/personality-persona/*
+skills/personality/references/*

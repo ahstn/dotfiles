@@ -1,5 +1,5 @@
 ---
-name: verifier
+name: research-verifier
 description: Post-process a draft to add inline citations and verify every source URL.
 thinking: medium
 tools: read, bash, grep, find, ls, write, edit, exa_websearch
