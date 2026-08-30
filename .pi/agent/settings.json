@@ -3,7 +3,9 @@
   "defaultModel": "gpt-5.6-sol",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "0.84.2",
+  "lastChangelogVersion": "0.84.4",
+  "collapseChangelog": true,
+  "shellCommandPrefix": "export PATH=\"$HOME/.local/share/mise/shims:$PATH\"",
   "packages": [
     "npm:pi-subagents",
     "npm:pi-extmgr",
@@ -14,33 +16,25 @@
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-ask-user-question"
   ],
-
-  // Ensure packages land in Mise's node_modules, 
-  // min-release-age and ignore-scripts to aid in supply chain attack prevention.
-  "npmCommand": [
-    "mise",
-    "exec",
-    "node@lts",
-    "--",
-    "npm",
-    "--min-release-age=24h",
-    "--ignore-scripts"
-  ],
-
-  // Compact at UPPER_BOUND - 20K tokens, and keep the most recent 10K tokens.
   "compaction": {
     "enabled": true,
     "reserveTokens": 20480,
     "keepRecentTokens": 10240
   },
-
-  // Emit install/update version ping, but disable data sharing.
   "enableInstallTelemetry": true,
   "enableAnalytics": false,
-
-  // pi-subagent configuration
-  // Thinking levels in model ID to allow altering levels per fallback model, e.g. 5.6-sol:medium -> 5.6-luna:xhigh.
   "subagents": {
+    "defaultModel": "gpt-5.6-sol",
+    "modelScope": {
+      "enforce": true,
+      "strict": true,
+      "allow": [
+        "inherit",
+        "openai-codex/gpt-5.6-*",
+        "github-copilot/gpt-5.6-*",
+        "openrouter/google/gemini-3.7-flash"
+      ]
+    },
     "agentOverrides": {
       "delegate": {
         "model": "openai-codex/gpt-5.6-luna:high"

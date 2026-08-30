@@ -1,0 +1,17 @@
+{
+    "modelExclusions": {
+        "defaultTtlMs": 300000
+    },
+    "maxSubagentDepth": 1,
+    "maxSubagentSpawnsPerRun": 16,
+    "maxSubagentSpawnsPerSession": 64,
+    "maxActiveAsyncRunsPerSession": 4,
+
+    "fleetView": true,
+    "fleetViewPlacement": "aboveEditor",
+
+
+    "scheduledRuns": {
+        "enabled": true
+    }
+}

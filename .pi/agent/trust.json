@@ -1,10 +1,13 @@
 {
-  "/Users/ahstn/git": true,
+  "/Users/*/.bb/worktrees": true,
+  "/Users/*/.codex/worktrees": true,
+  "/Users/*/.herdr/worktrees": true,
+  "/Users/*/.luvus/worktrees": true,
+  "/Users/*/git": true,
+  "/Users/ahstn/.ao/data/worktrees": true,
+  "/Users/ahstn/.bb/worktrees": true,
   "/Users/ahstn/.codex/worktrees": true,
   "/Users/ahstn/.herdr/worktrees": true,
-  "/Users/ahstn/.bb/worktrees": true,
-  "/Users/adam.houston/git": true,
-  "/Users/adam.houston/.codex/worktrees": true,
-  "/Users/adam.houston/.herdr/worktrees": true,
-  "/Users/adam.houston/.bb/worktrees": true
+  "/Users/ahstn/.luvus/worktrees": true,
+  "/Users/ahstn/git": true
 }
