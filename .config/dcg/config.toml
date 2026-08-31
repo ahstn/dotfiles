@@ -1,13 +1,21 @@
 [packs]
+custom_paths = ["~/.config/dcg/packs/*.yaml"]
+
 enabled = [
   "database.postgresql", # Blocks DROP TABLE, TRUNCATE
   "remote.rsync",
+  "remote.scp",
   "containers.docker",   # Blocks docker system prune
   "platform.github",
   "system.disk",
 
+  # Secrets & Sensitive content
+  "secret_disclosure",
+  "secrets.onepassword",
+
   #  Cloud Environments
   "cloud.aws",
+  "secrets.aws_secrets",
   "storage.s3",
   "kubernetes.kubectl",
   "kubernetes.helm",
