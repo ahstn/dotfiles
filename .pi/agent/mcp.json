@@ -1,4 +1,7 @@
 {
+  // Environment variable support ${VAR} and $env:VAR interpolation. 
+  // A value beginning with ! runs a command when the stdio server connects; use !! for a literal leading !.
+  // https://github.com/nicobailon/pi-mcp-adapter
   "settings": {
     "outputGuard": {
       "maxBytes": 51200,
@@ -11,5 +14,26 @@
       "notion_create_*"
     ]
   },
-  "mcpServers": {}
+  "mcpServers": {
+    "slack": {
+      "disabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "slack-mcp-server@v1.3.0",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "SLACK_MCP_XOXC_TOKEN": "$env:SLACK_XOXC_TOKEN",
+        "SLACK_MCP_XOXD_TOKEN": "$env:SLACK_XOXD_TOKEN",
+        "SLACK_MCP_USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+        "SLACK_MCP_ADD_MESSAGE_TOOL": "false",
+        "SLACK_MCP_ADD_MESSAGE_UNFURLING": "false",
+        "SLACK_MCP_CACHE_TTL": "24h",
+        "SLACK_MCP_MIN_REFRESH_INTERVAL": "2m",
+        "SLACK_MCP_ENABLED_TOOLS": "users_search,conversations_history,conversations_replies,conversations_search_messages,channels_list,usergroups_list"
+      }
+    }
+  }
 }
