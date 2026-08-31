@@ -8,6 +8,7 @@ trusted_config_paths = [
     '~/.codex/worktrees/',
     '~/.herdr/worktrees/',
     '~/.bb/worktrees/',
+    '~/.luvus/worktrees/',
 ]
 
 [tools]
@@ -15,6 +16,7 @@ trusted_config_paths = [
 python = "latest"
 rust = "latest"
 ruff = "latest"
+bun = "latest"
 node = "lts"
 uv = "latest"
 terraform = "latest"
@@ -50,7 +52,7 @@ fzf = "latest"
 "npm:@tobilu/qmd" = "latest"
 "npm:agent-browser" = "latest"
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
-bun = "latest"
+vale = "latest"
 
 
 [hooks]
@@ -71,7 +73,8 @@ pi-update = "mise use -g --minimum-release-age 2h pi@latest && pi update --exten
 "brew:coreutils" = "latest"
 "brew:weave" = "latest"
 "brew:zsh" = "latest"
-"brew-cask:keepingyouawake" = "latest"
+"brew-cask:muesli" = "latest"
+"brew-cask:vorssaint" = "latest"
 
 # linux servers
 "apt:curl" = "latest"
@@ -93,7 +96,7 @@ login_shell = "/bin/zsh"
 # MacOS specific configuration
 [bootstrap.macos.dock]
 autohide = true
-orientation = "left"
+orientation = "bottom"
 tilesize = 48
 
 [bootstrap.macos.finder]

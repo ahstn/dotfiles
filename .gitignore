@@ -7,6 +7,8 @@ packer_compiled.lua
 **/.config/zsh/.zsh-private
 **/.config/zsh/plugins/
 
+.config/herdr/.plugins.lock
+
 # pi
 .pi/agent/auth.json
 .pi/agent/models-store.json
@@ -16,10 +18,16 @@ packer_compiled.lua
 .pi/agent/missions
 .pi/agent/bin
 .pi/agent/npm
+.pi/agent/work
+.pi/agent/*.work.json
+.pi/pi-acp/session-map.json
 .pi-subagents/artifacts
 **/node_modules
 exa-usage.json
 run-history.jsonl
+
+# omp
+.omp/agent/config.yml.lock
 
 # herdr
 .config/herdr/session.json

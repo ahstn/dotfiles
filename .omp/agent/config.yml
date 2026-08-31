@@ -58,7 +58,7 @@ bash:
 retry:
   maxRetries: 2
 modelRoles:
-  default: openrouter/google/gemini-3.7-flash:medium
+  default: openai-codex/gpt-5.6-sol:medium
   smol: openai-codex/gpt-5.6-luna:high
   vision: openai-codex/gpt-5.6-luna:high
   advisor: anthropic/claude-fable-5:high
@@ -68,6 +68,8 @@ dev:
   autoqaConsent: granted
 composer:
   shape: pi
+
+# Burn Superpowers & Claude Code default skills with fire.
 skills:
   enableClaudeUser: false
   enableClaudeProject: false
