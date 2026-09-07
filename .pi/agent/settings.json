@@ -14,7 +14,8 @@
     "npm:pi-mcp-adapter",
     "npm:pi-tool-display",
     "npm:@juicesharp/rpiv-todo",
-    "npm:@juicesharp/rpiv-ask-user-question"
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@heyhuynhgiabuu/pi-pretty"
   ],
   "compaction": {
     "enabled": true,
