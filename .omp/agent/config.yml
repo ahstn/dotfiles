@@ -1,4 +1,3 @@
-
 providers:
   openaiWebsockets: "on"
   openrouterVariant: default
@@ -47,8 +46,8 @@ lsp:
 task:
   maxRecursionDepth: 2
   isolation:
-    mode: none
     commits: ai
+    enabled: false
   maxConcurrency: 12
 todo:
   eager: default
@@ -74,8 +73,6 @@ dev:
   autoqaConsent: granted
 composer:
   shape: pi
-
-# Burn Superpowers & Claude Code default skills with fire.
 skills:
   enableClaudeUser: false
   enableClaudeProject: false
@@ -87,3 +84,12 @@ skills:
 compaction:
   thresholdTokens: 256000
 extendedContext: false
+display:
+  showTurnTime: true
+  cacheMissMarker: true
+plan:
+  enabled: false
+commands:
+  enableClaudeProject: false
+edit:
+  mode: apply_patch
