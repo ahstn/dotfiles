@@ -2,9 +2,8 @@
 name: code-review-and-quality
 description: >-
   Reviews local diffs and GitHub pull requests across correctness, maintainability,
-  architecture, security, and performance. Use before merging, when auditing changed
-  files, when triaging PR comments, or when you want structured multi-axis review with
-  optional parallel axis passes and inline review comments.
+  architecture, security, and performance. Use only when the user explicitly invokes
+  this skill. Supports review comment triage and optional parallel axis passes.
 disable-model-invocation: true
 ---
 
