@@ -31,7 +31,6 @@ dotfiles.default_mode = "symlink"
 # Skills - NB: Some harnesses don't resolve symlinks.
 "~/.agents/skills" = { source = "skills", mode = "copy" }
 "~/.claude/skills" = { source = "skills", mode = "symlink-each" }
-"~/.pi/agent/skills" = { source = ".pi/agent/skills", mode = "symlink-each" }
 
 # Standalone files - sourced in ~/.config/ for organization, but symlinked to home
 "~/.bash_profile" = { source = ".config/.bash_profile" }

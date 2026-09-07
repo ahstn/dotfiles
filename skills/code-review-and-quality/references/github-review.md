@@ -28,6 +28,36 @@ Common commands:
 - submitted reviews: `gh api repos/<owner>/<repo>/pulls/<pr>/reviews --paginate`
 - inline review comments and replies: `gh api repos/<owner>/<repo>/pulls/<pr>/comments --paginate`
 - top-level issue comments: `gh api repos/<owner>/<repo>/issues/<pr>/comments --paginate`
+- review-thread resolution state: use the paginated GraphQL query below
+
+```sh
+gh api graphql --paginate \
+  -F 'owner=<owner>' -F 'repo=<repo>' -F 'pr=<pr>' \
+  -f query='query(
+    $owner: String!
+    $repo: String!
+    $pr: Int!
+    $endCursor: String
+  ) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $pr) {
+        reviewThreads(first: 100, after: $endCursor) {
+          nodes {
+            id
+            isResolved
+            isOutdated
+            comments(first: 1) {
+              nodes { databaseId url }
+            }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }'
+```
+
+Match each thread's first comment to the fully paginated REST comments. Use this mapping to distinguish unresolved, resolved, and outdated findings before deduplication.
 
 Do not infer that no findings exist from an empty review body, one recent bot run, or a failed thread query. Inline comments and follow-up replies can exist independently of those surfaces. Use comment IDs, reply links, commit IDs, and current diff anchors to reconstruct the review state.
 
