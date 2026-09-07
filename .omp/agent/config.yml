@@ -1,45 +1,95 @@
-providers: 
-  webSearch: exa
+providers:
   openaiWebsockets: "on"
   openrouterVariant: default
+  webSearchOrder:
+    - exa
+    - perplexity
+    - gemini
+    - anthropic
+    - codex
+    - xai
+    - zai
+    - tinyfish
+    - jina
+    - kagi
+    - tavily
+    - firecrawl
+    - brave
+    - kimi
+    - parallel
+    - synthetic
+    - searxng
+    - startpage
+    - duckduckgo
+    - ecosia
+    - google
+    - mojeek
+    - public
+disabledProviders:
+  - amazon-bedrock
+  - bedrock-mantle
 symbolPreset: unicode
-theme: 
+theme:
   dark: dark-catppuccin
-setupVersion: 1
-statusLine: 
+setupVersion: 2
+statusLine:
   separator: pipe
   preset: default
   transparent: true
   compactThinkingLevel: false
-power: 
+power:
   sleepPrevention: idle
-lsp: 
-  enabled: false
-task: 
-  maxRecursionDepth: 2
-  isolation: 
-    mode: none
-    commits: ai
-  maxConcurrency: 12
-exa: 
-  enableResearcher: true
-todo: 
-  eager: default
-tools: 
-  discoveryMode: mcp-only
-mcp: 
-  discoveryMode: true
-bashInterceptor: 
+lsp:
   enabled: true
-bash: 
-  autoBackground: 
+  diagnosticsOnEdit: false
+  formatOnWrite: false
+task:
+  maxRecursionDepth: 2
+  isolation:
+    commits: ai
+    enabled: false
+  maxConcurrency: 12
+todo:
+  eager: default
+tools:
+  {}
+mcp:
+  {}
+bashInterceptor:
+  enabled: true
+bash:
+  autoBackground:
     enabled: true
-retry: 
+retry:
   maxRetries: 2
-modelRoles: 
-  default: openai-codex/gpt-5.6-sol:high
+modelRoles:
+  default: openai-codex/gpt-5.6-sol:medium
   smol: openai-codex/gpt-5.6-luna:high
   vision: openai-codex/gpt-5.6-luna:high
-  advisor: anthropic/claude-fable-5:medium
-tier: 
+  advisor: anthropic/claude-fable-5:high
+tier:
   openai: auto
+dev:
+  autoqaConsent: granted
+composer:
+  shape: pi
+skills:
+  enableClaudeUser: false
+  enableClaudeProject: false
+  ignoredSkills:
+    - "*superpower*"
+    - subagent-driven-development
+    - brainstorming
+    - writing-plans
+compaction:
+  thresholdTokens: 256000
+extendedContext: false
+display:
+  showTurnTime: true
+  cacheMissMarker: true
+plan:
+  enabled: false
+commands:
+  enableClaudeProject: false
+edit:
+  mode: apply_patch

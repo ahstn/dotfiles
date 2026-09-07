@@ -3,6 +3,8 @@ name: worker
 description: General-purpose subagent with full capabilities, isolated context
 thinking: high
 defaultProgress: true
+inheritProjectContext: true
+inheritGlobalContext: false
 maxSubagentDepth: 2
 ---
 

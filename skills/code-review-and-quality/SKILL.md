@@ -2,9 +2,9 @@
 name: code-review-and-quality
 description: >-
   Reviews local diffs and GitHub pull requests across correctness, maintainability,
-  architecture, security, performance, and simplification. Use before merging, when
-  auditing changed files, triaging PR comments, or running structured multi-axis
-  review with optional parallel axis passes and inline review comments.
+  architecture, security, and performance. Use only when the user explicitly invokes
+  this skill. Supports review comment triage and optional parallel axis passes.
+disable-model-invocation: true
 ---
 
 # Code Review and Quality
@@ -105,6 +105,7 @@ Each sub-agent must:
 - avoid editing files, staging changes, or posting comments
 
 Axis files:
+
 - `references/axes/correctness.md`
 - `references/axes/maintainability.md`
 - `references/axes/architecture.md`

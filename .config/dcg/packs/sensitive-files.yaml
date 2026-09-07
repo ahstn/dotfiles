@@ -1,0 +1,80 @@
+schema_version: 1
+id: personal.sensitive_files
+name: Sensitive File Read Protection
+version: 1.0.0
+description: |
+  Blocks commands that can expose local environment files, SSH private keys,
+  or the private Zsh configuration.
+
+keywords:
+  - .env
+  - id_ed25519
+  - id-ed25519
+  - id_rsa
+  - id-rsa
+  - .zsh-private
+  - mise
+
+# `dcg test "cat .env"`
+destructive_patterns:
+  - name: sensitive-file-read
+    pattern: (?:^|[/\s'"=])(?:\.env(?:\.[A-Za-z0-9_-]+)*|mise\.local|id_ed25519|id-ed25519|id_rsa|id-rsa|\.zsh-private)(?:$|[/\s'";|&<>()])
+    severity: critical
+    description: Reading a sensitive file is blocked
+    explanation: |
+      This command can expose environment secrets, an SSH private key, or
+      private shell configuration. Use a public key, a redacted fixture, or a
+      documented variable name instead.
+    executables:
+      - awk
+      - base64
+      - bat
+      - batcat
+      - cat
+      - cp
+      - cut
+      - egrep
+      - fgrep
+      - gawk
+      - grep
+      - head
+      - hexdump
+      - jq
+      - less
+      - lua
+      - mawk
+      - more
+      - nano
+      - node
+      - nvim
+      - od
+      - perl
+      - python
+      - python3
+      - rg
+      - ripgrep
+      - rsync
+      - ruby
+      - scp
+      - sed
+      - sort
+      - source
+      - strings
+      - tail
+      - tar
+      - tee
+      - uniq
+      - vi
+      - vim
+      - wc
+      - xxd
+      - yq
+      - zip
+
+  - name: sensitive-file-dot-source
+    pattern: (?:^|[;&|]\s*)\.\s+(?:[^;&|]*[/\s'"=])(?:\.env(?:\.[A-Za-z0-9_-]+)*|mise\.local|id_ed25519|id-ed25519|id_rsa|id-rsa|\.zsh-private)(?:$|[/\s'";|&<>()])
+    severity: critical
+    description: Sourcing a sensitive file is blocked
+    explanation: |
+      Dot-sourcing this file can expose its values to the current shell and to
+      child processes. Use a redacted fixture instead.

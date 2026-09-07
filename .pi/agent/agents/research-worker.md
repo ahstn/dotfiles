@@ -1,5 +1,5 @@
 ---
-name: researcher
+name: research-worker
 description: Gather primary evidence across papers, web sources, repos, docs, and local artifacts.
 thinking: high
 tools: read, write, edit, bash, grep, find, ls, exa_websearch

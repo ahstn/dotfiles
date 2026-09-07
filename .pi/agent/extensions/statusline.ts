@@ -123,15 +123,22 @@ export default function (pi: ExtensionAPI) {
           // Compute tokens from ctx (already accessible to extensions)
           let input = 0,
             output = 0,
+            cacheRead = 0,
+            cacheWrite = 0,
             cost = 0;
           for (const e of ctx.sessionManager.getBranch()) {
             if (e.type === "message" && e.message.role === "assistant") {
               const m = e.message as AssistantMessage;
               input += m.usage.input;
               output += m.usage.output;
+              cacheRead += m.usage.cacheRead;
+              cacheWrite += m.usage.cacheWrite;
               cost += m.usage.cost.total;
             }
           }
+          const promptTokens = input + cacheRead + cacheWrite;
+          const cacheHitRate =
+            promptTokens > 0 ? (cacheRead / promptTokens) * 100 : 0;
 
           // Get git branch (not otherwise accessible)
           const branch = footerData.getGitBranch();
@@ -155,7 +162,7 @@ export default function (pi: ExtensionAPI) {
           const stats =
             theme.fg(
               "dim",
-              ` · ↑${formatTokens(input)} · ↓${formatTokens(output)} · `,
+              ` · ↑${formatTokens(input)} · ↓${formatTokens(output)} · cache ${cacheHitRate.toFixed(2)} % · `,
             ) +
             formatContext(theme, ctx) +
             theme.fg("dim", ` · $${cost.toFixed(2)}`);

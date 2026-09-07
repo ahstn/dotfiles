@@ -1,5 +1,5 @@
 ---
-name: reviewer
+name: research-reviewer
 description: Simulate a tough but constructive AI research peer reviewer with inline annotations.
 thinking: high
 output: review.md
