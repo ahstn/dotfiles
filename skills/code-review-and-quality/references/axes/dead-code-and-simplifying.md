@@ -31,9 +31,9 @@ When one hunk raises several concerns, report it here only when the primary reme
 
 ### 2. File growth and decomposition
 
-- Treat a change that pushes a file from below 1,000 lines to above 1,000 lines as a strong decomposition smell.
+- Use growth past 1,000 lines as an inspection trigger for cohesion, ownership, and scan cost.
 - Explicitly evaluate whether cohesive helpers, components, or modules should be extracted before merge.
-- Do not demand a split for line count alone. Waive the concern when the file has one clear owner, remains easy to scan, and splitting would weaken cohesion or hide control flow.
+- Do not report a finding or demand a split for line count alone. Keep the file intact when it has one clear owner, remains easy to scan, and splitting would weaken cohesion or hide control flow.
 
 ### 3. Control-flow growth
 
@@ -74,7 +74,7 @@ When one hunk raises several concerns, report it here only when the primary reme
 
 - Flag unreachable or unused code introduced or exposed by the change.
 - Flag fallback paths, compatibility shims, feature toggles, config knobs, dead comments, and removed-code markers kept without a current requirement.
-- Remove superseded tests, fixtures, docs, generated outputs, and comments with the obsolete path when the patch makes them unreachable or false.
+- Recommend removing superseded tests, fixtures, docs, generated outputs, and comments with the obsolete path when the patch makes them unreachable or false.
 - Suggest removal only when code is clearly unused, superseded, or misleading.
 - Respect explicit migration and backward-compatibility requirements. If intent is unclear, report the ambiguity instead of assuming deletion is safe.
 
@@ -117,7 +117,6 @@ Prioritize by severity. Within the same severity, prefer:
 Treat these as presumptive merge blockers when the evidence is concrete:
 
 - the patch preserves substantial incidental complexity that a plausible reframe would remove
-- a file crosses 1,000 lines without a strong cohesion reason or decomposition review
 - ad hoc branching tangles an existing flow
 - feature checks become scattered across shared code
 - a wrapper, generic mechanism, or cast-heavy model makes a direct design more indirect
