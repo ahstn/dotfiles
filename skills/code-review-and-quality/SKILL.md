@@ -27,7 +27,13 @@ Prefer discrete, actionable findings over exhaustive commentary.
 
 ## Review frame
 
-Choose these three settings before reviewing:
+Read these settings from the caller's prompt. Select the execution mode after collecting the review scope.
+
+Modes are instructions in the prompt. For example:
+
+```text
+$code-review-and-quality Review staged changes in single-agent mode; return findings in this thread.
+```
 
 ### 1. Source of truth
 
@@ -38,8 +44,15 @@ If a local checkout exists during GitHub review, only treat it as authoritative 
 
 ### 2. Execution mode
 
-- **single-agent**: default for small or straightforward changes
-- **parallel**: use when the diff is large, high-risk, or clearly benefits from separate axis passes
+- **single-agent**: review all axes in the main agent. If the caller explicitly requests this mode, do not delegate.
+- **parallel**: run separate read-only axis passes as described below.
+
+When the caller has not selected a mode, count added plus deleted lines across the selected diff, including tests. Count a replacement as one addition and one deletion; do not use net line growth.
+
+- **Fewer than 80 changed lines:** use a single agent to cover all six axes. Delegate only a bounded question whose answer could materially change the review.
+- **80 changed lines or more:** use parallel mode when the scope, complexity, or risk benefits from separate axis passes. Straightforward changes can stay in single-agent mode.
+
+State the selected mode and a brief reason before inspecting the change. Both modes must cover every changed file and meet the same finding and verification requirements.
 
 ### 3. Delivery mode
 

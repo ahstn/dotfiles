@@ -2,10 +2,10 @@
 Intended to be used with [agents/reviewer.md](../../../../agent/agents/reviewer.md) and the following example prompts:
 
 ```md
-Use the `code-review-and-quality` skill for a multi-axis code review. Orchestrate six read-only @review sub-agents, one per axis, and aggregate their findings.
-
-The delta between this branch and `main`, with this thread as a response delivery mode.
+Use the `code-review-and-quality` skill to review the changes between this branch and `main`. Return findings in this thread.
 ```
+
+The skill selects an execution mode from the diff scope and risk. To choose one explicitly, add `in single-agent mode` or `in parallel mode` to the prompt. See [Execution mode](SKILL.md#2-execution-mode) for the small-change rule.
 
 Optionally to consider any existing GH comments:
 ```
