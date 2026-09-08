@@ -5,6 +5,7 @@ description: >-
   architecture, security, and performance. Use only when the user explicitly invokes
   this skill. Supports review comment triage and optional parallel axis passes.
 disable-model-invocation: true
+argument-hint: "[target=...] [execution=auto|single-agent|parallel] [delivery=thread-only|github-inline]"
 ---
 
 # Code Review and Quality
@@ -25,41 +26,50 @@ Do not block on personal taste.
 Do not approve blindly.
 Prefer discrete, actionable findings over exhaustive commentary.
 
-## Review frame
+## Invocation options
 
-Read these settings from the caller's prompt. Select the execution mode after collecting the review scope.
+Caller options: $ARGUMENTS
 
-Modes are instructions in the prompt. For example:
+Read named options from the invocation text or the caller's prompt. Options can appear in any order. Accept equivalent plain-language requests and apply defaults only to omitted settings. If the client leaves placeholders unchanged, ignore them and use the caller's prompt.
 
-```text
-$code-review-and-quality Review staged changes in single-agent mode; return findings in this thread.
-```
+| Option | Values | Default |
+| --- | --- | --- |
+| `target` | `unstaged`, `staged`, `branch:<ref>`, or a GitHub PR URL | Use the scope requested in the conversation; otherwise `unstaged`. |
+| `execution` | `auto`, `single-agent`, `parallel` | `auto` |
+| `delivery` | `thread-only`, `github-inline` | `thread-only` |
 
-### 1. Source of truth
+Resolve invalid or conflicting options before the affected action. If delivery is unresolved, draft findings without posting. Use the [Reporting contract](#reporting-contract) unless the caller requests another format.
 
-- **local diff**: review the local git diff
-- **github pr**: review the GitHub pull request; GitHub is authoritative for base, head, diff, PR body, and existing review state
+### Target and source
 
-If a local checkout exists during GitHub review, only treat it as authoritative when it matches the PR head SHA.
+Local targets select the corresponding git diff. For `branch:<ref>`, compare HEAD with its merge base against `<ref>`.
 
-### 2. Execution mode
+A PR URL selects GitHub as authoritative for base, head, diff, PR body, and existing review state. A local checkout is authoritative only when its HEAD matches the PR head SHA. A PR URL alone keeps `thread-only` delivery.
 
-- **single-agent**: review all axes in the main agent. If the caller explicitly requests this mode, do not delegate.
-- **parallel**: run separate read-only axis passes as described below.
+### Execution
 
-When the caller has not selected a mode, count added plus deleted lines across the selected diff, including tests. Count a replacement as one addition and one deletion; do not use net line growth.
+- **single-agent**: review all axes in the main agent. This explicit override prohibits delegation.
+- **parallel**: run separate read-only axis passes as described in the workflow.
 
-- **Fewer than 80 changed lines:** use a single agent to cover all six axes. Delegate only a bounded question whose answer could materially change the review.
+For **auto**, count added plus deleted lines across the selected diff, including tests. Count a replacement as one addition and one deletion; do not use net line growth.
+
+- **Fewer than 80 changed lines:** use one agent to cover all axes. Delegate only a bounded question whose answer could materially change the review.
 - **80 changed lines or more:** use parallel mode when the scope, complexity, or risk benefits from separate axis passes. Straightforward changes can stay in single-agent mode.
 
-State the selected mode and a brief reason before inspecting the change. Both modes must cover every changed file and meet the same finding and verification requirements.
+After collecting the scope, state the target, selected execution mode, and delivery mode. Give a brief reason for the execution choice. Both modes must cover every changed file and meet the same finding and verification requirements.
 
-### 3. Delivery mode
+### Delivery
 
-- **thread-only**: return findings in the current conversation
-- **github-inline**: post inline PR comments only when explicitly requested or when the environment is clearly set up for PR review automation
+- **thread-only**: return findings in the current conversation.
+- **github-inline**: publish inline comments on the selected GitHub PR after aggregation and verification. An explicit caller option or equivalent request authorizes publication. This mode requires a GitHub PR target.
 
-Separate reviewing from posting. Draft findings first, then publish only in the requested delivery mode.
+### Examples
+
+```text
+/code-review-and-quality target=staged execution=single-agent
+$code-review-and-quality target=branch:main execution=auto delivery=thread-only
+/code-review-and-quality target=https://github.com/owner/repo/pull/123 delivery=github-inline
+```
 
 ## Workflow
 
@@ -80,7 +90,7 @@ If it is missing and not retrievable, mark the review `[blocked]` instead of gue
 Review **every changed file**, including tests.
 Use pre-computed artifacts if available; otherwise obtain the diff directly.
 
-Local defaults:
+For the resolved local target:
 
 - unstaged changes: `git diff`
 - staged changes: `git diff --cached`
@@ -224,7 +234,7 @@ Check whether the patch leaves removable code or adds avoidable incidental compl
 
 ## Reporting contract
 
-Unless the caller requests a different format, return:
+The default report contains the following fields.
 
 ### Verdict
 

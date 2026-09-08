@@ -1,16 +1,5 @@
 
-Intended to be used with [agents/reviewer.md](../../../../agent/agents/reviewer.md) and the following example prompts:
-
-```md
-Use the `code-review-and-quality` skill to review the changes between this branch and `main`. Return findings in this thread.
-```
-
-The skill selects an execution mode from the diff scope and risk. To choose one explicitly, add `in single-agent mode` or `in parallel mode` to the prompt. See [Execution mode](SKILL.md#2-execution-mode) for the small-change rule.
-
-Optionally to consider any existing GH comments:
-```
-Using the GitHub CLI, fetch comments from the pull request <id>. Consider their validity and, if any, additional context they might provide.
-```
+Intended to be used with [agents/reviewer.md](../../../../agent/agents/reviewer.md). See [Invocation options](SKILL.md#invocation-options) for supported inputs, defaults, and examples.
 
 
 ## Six Axes
