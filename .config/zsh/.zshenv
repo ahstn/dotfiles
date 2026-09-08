@@ -9,5 +9,9 @@ export ZDOTDIR="$HOME/.config/zsh"
 export CARGO_TARGET_DIR="$HOME/.cache/cargo/target/"
 export CARGO_BUILD_BUILD_DIR="$HOME/.cache/cargo/build/"
 
-[[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv zsh)" && export PATH="/opt/homebrew/bin:$PATH"
+if [[ -x /opt/homebrew/bin/brew ]]; then
+    export HOMEBREW_CASK_OPTS="--appdir=${HOME}/Applications"
+    export PATH="/opt/homebrew/bin:$PATH"
+    eval "$(/opt/homebrew/bin/brew shellenv zsh)" 
+fi
 [[ -x "$HOME/.local/bin/mise" ]] && eval "$("$HOME/.local/bin/mise" activate zsh --shims)"
