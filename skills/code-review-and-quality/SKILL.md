@@ -1,220 +1,124 @@
 ---
 name: code-review-and-quality
 description: >-
-  Reviews local diffs and GitHub pull requests across correctness, maintainability,
-  architecture, security, and performance. Use only when the user explicitly invokes
-  this skill. Supports review comment triage and optional parallel axis passes.
+  Reviews local diffs and GitHub pull requests for defects and material code-health costs.
+  Use only when explicitly invoked. Supports review comment triage and parallel axis passes.
 disable-model-invocation: true
+argument-hint: "[target=...] [execution=auto|single-agent|parallel] [delivery=thread-only|github-inline]"
 ---
 
 # Code Review and Quality
 
-## Overview
+## Purpose and review boundary
 
-Review changed code across five axes:
+Review the agreed change for concrete defects and material code-health costs. The caller's explicit instructions take precedence over skill defaults. Cover every changed file and all axes by default; honor a requested subset of files or axes and state that scope.
 
-1. Correctness & robustness
-2. Maintainability & readability
-3. Design & architecture
-4. Security & trust boundaries
-5. Performance & scalability
+Review without editing the patch or the rubric unless the caller requests those changes.
 
-Approve when the change clearly improves overall code health.
-Do not block on personal taste.
-Do not approve blindly.
-Prefer discrete, actionable findings over exhaustive commentary.
+## Invocation options
 
-## Review frame
+Caller options: $ARGUMENTS
 
-Choose these three settings before reviewing:
+Read named options from the invocation text or the caller's prompt, in any order. Accept equivalent plain-language requests and apply defaults only to omitted settings. If the client leaves placeholders unchanged, ignore them and use the caller's prompt.
 
-### 1. Source of truth
+| Option | Values | Default |
+| --- | --- | --- |
+| `target` | `unstaged`, `staged`, `branch:<ref>`, or a GitHub PR URL | Use the scope requested in the conversation; otherwise `unstaged`. |
+| `execution` | `auto`, `single-agent`, `parallel` | `auto` |
+| `delivery` | `thread-only`, `github-inline` | `thread-only` |
 
-- **local diff**: review the local git diff
-- **github pr**: review the GitHub pull request; GitHub is authoritative for base, head, diff, PR body, and existing review state
+Resolve invalid or conflicting options before the affected action. Continue independent review work while clarification is pending. If delivery is unresolved, draft findings without posting. Use the [Reporting contract](#reporting-contract) unless the caller requests another format.
 
-If a local checkout exists during GitHub review, only treat it as authoritative when it matches the PR head SHA.
+### Target and source
 
-### 2. Execution mode
+Local targets select the corresponding git diff. A PR URL selects GitHub as authoritative for base, head, diff, PR body, and existing review state. A local checkout is authoritative for a PR only when its HEAD matches the PR head SHA. A PR URL alone keeps `thread-only` delivery.
 
-- **single-agent**: default for small or straightforward changes
-- **parallel**: use when the diff is large, high-risk, or clearly benefits from separate axis passes
+### Execution
 
-### 3. Delivery mode
+- **single-agent**: review in the main agent. This explicit override prohibits delegation.
+- **parallel**: run separate axis passes within the client's available concurrency. If delegation is unavailable, perform the passes directly and disclose the fallback.
 
-- **thread-only**: return findings in the current conversation
-- **github-inline**: post inline PR comments only when explicitly requested or when the environment is clearly set up for PR review automation
+For **auto**, count added plus deleted lines across the selected diff, including tests. A replacement counts as one addition and one deletion; do not use net line growth.
 
-Separate reviewing from posting. Draft findings first, then publish only in the requested delivery mode.
+- **Fewer than 80 changed lines:** use one agent. Delegate only a bounded question whose answer could materially change the review.
+- **80 changed lines or more:** use parallel mode when scope, complexity, or risk benefits from separate passes. Straightforward changes can stay in single-agent mode.
+
+After collecting the scope, state the target, execution choice and brief reason, and delivery mode.
+
+### Delivery
+
+- **thread-only**: return findings in the current conversation.
+- **github-inline**: publish inline comments on the selected GitHub PR after verification. An explicit caller option or equivalent request authorizes publication. This mode requires a GitHub PR target.
+
+### Examples
+
+```text
+/code-review-and-quality target=staged execution=single-agent
+$code-review-and-quality target=branch:main execution=auto delivery=thread-only
+/code-review-and-quality target=https://github.com/owner/repo/pull/123 delivery=github-inline
+```
+
+## Axis reference map
+
+The guides own the detailed checks and axis-specific evidence requirements. Ownership determines where to report an issue; evidence can cross axis boundaries.
+
+| Axis and guide | Owned concern |
+| --- | --- |
+| [Correctness & robustness](references/axes/correctness.md) | Behavior, contracts, invariants, failure paths, ordering, atomicity, concurrency, and regression coverage. |
+| [Maintainability & readability](references/axes/maintainability.md) | Local clarity: naming, control and data flow, comments, error context, and readable tests. |
+| [Design & architecture](references/axes/architecture.md) | Placement, ownership, dependency direction, encapsulation, public contracts, and cross-layer coupling. |
+| [Security & trust boundaries](references/axes/security.md) | Untrusted input, identity, authority, sensitive data, and attacker-controlled resource use. |
+| [Performance & scalability](references/axes/performance.md) | Normal-workload cost: complexity, I/O, allocations, contention, concurrency bounds, and backpressure. |
+| [Dead code & simplification](references/axes/dead-code-and-simplifying.md) | Removable code, concepts, decision points, wrappers, modes, and reachable states. |
 
 ## Workflow
 
-### 1. Collect context
+### 1. Collect the agreed scope
 
-Identify:
+Identify the intended behavior, base and head, changed files and tests, and relevant project guidance. Fetch missing context when it is retrievable. Continue with available evidence and state material gaps; use `[blocked]` only when missing information prevents a meaningful review.
 
-- the user’s goal, spec, task, or bug being addressed
-- base branch or PR base/head
-- touched files and tests
-- relevant local guidance such as `AGENTS.md`, repo docs, or module-specific conventions
+Review every changed file in the agreed scope, including tests. Use current pre-computed artifacts when available; otherwise obtain the selected diff:
 
-If required context is missing and retrievable, fetch it.
-If it is missing and not retrievable, mark the review `[blocked]` instead of guessing.
+- `unstaged`: `git diff`
+- `staged`: `git diff --cached`
+- `branch:<ref>`: `git diff $(git merge-base HEAD <ref>)..HEAD`
 
-### 2. Collect the review scope
+For a PR target, read [GitHub review](references/github-review.md) before retrieving context or publishing findings. Treat prior comments as evidence leads: check relevant concerns against the current patch and avoid duplicate findings. The reference defines the additional work for explicit history triage and comment management.
 
-Review **every changed file**, including tests.
-Use pre-computed artifacts if available; otherwise obtain the diff directly.
+### 2. Inspect and delegate
 
-Local defaults:
+In single-agent mode, read each guide when starting its axis pass. Complete every axis in the agreed scope; reading in stages does not make its checks optional.
 
-- unstaged changes: `git diff`
-- staged changes: `git diff --cached`
-- branch review: `git diff $(git merge-base HEAD <base-branch>)..HEAD`
+In parallel mode, assign one read-only pass per selected axis and schedule passes within available capacity. Give each child the same fixed scope, its axis guide, the [Finding requirements](#finding-requirements), and the [Reporting contract](#reporting-contract). Children return concise findings without editing files, staging changes, or posting comments.
 
-For GitHub PR review, read `references/github-review.md`.
+The main agent reads the relevant guide when validating a delegated finding. It remains responsible for complete scope coverage and the final review.
 
-### 3. Inspect the change
+### 3. Validate and report
 
-#### Single-agent mode
+Validate candidate findings against the source and axis guide. Deduplicate underlying issues and select one primary axis per finding. Sort by severity; within a severity, prioritize material structural costs over local legibility notes.
 
-Review all five axes in one pass.
+Use existing verification evidence and focused checks to resolve material uncertainty. Complete project-required checks that apply to the review. Broaden or repeat checks only when new changes, failures, or unresolved concerns justify them. Do not require tests that merely mirror implementation details.
 
-#### Parallel mode
+Before finalizing, confirm coverage of the agreed files and axes, the evidence for each finding, and the requested delivery. For publication, follow the current-head and inline-anchor checks in the GitHub reference.
 
-After the scope is fixed, launch one **read-only** sub-agent per axis.
-Each sub-agent must:
+## Finding requirements
 
-- inspect only its assigned axis
-- use the same scope as the others
-- return concise findings only
-- avoid editing files, staging changes, or posting comments
+Report distinct, actionable issues introduced or worsened by the change, including paths the change makes unused or misleading. Each finding needs a concrete failure mode or material maintenance cost, a precise code location, and a correction direction. Do not report pure taste, speculative risks without a concrete path, or unrelated pre-existing issues.
 
-Axis files for sub-agents:
+Structural findings can block approval even when behavior is correct and tests pass. Apply the same evidence bar in every execution and delivery mode.
 
-- `references/axes/correctness.md`
-- `references/axes/maintainability.md`
-- `references/axes/architecture.md`
-- `references/axes/security.md`
-- `references/axes/performance.md`
+Assign severity from the demonstrated consequence; do not assign a default severity.
 
-### 4. Aggregate findings
+| Severity | Meaning |
+| --- | --- |
+| `P1` | High-impact defect or structural regression that blocks approval. |
+| `P2` | Material defect or maintenance cost that should be fixed before merge. |
+| `P3` | Concrete, non-blocking improvement that can follow after merge. |
 
-The main agent is responsible for synthesis.
-
-- deduplicate overlapping findings
-- keep one finding per distinct issue
-- prefer issues the author would likely fix if made aware
-- do not report speculative or weakly grounded concerns
-- do not restate obvious code or existing comments unless adding new value
-
-Comment(s) posted should follow a Flesch–Kincaid readability score between 60 and 80 and use ASD-STE100 Technical English.
-
-### 5. Verify before finalizing
-
-Before returning or posting findings, confirm:
-
-- all changed files were covered
-- every finding is tied to a concrete file, line, symbol, or diff hunk
-- each finding includes a real failure mode or code-health cost
-- each finding has a severity label and primary axis
-- delivery mode matches the request
-
-If posting to GitHub, verify inline anchors against the current PR diff before sending comments.
-
-## The five review axes
-
-### 1. Correctness & robustness
-
-Check whether the change behaves as intended under normal and failure conditions.
-
-- Does it match the task, spec, or expected behavior change?
-- Are edge cases, error paths, retries, ordering, and state transitions handled correctly?
-- Could this introduce races, off-by-one errors, stale state, or broken invariants?
-- Do the tests actually cover the changed behavior and catch regressions?
-
-### 2. Maintainability & readability
-
-Check whether the code will be easy to understand and safely change later.
-
-- Are names, control flow, and data flow clear?
-- Is the implementation simpler than the problem demands, or more complex?
-- Are there new layers, helpers, toggles, or abstractions that do not earn their cost?
-- Did the change leave dead code, fallback paths, parameter threading, or speculative structure behind?
-
-### 3. Design & architecture
-
-Check whether the change fits the surrounding system.
-
-- Does it respect module boundaries, ownership, and dependency direction?
-- Does it follow an existing pattern, or is the new pattern justified?
-- Is there duplication that should stay local, or duplication that should become shared?
-- Does the abstraction level match the codebase, without over-generalizing?
-
-### 4. Security & trust boundaries
-
-Check how the change handles untrusted input, permissions, secrets, and data exposure.
-
-- Are trust boundaries explicit and validated?
-- Are authentication and authorization enforced where required?
-- Could input reach SQL, shell, file system, templates, or browsers unsafely?
-- Are secrets, tokens, or sensitive data exposed in code, logs, telemetry, or errors?
-
-### 5. Performance & scalability
-
-Check for avoidable latency, load, and memory cost.
-
-- Any repeated work, N+1 access patterns, or redundant allocations?
-- Any unbounded scans, fetches, or loops?
-- Any synchronous blocking, unnecessary re-renders, or missing batching/pagination?
-- Does the change add cost in a hot path or high-cardinality path?
+Approve when the change improves overall code health and no blocking findings remain. Use `request changes` for unresolved P1 or P2 findings; use `comment only` for non-blocking feedback or an unresolved question that prevents an approval decision.
 
 ## Reporting contract
 
-Unless the caller requests a different format, return:
+Return a verdict (`approve`, `request changes`, `comment only`, or `[blocked]`), findings, and material verification gaps. Each finding includes severity, primary axis, location, issue, why it matters, and suggested direction. State which checks ran and distinguish observed results from code-based inference.
 
-### Verdict
-
-One of:
-
-- `approve`
-- `request changes`
-- `comment only`
-- `[blocked]`
-
-### Findings
-
-For each finding, include:
-
-- severity
-- axis
-- location
-- issue
-- why it matters
-- suggested direction
-
-Keep findings brief and concrete.
-
-### Verification gaps
-
-List missing or unclear evidence such as:
-
-- missing regression tests
-- tests not run
-- build status unknown
-- manual verification not described where it matters
-
-### Optional notes
-
-Only include clearly useful non-blocking suggestions.
-
-## Progressive disclosure
-
-Read additional references only when needed:
-
-- `references/behaviour-communication.md` for comment style, severity, and disagreement handling
-- `references/github-review.md` for GitHub PR retrieval, inline anchors, stale comment handling, and posting rules
-- `references/dead-code-and-simplifying.md` when the review surfaces dead code, speculative abstraction, legacy fallbacks, or cleanup opportunities
-
-Keep the core review logic in this file.
-Use reference files for optional detail, not for core behavior.
+Keep the report concise and omit empty optional sections. Include cosmetic nits only when requested. Read [Communication guidance](references/behaviour-communication.md) when drafting review comments or handling disagreements.

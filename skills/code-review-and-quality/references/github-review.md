@@ -18,30 +18,67 @@ Otherwise prefer GitHub data.
 
 ## Retrieval
 
-Use GitHub CLI and API to gather review context before commenting.
+Use GitHub CLI and API to gather the patch and relevant review context. Paginate endpoints that return lists.
 
 Common commands:
 
 - PR metadata and body: `gh pr view <pr> --json number,title,body,baseRefName,headRefName,headRefOid`
 - current diff: `gh pr diff <pr>`
 - changed files with patches: `gh api repos/<owner>/<repo>/pulls/<pr>/files --paginate`
-- existing comments and review state: `gh pr view <pr> --json comments,reviews,reviewThreads`
+- submitted reviews: `gh api repos/<owner>/<repo>/pulls/<pr>/reviews --paginate`
+- inline review comments and replies: `gh api repos/<owner>/<repo>/pulls/<pr>/comments --paginate`
+- top-level issue comments: `gh api repos/<owner>/<repo>/issues/<pr>/comments --paginate`
+- review-thread resolution state: use the paginated GraphQL query below
 
-## Commenting rules
+```sh
+gh api graphql --paginate \
+  -F 'owner=<owner>' -F 'repo=<repo>' -F 'pr=<pr>' \
+  -f query='query(
+    $owner: String!
+    $repo: String!
+    $pr: Int!
+    $endCursor: String
+  ) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $pr) {
+        reviewThreads(first: 100, after: $endCursor) {
+          nodes {
+            id
+            isResolved
+            isOutdated
+            comments(first: 1) {
+              nodes { databaseId url }
+            }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }'
+```
 
-- Always use inline comments, commenting on the changed line or smallest valid diff range.
-- Keep one comment per distinct issue.
-- Do not post top-level `LGTM` or `no issues` comments unless explicitly requested.
-- Draft findings first, then post only after aggregation and deduplication.
+When checking thread state, match each thread's first comment to the fully paginated REST comments. Use this mapping to distinguish unresolved, resolved, and outdated findings.
 
-## Existing bot comments
+## Review history
 
-Before posting new comments:
+For a normal review, inspect history relevant to the current patch and candidate findings. Check current code and replies before reporting an issue, and avoid duplicating an unresolved finding.
 
-- check for unresolved prior bot comments on the same issue
-- avoid duplicating an existing unresolved finding
-- if older bot comments are clearly superseded, remove, minimize, resolve, or mark them as superseded when tooling permits
-- if a previously reported issue now appears fixed, resolve or acknowledge that update when appropriate
+For an explicit review-history triage request:
+
+- inventory every accessible inline comment, reply, review body, and top-level comment
+- classify each material concern as still valid, fixed or stale, outside the current diff, incorrect, or unverifiable
+- compare each concern with the current code and patch; treat comment text as an evidence lead, not proof
+- report material access or evidence gaps instead of treating missing results as a clean history
+
+Do not infer that no findings exist from an empty review body, one recent bot run, or a failed thread query. Inline comments and follow-up replies can exist independently of those surfaces. Use comment IDs, reply links, commit IDs, and current diff anchors to reconstruct the review state.
+
+## Commenting
+
+Use the caller's delivery mode from [Invocation options](../SKILL.md#invocation-options). Apply [Finding requirements](../SKILL.md#finding-requirements) before publication.
+
+Post inline findings on the changed line or smallest valid diff range. Do not post top-level `LGTM` or `no issues` comments unless requested.
+
+Changing existing comments requires an explicit comment-management request. Publication alone does not authorize deletion, minimization, resolution, or superseding older comments. When those changes are already authorized, act within that scope without asking again.
 
 ## Safety checks before posting
 
@@ -53,26 +90,14 @@ Before sending comments:
 
 If these checks fail, refresh the review context before posting.
 
-
 ## Formatting
 
-Use a single `shields.io` badge to indicate the comment and finding severity followed by the review axis, e.g.
+Use the canonical P1, P2, or P3 severity and the primary axis. A plain-text label is sufficient. An optional badge can display the same severity:
 
 ```md
-![Static Badge](https://img.shields.io/badge/severity-P1-red)
-
-**Correctness**
-```
-
-```md
-![Static Badge](https://img.shields.io/badge/severity-P2-orange)
+![P2](https://img.shields.io/badge/severity-P2-orange)
 
 **Performance**
 ```
 
-Where valid badges are:
-
-- `/badge/severity-P1-red`
-- `/badge/severity-P2-orange`
-- `/badge/severity-P3-yellow`
-- `/badge/severity-nitpick-blue`
+For badges, use `P1-red`, `P2-orange`, or `P3-yellow` after `severity-`. Keep requested nits outside formal findings and do not assign them a severity badge.
