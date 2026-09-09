@@ -23,6 +23,7 @@ terraform = "latest"
 pitchfork = "latest"
 gcloud = "latest"
 github-cli = "latest"
+git-lfs = { version = "latest", postinstall = "git-lfs install" }
 
 # llm and ai
 codex = "latest"
@@ -49,11 +50,8 @@ fzf = "latest"
 "github:wfxr/forgit" = "latest"
 
 # misc & unsorted
-"npm:@tobilu/qmd" = "latest"
-"npm:agent-browser" = "latest"
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
 vale = "latest"
-
 
 [hooks]
 enter = "mise i -q"
@@ -64,6 +62,7 @@ run = "gh auth status || gh auth login"
 [shell_alias]
 ll = "eza -la --icons --group-directories-first"
 pi-update = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
+pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_CODING_AGENT_SESSION_DIR="$HOME/.pi/profiles/fabric/sessions" pi'
 
 [bootstrap.repos]
 "~/git/dotfiles" = { url = "git@github.com:ahstn/dotfiles.git", ref = "main" }
