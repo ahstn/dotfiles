@@ -53,6 +53,7 @@ fzf = "latest"
 "npm:agent-browser" = "latest"
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
 vale = "latest"
+git-lfs = "3.8.0"
 
 
 [hooks]

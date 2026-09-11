@@ -1,0 +1,43 @@
+{
+  "configVersion": 4,
+  "fullCodeMode": true,
+  "executor": {
+    "runtime": "quickjs",
+    "timeoutMs": 120000,
+    "maxTimeoutMs": 900000,
+    "memoryLimitBytes": 67108864
+  },
+  "models": {
+    "aliases": {
+      "worker": "openai-codex/gpt-5.6-sol",
+      "delegate": "openai-codex/gpt-5.6-luna",
+      "researcher": "openai-codex/gpt-5.6-luna",
+      "oracle": "openai-codex/gpt-5.6-sol",
+      "reviewer": ["openai-codex/gpt-5.6-sol", "github-copilot/gpt-5.6-sol"],
+      "scout": "openai-codex/gpt-5.6-luna",
+      "astra": "openai-codex/gpt-6-astra"
+    }
+  },
+  "agents": {
+    "enabled": true,
+    "runner": "pi",
+    "transport": "process",
+    "thinking": "medium",
+    "maxConcurrent": 4,
+    "maxPerExecution": 16,
+    "maxDepth": 2,
+    "timeoutMs": 1800000,
+    "extensions": true,
+    "defaultTools": ["read", "bash", "edit", "write", "grep", "find", "ls"],
+    "notifyOnComplete": true,
+    "budgetUsd": 10,
+    "maxTokensPerChild": 1000000,
+    "sessionExport": true
+  },
+  "prewalk": {
+    "mode": "trajectory",
+    "model": "openai-codex/gpt-5.6-sol",
+    "thinking": "medium",
+    "alwaysRearm": false
+  }
+}

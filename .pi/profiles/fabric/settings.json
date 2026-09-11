@@ -1,0 +1,17 @@
+{
+  "theme": "catppuccin-frappe",
+  "themes": ["../../agent/themes/catppuccin-frappe.json"],
+  "defaultModel": "gpt-5.6-sol",
+  "defaultProvider": "openai-codex",
+  "defaultThinkingLevel": "medium",
+  "collapseChangelog": true,
+  "shellCommandPrefix": "export PATH=\"$HOME/.local/share/mise/shims:$PATH\"",
+  "packages": ["npm:pi-fabric@0.82.8"],
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 20480,
+    "keepRecentTokens": 10240
+  },
+  "enableInstallTelemetry": true,
+  "enableAnalytics": false
+}
