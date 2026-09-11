@@ -3,7 +3,7 @@
   "defaultModel": "gpt-5.6-sol",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "0.84.4",
+  "lastChangelogVersion": "0.85.1",
   "collapseChangelog": true,
   "shellCommandPrefix": "export PATH=\"$HOME/.local/share/mise/shims:$PATH\"",
   "packages": [
@@ -15,7 +15,7 @@
     "npm:pi-tool-display",
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:@heyhuynhgiabuu/pi-pretty"
+    "npm:pi-intercom"
   ],
   "compaction": {
     "enabled": true,

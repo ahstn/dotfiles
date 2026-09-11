@@ -14,6 +14,7 @@ packer_compiled.lua
 .pi/agent/models-store.json
 .pi/agent/mcp-cache.json
 .pi/agent/mcp-npx-cache.json
+.pi/agent/intercom/
 .pi/agent/.extmgr-cache
 .pi/agent/sessions
 .pi/agent/missions
@@ -23,6 +24,13 @@ packer_compiled.lua
 .pi/agent/*.work.json
 .pi/pi-acp/session-map.json
 .pi-subagents/artifacts
+# Profile runtime state is local; only declarative Fabric resources are tracked.
+.pi/profiles/fabric/*
+!.pi/profiles/fabric/settings.json
+!.pi/profiles/fabric/fabric.json
+!.pi/profiles/fabric/models.json
+!.pi/profiles/fabric/AGENTS.md
+!.pi/profiles/fabric/README.md
 **/node_modules
 exa-usage.json
 run-history.jsonl
@@ -41,3 +49,11 @@ run-history.jsonl
 # private files, config and skills
 skills/personality-persona/*
 skills/personality/references/*
+!skills/personality/references/personal-voice.md
+!skills/personality/references/guidance-direct-messages.md
+!skills/personality/references/guidance-blog-posts.md
+!skills/personality/references/guidance-professional-formats.md
+!skills/personality/references/guidance-reflections.md
+!skills/personality/references/guidance-storytelling-metaphor.md
+!skills/personality/references/annotated-examples.md
+!skills/personality/references/evaluation.md

@@ -2,7 +2,8 @@
     "modelExclusions": {
         "defaultTtlMs": 300000
     },
-    "maxSubagentDepth": 1,
+    "defaultSubagentContext": "fork",
+    "maxSubagentDepth": 2,
     "maxSubagentSpawnsPerRun": 16,
     "maxSubagentSpawnsPerSession": 64,
     "maxActiveAsyncRunsPerSession": 4,
