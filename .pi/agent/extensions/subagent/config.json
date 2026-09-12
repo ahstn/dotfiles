@@ -14,5 +14,10 @@
 
     "scheduledRuns": {
         "enabled": true
+    },
+    "intercomBridge": {
+        "mode": "always",
+        "instructionFile": "./intercom-bridge.md",
+        "resultDelivery": true
     }
 }

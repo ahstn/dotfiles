@@ -1,5 +1,6 @@
 ---
 name: research-verifier
+subagentOnlyExtensions: ~/.pi/agent/extensions/exa-websearch/index.ts
 description: Post-process a draft to add inline citations and verify every source URL.
 thinking: medium
 tools: read, bash, grep, find, ls, write, edit, exa_websearch

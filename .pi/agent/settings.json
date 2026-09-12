@@ -38,21 +38,31 @@
     },
     "agentOverrides": {
       "delegate": {
+        "tools": ["read", "grep", "find", "ls", "bash", "edit", "write", "contact_supervisor", "exa_websearch"],
+        "subagentOnlyExtensions": ["~/.pi/agent/extensions/exa-websearch/index.ts"],
         "model": "openai-codex/gpt-5.6-luna:high"
       },
       "oracle": {
+        "tools": ["read", "grep", "find", "ls", "bash", "exa_websearch"],
+        "subagentOnlyExtensions": ["~/.pi/agent/extensions/exa-websearch/index.ts"],
         "model": "openai-codex/gpt-5.6-sol:xhigh"
       },
       "researcher": {
+        "tools": ["read", "write", "web_search", "fetch_content", "get_search_content", "exa_websearch"],
+        "subagentOnlyExtensions": ["~/.pi/agent/extensions/exa-websearch/index.ts"],
         "model": "openai-codex/gpt-5.6-luna:high"
       },
       "reviewer": {
+        "tools": ["read", "grep", "find", "ls", "contact_supervisor", "exa_websearch"],
+        "subagentOnlyExtensions": ["~/.pi/agent/extensions/exa-websearch/index.ts"],
         "model": "openai-codex/gpt-5.6-sol:high",
         "fallbackModels": [
           "github-copilot/gpt-5.6-sol:high"
         ]
       },
       "scout": {
+        "tools": ["read", "grep", "find", "ls", "bash", "write", "contact_supervisor", "exa_websearch"],
+        "subagentOnlyExtensions": ["~/.pi/agent/extensions/exa-websearch/index.ts"],
         "model": "openrouter/google/gemini-3.7-flash:high",
         "fallbackModels": [
           "openai-codex/gpt-5.6-luna:high"

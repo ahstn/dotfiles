@@ -7,8 +7,8 @@ systemPromptMode: append
 inheritProjectContext: true
 inheritGlobalContext: true
 inheritSkills: true
-tools: read, grep, find, ls, bash, edit, write, contact_supervisor, intercom, subagent
-extensions: ~/.pi/agent/npm/node_modules/pi-intercom/index.ts
+allowNestedSubagents: true
+extensions: ~/.pi/agent/npm/node_modules/pi-intercom/index.ts, ~/.pi/agent/extensions/exa-websearch/index.ts
 defaultContext: fork
 defaultProgress: false
 maxSubagentDepth: 2

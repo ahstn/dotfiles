@@ -1,5 +1,6 @@
 ---
 name: research-reviewer
+subagentOnlyExtensions: ~/.pi/agent/extensions/exa-websearch/index.ts
 description: Simulate a tough but constructive AI research peer reviewer with inline annotations.
 thinking: high
 output: review.md
