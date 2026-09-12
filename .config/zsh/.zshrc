@@ -79,3 +79,6 @@ setopt always_to_end           # Move cursor to end of completed word
 setopt glob_dots               # Include dotfiles in pathname expansion (globbing)
 setopt no_auto_menu            # Require an extra TAB to open completion menu
 setopt CORRECT                 # Prompt to correct mistyped commands
+
+# bun completions
+[ -s "/Users/ahstn/.bun/_bun" ] && source "/Users/ahstn/.bun/_bun"

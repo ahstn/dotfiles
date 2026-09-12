@@ -164,17 +164,17 @@ Scan for these patterns — each one is a concrete signal, not a vague smell:
 
 ### Step 3: Apply Changes Incrementally
 
-Make one simplification at a time. Run tests after each change. **Submit refactoring changes separately from feature or bug fix changes.** A PR that refactors and adds a feature is two PRs — split them.
+Group related simplifications into a coherent, reviewable change. Run the tests that cover the affected behavior after each coherent change. Separate refactoring from feature or bug fix PRs when the separation reduces review risk; keep small supporting simplifications with the change they enable.
 
 ```
-FOR EACH SIMPLIFICATION:
-1. Make the change
-2. Run the test suite
-3. If tests pass → commit (or continue to next simplification)
-4. If tests fail → revert and reconsider
+FOR EACH COHERENT CHANGE:
+1. Make the related simplifications
+2. Run the relevant tests and required project checks
+3. If checks pass, continue toward the requested outcome
+4. If checks fail, identify and correct the regression while preserving unrelated work
 ```
 
-Avoid batching multiple simplifications into a single untested change. If something breaks, you need to know which simplification caused it.
+Keep batches small enough to diagnose failures. Broaden or repeat checks only when new changes, failures, or unresolved concerns justify it. Commit only when the user requests it or the task already authorizes it.
 
 **The Rule of 500:** If a refactoring would touch more than 500 lines, invest in automation (codemods, sed scripts, AST transforms) rather than making the changes by hand. Manual edits at that scale are error-prone and exhausting to review.
 

@@ -25,3 +25,36 @@ providers:
         contextWindow: 256000
       gemini-3.7-flash:
         contextWindow: 256000
+
+  
+  deepseek:
+    baseUrl: https://api.deepseek.com
+    apiKey: DEEPSEEK_API_KEY
+    api: openai-completions
+    models:
+      - id: deepseek-v4.1-flash-expires-on-0910
+        name: DeepSeek V4.1 Flash (expires 2026-09-10)
+        reasoning: true
+        input: [text]
+        cost:
+          input: 0.14
+          output: 0.28
+          cacheRead: 0.0028
+          cacheWrite: 0
+        contextWindow: 272000
+        maxTokens: 384000
+        tokenizer: deepseek-v3
+        compat:
+          supportsDeveloperRole: false
+          supportsReasoningEffort: true
+          maxTokensField: max_tokens
+          supportsToolChoice: false
+          extraBody:
+            thinking:
+              type: enabled
+          reasoningContentField: reasoning_content
+          requiresReasoningContentForToolCalls: true
+          requiresAssistantContentForToolCalls: true
+        thinking:
+          mode: effort
+          efforts: [low, high, max]
