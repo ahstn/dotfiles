@@ -56,6 +56,10 @@ vale = "latest"
 [hooks]
 enter = "mise i -q"
 
+[tasks.git-lfs-setup]
+description = "Configure Git LFS for this user"
+run = "git lfs install --skip-repo"
+
 [tasks.gh-auth]
 run = "gh auth status || gh auth login"
 
