@@ -29,6 +29,8 @@ run-history.jsonl
 
 # omp
 .omp/agent/config.yml.lock
+.omp/agent/*.work.json
+
 
 # herdr
 .config/herdr/session.json
