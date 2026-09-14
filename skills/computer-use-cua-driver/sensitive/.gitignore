@@ -1,0 +1,3 @@
+# Keep machine-local account, workspace, and destination mappings out of Git.
+*
+!.gitignore
