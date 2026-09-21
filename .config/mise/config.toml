@@ -79,6 +79,7 @@ pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT
 "brew:zsh" = "latest"
 "brew-cask:muesli" = "latest"
 "brew-cask:vorssaint" = "latest"
+"brew-cask:font-jetbrains-mono-nerd-font" = "latest"
 
 # linux servers
 "apt:curl" = "latest"
@@ -92,6 +93,7 @@ pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT
 "apt:zsh" = "latest"
 "apt:rsync" = "latest"
 "apt:ripgrep" = "latest"
+"apt:fd-find" = "latest"
 "apt:btop" = "latest"
 
 [bootstrap.user]

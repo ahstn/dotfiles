@@ -1,8 +1,9 @@
 # tab title: basename $(git rev-parse --show-toplevel 2> /dev/null || pwd)
 #
 # reload config with cmd+shift+,
+# ghostty +list-themes
 
-theme = "Catppuccin Frappe" # now bundled into Ghostty
+theme = Catppuccin Macchiato
 font-family = "Jetbrains Mono Nerd Font"
 
 copy-on-select = clipboard
