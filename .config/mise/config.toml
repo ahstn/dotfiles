@@ -4,11 +4,11 @@ color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
 minimum_release_age = "3d"
 trusted_config_paths = [
-    '~/git/',
-    '~/.codex/worktrees/',
-    '~/.herdr/worktrees/',
-    '~/.bb/worktrees/',
-    '~/.luvus/worktrees/',
+  '~/git/',
+  '~/.codex/worktrees/',
+  '~/.herdr/worktrees/',
+  '~/.bb/worktrees/',
+  '~/.luvus/worktrees/',
 ]
 
 [tools]
@@ -65,6 +65,7 @@ run = "gh auth status || gh auth login"
 
 [shell_alias]
 ll = "eza -la --icons --group-directories-first"
+docker-prune = 'docker system prune --all --volumes --force'
 pi-update = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
 pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_CODING_AGENT_SESSION_DIR="$HOME/.pi/profiles/fabric/sessions" pi'
 

@@ -2,8 +2,8 @@
 #
 # reload config with cmd+shift+,
 
-theme = Catppuccin Frappe # now bundled into Ghostty
-macos-titlebar-style = "tabs"
+theme = "Catppuccin Frappe" # now bundled into Ghostty
+font-family = "Jetbrains Mono Nerd Font"
 
 copy-on-select = clipboard
 
