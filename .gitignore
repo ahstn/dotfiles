@@ -5,7 +5,9 @@ packer_compiled.lua
 **/.config/zsh/.zsh_history
 **/.config/zsh/*.zcompdump*
 **/.config/zsh/.zsh-private
+**/.config/zsh/.zsh_sessions
 **/.config/zsh/plugins/
+exa-results/
 
 .config/herdr/.plugins.lock
 

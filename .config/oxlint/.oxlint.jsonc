@@ -1,0 +1,87 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "env": {
+        "browser": true,
+        "es2024": true
+    },
+    "options": {
+        "typeAware": true // (npm add|bun i) -D oxlint-tsgolint@latest
+    },
+    "plugins": [ "eslint", "typescript", "react", "unicorn" ],
+    "ignorePatterns": [ "node_modules", "dist", ".output", "src/generated" ],
+    "overrides": [
+        {
+            // Loosen rules for test files.
+            "files": [
+                "e2e/**/*.ts",
+                "e2e/**/*.tsx",
+                "src/test/**",
+                "src/**/*.test.ts",
+                "src/**/*.test.tsx",
+                "src/**/*.spec.ts",
+                "src/**/*.spec.tsx"
+            ],
+            "rules": {
+                "max-lines-per-function": "off",
+                "no-await-in-loop": "off"
+            }
+        },
+        {
+            "files": [ "src/routeTree.gen.ts" ],
+            "rules": {
+                "unicorn/filename-case": "off"
+            }
+        }
+    ],
+    "rules": {
+        "react/jsx-props-no-spread-multi": "error",
+        "react/jsx-no-duplicate-props": "error",
+        "react/no-array-index-key": "error",
+        "react/no-did-update-set-state": "error",
+        "react/no-did-mount-set-state": "error",
+        "react/no-object-type-as-default-prop": "error",
+        "react/no-this-in-sfc": "error",
+        "react/no-render-return-value": "error",
+        "react/void-dom-elements-no-children": "error",
+        // eslint rules
+        "complexity": [ "warn", { "max": 30 } ],
+        "eqeqeq": [ "error", "always", { "null": "ignore" } ],
+        "no-lonely-if": "error",
+        "no-await-in-loop": "error",
+        "max-lines": [ "warn", { "max": 1500, "skipBlankLines": true, "skipComments": true } ],
+        "max-depth": [ "warn", { "max": 3 } ],
+        "max-lines-per-function": [
+            "error",
+            { "max": 120, "skipBlankLines": true, "skipComments": true }
+        ],
+
+        // typescript rules (most require type info)
+        "typescript/array-type": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/switch-exhaustiveness-check": "error",
+        "typescript/only-throw-error": "error",
+        "typescript/use-unknown-in-catch-callback-variable": "error",
+        // typescript rules - ban `any`
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+
+        // oxc rules
+        "oxc/no-accumulating-spread": "error",
+        "oxc/no-map-spread": "error",
+        "oxc/branches-sharing-code": "error",
+        "oxc/bad-bitwise-operator": "error",
+
+        // unicorn rules
+        "unicorn/error-message": "error", // no bare errors
+        "unicorn/filename-case": [ "error", { "case": "kebabCase" } ],
+        "unicorn/no-useless-fallback-in-spread": "error",
+        "unicorn/no-useless-spread": "error",
+        "unicorn/prefer-set-has": "error",
+        "unicorn/prefer-array-find": "error",
+        "unicorn/prefer-array-flat-map": "error",
+        "unicorn/prefer-logical-operator-over-ternary": "error"
+    }
+}
