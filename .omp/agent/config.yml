@@ -1,30 +1,6 @@
 providers:
   openaiWebsockets: "on"
   openrouterVariant: default
-  webSearchOrder:
-    - exa
-    - perplexity
-    - gemini
-    - anthropic
-    - codex
-    - xai
-    - zai
-    - tinyfish
-    - jina
-    - kagi
-    - tavily
-    - firecrawl
-    - brave
-    - kimi
-    - parallel
-    - synthetic
-    - searxng
-    - startpage
-    - duckduckgo
-    - ecosia
-    - google
-    - mojeek
-    - public
 disabledProviders:
   - amazon-bedrock
   - bedrock-mantle
@@ -62,11 +38,41 @@ bash:
     enabled: true
 retry:
   maxRetries: 2
+  fallbackChains:
+    web:
+      - web/perplexity
+      - google/gemini-2.5-flash
+      - anthropic/claude-haiku-4-5
+      - openai-codex/gpt-5.6-luna
+      - xai/grok-4.5
+      - web/zai
+      - web/tinyfish
+      - web/jina
+      - web/kagi
+      - web/tavily
+      - web/firecrawl
+      - web/brave
+      - web/kimi
+      - web/parallel
+      - web/synthetic
+      - web/searxng
+      - web/startpage
+      - web/duckduckgo
+      - web/ecosia
+      - web/google
+      - web/mojeek
+      - web/public
+      - google-antigravity/gemini-2.5-flash
+      - openai-codex/gpt-5.6
+      - openai-codex/gpt-5.5
+      - xai-oauth/grok-4.5
+      - web/ollama
 modelRoles:
-  default: openai-codex/gpt-5.6-sol:medium
-  smol: openai-codex/gpt-5.6-luna:high
-  vision: openai-codex/gpt-5.6-luna:high
+  default: openai-codex/gpt-6-sol:medium
+  smol: openai-codex/gpt-6-luna:high
+  vision: openai-codex/gpt-6-luna:high
   advisor: anthropic/claude-fable-5:high
+  web: web/exa
 tier:
   openai: auto
 dev:
