@@ -82,6 +82,7 @@ composer:
 skills:
   enableClaudeUser: false
   enableClaudeProject: false
+  enableSkillCommands: false  # use `skill://` instead
   customDirectories:
     - ~/git/dotfiles/skills
   ignoredSkills:
