@@ -1,0 +1,16 @@
+.config/oxlint/.oxlint.jsonc
+  h_2f452a9c375069 1-87
+.gitignore
+  h_2f452a9c375069 8,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "120f973dd8d6e13b816cb974c7c3afaeeed38b96",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
