@@ -3,7 +3,7 @@
   "defaultModel": "gpt-5.6-sol",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "0.84.4",
+  "lastChangelogVersion": "0.87.1",
   "collapseChangelog": true,
   "shellCommandPrefix": "export PATH=\"$HOME/.local/share/mise/shims:$PATH\"",
   "packages": [
@@ -14,8 +14,7 @@
     "npm:pi-mcp-adapter",
     "npm:pi-tool-display",
     "npm:@juicesharp/rpiv-todo",
-    "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:@heyhuynhgiabuu/pi-pretty"
+    "npm:@juicesharp/rpiv-ask-user-question"
   ],
   "compaction": {
     "enabled": true,
@@ -26,40 +25,25 @@
   "enableAnalytics": false,
   "subagents": {
     "defaultModel": "gpt-5.6-sol",
-    "modelScope": {
-      "enforce": true,
-      "strict": true,
-      "allow": [
-        "inherit",
-        "openai-codex/gpt-5.6-*",
-        "github-copilot/gpt-5.6-*",
-        "openrouter/google/gemini-3.7-flash"
-      ]
-    },
+    "defaultProvider": "openai-codex",
     "agentOverrides": {
       "delegate": {
-        "model": "openai-codex/gpt-5.6-luna:high"
+        "model": "gpt-5.6-luna:high"
       },
       "oracle": {
-        "model": "openai-codex/gpt-5.6-sol:xhigh"
+        "model": "gpt-5.6-sol:xhigh"
       },
       "researcher": {
-        "model": "openai-codex/gpt-5.6-luna:high"
+        "model": "gpt-5.6-luna:high"
       },
       "reviewer": {
-        "model": "openai-codex/gpt-5.6-sol:high",
-        "fallbackModels": [
-          "github-copilot/gpt-5.6-sol:high"
-        ]
+        "model": "gpt-5.6-sol:high"
       },
       "scout": {
-        "model": "openrouter/google/gemini-3.7-flash:high",
-        "fallbackModels": [
-          "openai-codex/gpt-5.6-luna:high"
-        ]
+        "model": "openrouter/google/gemini-3.7-flash:high"
       },
       "worker": {
-        "model": "openai-codex/gpt-5.6-sol:medium"
+        "model": "gpt-5.6-sol:medium"
       }
     }
   }
