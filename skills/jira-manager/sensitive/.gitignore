@@ -1,0 +1,3 @@
+# Jira instance, account, project, board, and field mappings are local only.
+*
+!.gitignore
