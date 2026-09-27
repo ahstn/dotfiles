@@ -82,6 +82,8 @@ composer:
 skills:
   enableClaudeUser: false
   enableClaudeProject: false
+  customDirectories:
+    - ~/git/dotfiles/skills
   ignoredSkills:
     - "*superpower*"
     - subagent-driven-development
