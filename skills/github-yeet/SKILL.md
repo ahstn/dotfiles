@@ -72,6 +72,8 @@ DO:
 - Use bullet points for the text you do write.
 - Utilise mermaid codeblock diagrams for visualising larger scale changes (>= 4 services, components, modules)
 - For frontend, UI or UX changes: create a table of before and after with uploaded images/videos.
+  - Upload with `--attach` on `gh pr create`/`gh pr edit` ([docs](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli)). Reference each file inline in the table cell, `| ![alt text](./after.png) |`, and pass the identical path (`--attach ./after.png`); gh rewrites the reference in place and keeps the Markdown alt text.
+  - Avoid `--attach 'file#alt'` for tables: that alt only applies to unreferenced files, which are appended after the whole body.
 
 DO NOT:
 - Include intermediate PR details, attempted changes that didn't land in the PR, refactored commits in the this PR, etc
