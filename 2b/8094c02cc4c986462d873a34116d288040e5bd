@@ -1,0 +1,24 @@
+skills/jira-manager/SKILL.md
+  h_2f452a9c375069 1-507
+skills/jira-manager/references/jira-links-and-attachments.md
+  h_2f452a9c375069 1-86
+skills/jira-manager/references/jira-sprints.md
+  h_2f452a9c375069 1-195
+skills/jira-manager/references/jira-workflow.md
+  h_2f452a9c375069 1-87
+skills/jira-manager/references/variables.example.jsonc
+  h_2f452a9c375069 1-39
+skills/jira-manager/sensitive/.gitignore
+  h_2f452a9c375069 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2b8094c02cc4c986462d873a34116d288040e5bd",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
