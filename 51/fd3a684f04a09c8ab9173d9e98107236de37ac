@@ -1,0 +1,28 @@
+mise.toml
+  h_2f452a9c375069 45-48,52-73
+.config/sshd/sshd_config.tera
+  h_2f452a9c375069 1-61
+.gitignore
+  s_cc362d34b77735::t_2288f9aeef7fc1 48-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51fd3a684f04a09c8ab9173d9e98107236de37ac",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_cc362d34b77735": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7702d81-9652-4e35-bb52-ed1bea027ae6",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
