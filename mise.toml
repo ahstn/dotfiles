@@ -42,6 +42,32 @@ dotfiles.default_mode = "symlink"
 "~/.gitconfig" = { source = "./.config/git/.gitconfig", mode = "symlink" }
 "~/.gitignore" = { source = "./.config/git/.gitignore", mode = "symlink" }
 
+# Ephemeral LAN-only sshd. Rendered (not linked) so the dir can also hold the host key & pid.
+# Inputs: SSHD_LISTEN, SSHD_USER, SSHD_ALLOW_FROM - see the template header.
+"~/.config/sshd/sshd_config" = { source = ".config/sshd/sshd_config.tera", mode = "template", permissions = "0600" }
+
 [tasks.bootstrap]
 description = "Install user crontab"
 run = "crontab ~/.config/cron/ahstn.crontab"
+
+[tasks.sshd]
+description = "Run a ephemeral foreground sshd from ~/.config/sshd"
+usage = 'flag "-m --minutes <minutes>" default="180" help="Stop sshd automatically after this many minutes"'
+run = '''
+set -eu
+dir="$HOME/.config/sshd"
+[ -f "$dir/ssh_host_ed25519_key" ] || ssh-keygen -q -t ed25519 -N '' -C "temp-sshd@$(hostname -s)" -f "$dir/ssh_host_ed25519_key"
+if [ ! -s "$dir/authorized_keys" ]; then
+  echo "sshd: add the client's public key(s) to $dir/authorized_keys (chmod 600) first" >&2
+  exit 1
+fi
+/usr/sbin/sshd -t -f "$dir/sshd_config"
+
+/usr/sbin/sshd -D -e \
+  -f "$dir/sshd_config" &
+sshd_pid=$!
+( sleep $(( {{ usage.minutes | int }} * 60 )) && echo "sshd: time window elapsed, stopping" >&2 && kill "$sshd_pid" ) &
+timer_pid=$!
+trap 'pkill -P "$timer_pid" 2>/dev/null || true; kill "$sshd_pid" "$timer_pid" 2>/dev/null || true' EXIT INT TERM
+wait "$sshd_pid" || [ $? -eq 143 ]  # 143 = stopped by the timer
+'''

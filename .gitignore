@@ -45,3 +45,9 @@ run-history.jsonl
 # private files, config and skills
 skills/personality-persona/*
 skills/personality/references/*
+
+# sshd - machine-local keys and runtime state (only sshd_config.tera is tracked)
+.config/sshd/authorized_keys
+.config/sshd/ssh_host_ed25519_key
+.config/sshd/ssh_host_ed25519_key.pub
+.config/sshd/sshd.pid
