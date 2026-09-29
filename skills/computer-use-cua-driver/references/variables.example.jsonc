@@ -1,0 +1,27 @@
+{
+  // One top-level key per app. Only "slack" is defined today.
+  // Copy this file to ../sensitive/variables.json, strip the comments, and fill in real values.
+  // These values are locators only. They do not authorize reading or writing any destination.
+  "slack": {
+    "workspace": {
+      // Display name as shown in the window title: "<channel> (Channel) - <name> - Slack"
+      "name": "string (required)",
+      // The <subdomain> in https://<subdomain>.slack.com
+      "subdomain": "string (required)",
+      // Workspace ID. Starts with T. Needed for slack://channel?team=<team_id>&id=<channel_id>
+      // Find it in the URL https://app.slack.com/client/<team_id>/<channel_id> in a browser.
+      "team_id": "string (required)"
+    },
+    // Channel name without "#", exactly as the window title shows it -> channel ID.
+    // The ID is stable when a channel is renamed. Update the key if that happens.
+    // Quick lookup for channels used often. It is not an exhaustive list.
+    "channels": {
+      "string (channel name)": "string (channel ID, starts with C, or G for some private channels)"
+    },
+    // Optional. Member name as shown in Slack -> member ID (starts with U).
+    // Needed only for slack://user?team=<team_id>&id=<user_id>.
+    "users": {
+      "string (display name)": "string (member ID, starts with U)"
+    }
+  }
+}
