@@ -1,4 +1,6 @@
 [settings]
+auto_update = true
+auto_update_check_duration = "4d"
 experimental = true
 color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
@@ -52,6 +54,7 @@ fzf = "latest"
 # misc & unsorted
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
 vale = "latest"
+1password = "latest"
 
 [hooks]
 enter = "mise i -q"
