@@ -43,6 +43,7 @@ run-history.jsonl
 **/node_modules/
 
 # private files, config and skills
+/mise.local.toml
 skills/personality-persona/*
 skills/personality/references/*
 

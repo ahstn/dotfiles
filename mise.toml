@@ -46,6 +46,22 @@ dotfiles.default_mode = "symlink"
 # Inputs: SSHD_LISTEN, SSHD_USER, SSHD_ALLOW_FROM - see the template header.
 "~/.config/sshd/sshd_config" = { source = ".config/sshd/sshd_config.tera", mode = "template", permissions = "0600" }
 
+[bootstrap.secrets]
+tern_tailscale_email = "TERN_TAILSCALE_EMAIL"
+tern_ssh_fingerprint = "TERN_SSH_FINGERPRINT"
+
+[bootstrap.directories."/etc/tern"]
+owner = "root"
+group = "root"
+mode = "0755"
+
+[bootstrap.files."/etc/tern/access.toml"]
+source = ".config/tern/access.toml.tera"
+template = true
+owner = "root"
+group = "root"
+mode = "0600"
+
 [tasks.bootstrap]
 description = "Install user crontab"
 run = "crontab ~/.config/cron/ahstn.crontab"
