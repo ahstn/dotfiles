@@ -94,13 +94,20 @@ dir = "{{cwd}}"
 usage = 'arg "<tarball>" help="Path to the Tern release .tar.gz archive"'
 run = '''
 set -e
+
 mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
 stage=$(mktemp -d "$HOME/.local/opt/tern-upgrade.XXXXXX")
 tar -xzf "$usage_tarball" -C "$stage"
+
+# Keep the previous bundle in the staging directory, then install the new one.
 mkdir -p "$HOME/.local/opt/tern"
 mv -T "$HOME/.local/opt/tern" "$stage/previous-install"
 mv -T "$stage/tern" "$HOME/.local/opt/tern"
+
+# Symlink onto user $PATH
 ln -sfn "$HOME/.local/opt/tern/tern" "$HOME/.local/bin/tern"
+
+# Restart the remote server, show its state and recent startup logs.
 sudo systemctl restart tern-remote
 systemctl status tern-remote --no-pager
 sudo journalctl -u tern-remote --since "1 minute ago" --no-pager
