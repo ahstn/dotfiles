@@ -71,3 +71,21 @@ timer_pid=$!
 trap 'pkill -P "$timer_pid" 2>/dev/null || true; kill "$sshd_pid" "$timer_pid" 2>/dev/null || true' EXIT INT TERM
 wait "$sshd_pid" || [ $? -eq 143 ]  # 143 = stopped by the timer
 '''
+
+[tasks.upgrade-tern]
+description = "Install Tern in ~/.local/opt, link ~/.local/bin/tern, keep the previous install, and restart tern-remote (requires sudo)"
+dir = "{{cwd}}"
+usage = 'arg "<tarball>" help="Path to the Tern release .tar.gz archive"'
+run = '''
+set -e
+mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
+stage=$(mktemp -d "$HOME/.local/opt/tern-upgrade.XXXXXX")
+tar -xzf "$usage_tarball" -C "$stage"
+mkdir -p "$HOME/.local/opt/tern"
+mv -T "$HOME/.local/opt/tern" "$stage/previous-install"
+mv -T "$stage/tern" "$HOME/.local/opt/tern"
+ln -sfn "$HOME/.local/opt/tern/tern" "$HOME/.local/bin/tern"
+sudo systemctl restart tern-remote
+systemctl status tern-remote --no-pager
+sudo journalctl -u tern-remote --since "1 minute ago" --no-pager
+'''
