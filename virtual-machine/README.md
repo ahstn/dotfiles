@@ -1,0 +1,107 @@
+# Ubuntu Desktop VM on UTM (Apple Silicon)
+
+Builds a GUI Ubuntu 26.04.1 LTS (arm64) VM on UTM 5.0.6+ with the QEMU backend, hardware-virtualised
+and GPU-accelerated, then applies [ahstn/dotfiles](https://github.com/ahstn/dotfiles) inside it.
+
+**Status: untested on a Mac with UTM installed.** `cidata` rendering and YAML were checked; everything
+that talks to UTM (AppleScript property names, `utmctl` snapshot/exec syntax, plist keys, GRUB keystrokes)
+follows the research notes and is unverified. Each of those steps warns instead of failing hard where it can.
+
+## Usage
+
+```bash
+cd virtual-machine
+cp config.env.example config.env   # optional
+export VM_PASSWORD=...             # or enter it when prompted
+./vm.sh all
+```
+
+Or step by step: `prereqs`, `iso`, `cidata`, `create`, `install`, `provision`, `check`, `snapshot`.
+
+Defaults: 8 GiB RAM, 64 GiB disk, CPU cores 0 (host performance-core count), guest user = your macOS
+username, `~/git` shared to `~/utm` in the guest. Override via env or `config.env`.
+
+## Per-Mac prerequisites
+
+1. Install UTM 5.0.6 (GitHub pre-release `UTM.dmg`), launch it once, quit it.
+2. `./vm.sh prereqs` writes `QEMURendererBackend=3` (Apple Core OpenGL) into UTM's sandbox container
+   preferences. This is app-wide, not part of the VM bundle. Writing to the container plist (not plain
+   `defaults write com.utmapp.UTM`) is what the sandboxed app actually reads, but verify in
+   UTM > Settings > QEMU Graphics Acceleration.
+3. Have an SSH key (`ssh-keygen -t ed25519`); its public key is injected for `provision`.
+
+## Manual steps
+
+- **Shared folder:** after `create`, set Edit > Sharing > VirtFS > Browse to `$VM_SHARE_DIR`. It is a
+  sandbox bookmark and cannot be scripted.
+- **Autoinstall confirmation:** if the installer waits for confirmation, rerun with `GRUB_AUTOINSTALL=1`
+  (sends the `autoinstall` kernel arg through GRUB's editor; tune `GRUB_LINUX_LINE_DOWNS`), or confirm by hand.
+
+## How it works
+
+| Step | Mechanism |
+|---|---|
+| ISO | downloaded and checked against `SHA256SUMS` into `build/` |
+| Seed | `autoinstall/user-data.tmpl` rendered (password hashed with `openssl passwd -6`), packed with `hdiutil` as a `CIDATA` ISO |
+| VM | AppleScript `make new virtual machine`: aarch64, hypervisor, UEFI, `virtio-gpu-gl-pci`, dynamic resolution, VirtFS, emulated-VLAN network with two port forwards |
+| Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
+| Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
+| Provision | `guest/provision.sh` over SSH to `127.0.0.1:2222`: apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+
+Passwordless sudo is enabled in the guest (`VM_PASSWORDLESS_SUDO=0` to disable) because bootstrap needs
+unattended sudo. The seed ISO and `build/` are gitignored; the seed holds a password hash.
+
+## Networking and the LAN sshd
+
+The VM uses UTM's **Emulated VLAN** mode (the only mode with port forwarding), not Shared. The guest sits
+behind QEMU's NAT at `10.0.2.x`, so `utmctl ip-address` is not reachable from the host. Two forwards:
+
+| Host side | Guest | Purpose |
+|---|---|---|
+| `127.0.0.1:2222` | `:22` | provisioning and admin (system sshd; loopback only) |
+| `<en0 IPv4>:48222` | `:48222` | ephemeral LAN sshd |
+
+```bash
+./vm.sh sshd start 180     # renders ~/.config/sshd/sshd_config in the guest, runs `mise run sshd -m 180`
+./vm.sh sshd status
+./vm.sh sshd stop
+ssh -p 48222 <user>@<mac-lan-ip>   # from the LAN client
+./vm.sh forward            # VM stopped: re-point the forward after your Mac's DHCP address changes
+```
+
+`sshd start` copies `VM_SSHD_AUTHORIZED_KEYS` (the **LAN client's** public key; defaults to the Mac's own key)
+into the guest's dedicated `~/.config/sshd/authorized_keys`, then reuses the dotfiles' sshd template and task.
+
+Differences from the Mac sshd in `.config/sshd/sshd_config.tera`:
+- **No per-client IP allowlist.** QEMU's user-mode NAT makes every connection look like `10.0.2.2` to the guest,
+  so `AllowUsers user@192.168.1.168` cannot work; the guest allows `10.0.2.2`. Key-only auth, no forwarding,
+  and the time window remain. If you need source filtering, add a pf rule on the Mac for the forwarded port.
+- The Mac must be reachable on its LAN address: allow incoming connections to UTM/QEMU in the macOS firewall.
+- The forward binds the address at create time. If that DHCP lease changes, QEMU may fail to start or the
+  forward goes stale; run `./vm.sh forward`, or set `VM_SSHD_FWD_ADDR=0.0.0.0` (all interfaces).
+- UTM's GUI docs say an empty host address means loopback, while the scripting reference says any interface.
+  That is why the address is always set explicitly.
+
+## Acceptance checks
+
+`./vm.sh check` covers most. Then `./vm.sh sshd start` and connect from a LAN client on port 48222. Also by hand: `glxinfo -B` in the guest desktop reports `virgl` and
+OpenGL 4.1 (2.1 means the renderer pref is not active; `llvmpipe` means no acceleration); GNOME Files and
+Settings render without black regions; clipboard works both ways; resizing the window resizes the desktop.
+
+## Known blockers in the dotfiles repo (not changed here)
+
+1. `mise.toml` links `.omp/agent/extensions/openrouter-routing.ts`, which is missing from the repo, so
+   `mise dotfiles apply` fails on a fresh clone until it is committed or the entry removed.
+2. The `files` phase needs `TERN_TAILSCALE_EMAIL` / `TERN_SSH_FINGERPRINT`; skipped.
+3. `brew:` entries in `[bootstrap.packages]` are attempted on Linux; outcome on ARM Ubuntu unknown.
+4. `[tasks.bootstrap]` installs a crontab in the VM too.
+5. `[bootstrap.repos]` uses an SSH URL; skipped.
+6. Bootstrap sets the login shell to zsh; log out and back in.
+
+Provisioning surfaces these failures rather than hiding them. Rerun with `FORCE=1 ./vm.sh provision`.
+
+## Fallbacks
+
+- Graphics broken: change the display card to `virtio-gpu-pci` (software rendering).
+- Auto-resize stuck: delete `~/.config/monitors.xml` in the guest and log out.
+- Wayland: keep the default GNOME session for clipboard support.

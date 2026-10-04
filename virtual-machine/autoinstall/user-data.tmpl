@@ -1,0 +1,36 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: @VM_LOCALE@
+  keyboard:
+    layout: @VM_KEYBOARD@
+  timezone: @VM_TIMEZONE@
+  identity:
+    hostname: @VM_HOSTNAME@
+    username: @VM_USER@
+    password: "@VM_PASSWORD_HASH@"
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys:
+@SSH_KEYS@
+  storage:
+    layout:
+      name: direct
+  packages:
+    - spice-vdagent
+    - qemu-guest-agent
+    - bindfs
+    - openssh-server
+    - mesa-utils
+    - git
+    - curl
+    - ca-certificates
+  # Power off at the end so the host can eject the ISO before the first real boot.
+  shutdown: poweroff
+  late-commands:
+    - mkdir -p /target/mnt/utm /target/home/@VM_USER@/utm
+    - curtin in-target --target=/target -- chown @VM_USER@:@VM_USER@ /home/@VM_USER@/utm
+    - echo 'share /mnt/utm 9p trans=virtio,version=9p2000.L,rw,_netdev,nofail,auto 0 0' >> /target/etc/fstab
+    - echo '/mnt/utm /home/@VM_USER@/utm fuse.bindfs map=@HOST_UID@/1000:@@HOST_GID@/@1000,x-systemd.requires=/mnt/utm,_netdev,nofail,auto 0 0' >> /target/etc/fstab
+@SUDO_LATE_COMMAND@
