@@ -6,7 +6,14 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="$HERE/build"
 
-# Defaults, overridable via env or config.env.
+# Precedence: environment > config.env > defaults below. Capture explicitly exported settings,
+# load config.env, then restore them so `GRUB_AUTOINSTALL=1 ./vm.sh install` beats the file.
+_env_overrides="$(export -p | grep -E '^declare -x (VM_|UBUNTU_|GRUB_|UTMCTL=)' || true)"
+# shellcheck disable=SC1091
+[ -f "$HERE/config.env" ] && . "$HERE/config.env"
+eval "$_env_overrides"
+unset _env_overrides
+
 : "${VM_NAME:=ubuntu-dev}"
 : "${VM_HOSTNAME:=$VM_NAME}"
 : "${VM_USER:=$(id -un)}"
@@ -25,12 +32,10 @@ BUILD="$HERE/build"
 : "${VM_SSHD_FWD_ADDR:=}"            # LAN address to bind; default: en0 IPv4. 0.0.0.0 = every interface
 : "${VM_SSHD_ALLOW_FROM:=10.0.2.2}"  # QEMU user-mode NAT shows every client as 10.0.2.2
 : "${VM_SSHD_AUTHORIZED_KEYS:=$VM_SSH_PUBKEY}"  # public key(s) of the LAN client allowed into the ephemeral sshd
+: "${VM_GITHUB_AUTH_KEY=$HOME/.ssh/github}"                 # private key for git@github.com; empty = skip
+: "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
 : "${GRUB_AUTOINSTALL:=0}"
 : "${GRUB_LINUX_LINE_DOWNS:=1}"
-
-# config.env is sourced after the defaults above, so it wins.
-# shellcheck disable=SC1091
-[ -f "$HERE/config.env" ] && . "$HERE/config.env"
 
 UTMCTL="${UTMCTL:-/Applications/UTM.app/Contents/MacOS/utmctl}"
 ISO_FILE="$BUILD/$(basename "$UBUNTU_ISO_URL")"
@@ -50,6 +55,19 @@ wait_for_status() { # wait_for_status <status> <timeout-seconds>
     [ "$waited" -ge "$timeout" ] && die "timed out waiting for VM to be '$want'"
     sleep 5; waited=$((waited + 5))
   done
+}
+
+# Ask the guest OS to shut down; force power-off only if it ignores the request.
+stop_vm() {
+  [ "$(utm_status)" = stopped ] && return
+  "$UTMCTL" stop --request "$VM_NAME" || true
+  local waited=0
+  while [ "$(utm_status)" != stopped ] && [ "$waited" -lt 180 ]; do sleep 5; waited=$((waited + 5)); done
+  if [ "$(utm_status)" != stopped ]; then
+    warn "guest ignored the shutdown request for 3 minutes; forcing power off"
+    "$UTMCTL" stop --force "$VM_NAME"
+    wait_for_status stopped 60
+  fi
 }
 
 SSH_OPTS=(-p "$VM_SSH_LOCAL_PORT" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$BUILD/known_hosts" -o ConnectTimeout=10)
@@ -95,7 +113,7 @@ cmd_prereqs() {
 
 cmd_iso() {
   mkdir -p "$BUILD"
-  local base sums want got
+  local base want got
   base="$(dirname "$UBUNTU_ISO_URL")"
   curl -fsSL "$base/SHA256SUMS" -o "$BUILD/SHA256SUMS"
   want="$(grep -F "$(basename "$ISO_FILE")" "$BUILD/SHA256SUMS" | awk '{print $1}')"
@@ -144,9 +162,10 @@ cmd_cidata() {
 
   rm -rf "$seed"; mkdir -p "$seed"
   # Values go through the environment so hashes and keys need no sed escaping.
+  local uid gid; uid="$(id -u)"; gid="$(id -g)"
   export V_NAME="$VM_NAME" V_HOST="$VM_HOSTNAME" V_USER="$VM_USER" V_HASH="$hash" V_KEYS="$keys" \
          V_SUDO="$sudo_cmd" V_LOCALE="$VM_LOCALE" V_KB="$VM_KEYBOARD" V_TZ="$VM_TIMEZONE" \
-         V_UID="$(id -u)" V_GID="$(id -g)"
+         V_UID="$uid" V_GID="$gid"
   render() {
     perl -pe '
       s/\@VM_NAME\@/$ENV{V_NAME}/g;           s/\@VM_HOSTNAME\@/$ENV{V_HOST}/g;
@@ -194,11 +213,25 @@ on run argv
 end run
 APPLESCRIPT
   patch_plist
-  cat <<EOF
+  set_share_dir
+}
 
-One manual step (the VirtFS folder is a sandbox bookmark and cannot be scripted):
-  UTM > $VM_NAME > Edit > Sharing > Directory Share Mode: VirtFS > Browse... > $VM_SHARE_DIR
-EOF
+# The VirtFS folder lives in the VM registry, not the configuration (`update registry`, UTM.sdef).
+SHARE_OK=0
+set_share_dir() {
+  [ -d "$VM_SHARE_DIR" ] || { warn "share dir $VM_SHARE_DIR does not exist"; return; }
+  if osascript - "$VM_NAME" "$VM_SHARE_DIR" <<'APPLESCRIPT'
+on run argv
+  tell application "UTM"
+    update registry (virtual machine named (item 1 of argv)) with {POSIX file (item 2 of argv)}
+  end tell
+end run
+APPLESCRIPT
+  then
+    SHARE_OK=1; log "VirtFS share: $VM_SHARE_DIR"
+  else
+    warn "could not set the share; do it by hand: UTM > $VM_NAME > Edit > Sharing > VirtFS > Browse... > $VM_SHARE_DIR"
+  fi
 }
 
 # ClipboardSharing and the balloon device are not exposed to AppleScript, so edit config.plist.
@@ -214,8 +247,8 @@ patch_plist() {
   set_bool :Sharing:ClipboardSharing true
   set_bool :QEMU:Balloon true
   log "patched config.plist (clipboard sharing, balloon)"
-  # `reload configuration` exists since UTM 5.0.4; exact AppleScript form is unverified.
-  osascript -e "tell application \"UTM\" to reload configuration of virtual machine named \"$VM_NAME\"" 2>/dev/null \
+  # `reload configuration` (UTM 5.0.4+) takes the VM as its direct parameter.
+  osascript -e "tell application \"UTM\" to reload configuration (virtual machine named \"$VM_NAME\")" 2>/dev/null \
     || warn "reload configuration failed; quit and reopen UTM so it re-reads config.plist"
 }
 
@@ -255,34 +288,53 @@ cmd_install() {
   log "waiting for the installer to power off (up to 90 min)..."
   sleep 60
   wait_for_status stopped 5400
-  eject_media
+  eject_media || die "install media still attached. Remove both CD/DVD drives in UTM's Edit dialog, then: utmctl start $VM_NAME && $0 provision"
   log "first boot"
   "$UTMCTL" start "$VM_NAME"
 }
 
-# Clearing the removable drives avoids the reboot-into-installer hang. Unverified AppleScript form.
+# Booting with the installer still attached would rerun autoinstall over the disk, so callers must
+# stop on failure. Keeps only the fixed disk (drives are matched by id) and returns how many
+# removable drives remain afterwards. Unverified against a real UTM.
 eject_media() {
   log "ejecting install media"
-  osascript - "$VM_NAME" <<'APPLESCRIPT' || warn "eject failed; remove both CD/DVD images in UTM's Edit dialog, then start the VM"
+  local left
+  left="$(osascript - "$VM_NAME" <<'APPLESCRIPT'
 on run argv
   tell application "UTM"
     set vm to virtual machine named (item 1 of argv)
     set cfg to configuration of vm
+    set kept to {}
     repeat with d in (drives of cfg)
-      if removable of d then set source of d to missing value
+      if not (removable of d) then set end of kept to {id:(id of d)}
     end repeat
+    set drives of cfg to kept
     update configuration of vm with cfg
+    set n to 0
+    repeat with d in (drives of (configuration of vm))
+      if removable of d then set n to n + 1
+    end repeat
+    return n
   end tell
 end run
 APPLESCRIPT
+)" || return 1
+  [ "$left" = 0 ] || { warn "$left removable drive(s) still attached"; return 1; }
 }
 
 cmd_provision() {
   [ -f "$VM_SSH_PUBKEY" ] || die "no SSH key; provisioning goes over SSH"
   log "waiting for SSH on 127.0.0.1:$VM_SSH_LOCAL_PORT"
   wait_for_ssh
+  # The script is uploaded first so stdin is free and a TTY can be allocated for sudo prompts.
+  local tty=-T
+  [ -t 0 ] && tty=-t
+  [ "$VM_PASSWORDLESS_SUDO" = 1 ] || [ "$tty" = -t ] \
+    || die "VM_PASSWORDLESS_SUDO=0 needs an interactive terminal so sudo can prompt"
+  cmd_github_keys
   log "running guest/provision.sh as $VM_USER"
-  guest_ssh "FORCE=${FORCE:-0} bash -s" < "$HERE/guest/provision.sh"
+  guest_ssh 'cat > /tmp/vm-provision.sh' < "$HERE/guest/provision.sh"
+  ssh "$tty" "${SSH_OPTS[@]}" "$VM_USER@127.0.0.1" "FORCE=${FORCE:-0} bash /tmp/vm-provision.sh"
   log "log out and back in once so the zsh login shell applies"
 }
 
@@ -299,10 +351,8 @@ cmd_check() {
 cmd_snapshot() {
   local tag="${1:-provisioned}"
   log "stopping VM and snapshotting as '$tag'"
-  "$UTMCTL" stop "$VM_NAME" || true
-  wait_for_status stopped 300
-  "$UTMCTL" snapshot create "$VM_NAME" --name "$tag" \
-    || warn "snapshot syntax unverified; check: utmctl snapshot --help"
+  stop_vm
+  "$UTMCTL" snapshot create "$VM_NAME" --name "$tag"
 }
 
 # Re-point the LAN forward at the current en0 address (DHCP lease changed). VM must be stopped.
@@ -318,8 +368,8 @@ on run argv
   tell application "UTM"
     set vm to virtual machine named (item 1 of argv)
     set cfg to configuration of vm
-    set i to id of item 1 of network interfaces of cfg
-    set item 1 of network interfaces of cfg to {id:i, mode:emulated, port forwards:{{protocol:TCP, host address:"127.0.0.1", host port:sshLocal, guest port:22}, {protocol:TCP, host address:fwdAddr, host port:sshdPort, guest port:sshdPort}}}
+    set i to index of item 1 of network interfaces of cfg
+    set item 1 of network interfaces of cfg to {index:i, mode:emulated, port forwards:{{protocol:TCP, host address:"127.0.0.1", host port:sshLocal, guest port:22}, {protocol:TCP, host address:fwdAddr, host port:sshdPort, guest port:sshdPort}}}
     update configuration of vm with cfg
   end tell
 end run
@@ -329,30 +379,99 @@ APPLESCRIPT
 # Ephemeral LAN sshd in the guest, using the dotfiles' `mise run sshd` task + template.
 # The guest only ever sees clients as 10.0.2.2 (QEMU NAT), so per-client IP filtering happens
 # nowhere: authentication is key-only via a dedicated authorized_keys, nothing else.
+# The daemon is tracked through the template's PidFile; matching command lines with pkill -f
+# would also match the remote shell running these commands.
+SSHD_PID_FN='pidf=$HOME/.config/sshd/sshd.pid
+sshd_pid() { p=$(cat "$pidf" 2>/dev/null) && [ "$(ps -p "$p" -o comm= 2>/dev/null)" = sshd ] && echo "$p"; }'
+
 cmd_sshd() {
   local action="${1:-start}" minutes="${2:-180}"
   case "$action" in
     start)
       [ -f "$VM_SSHD_AUTHORIZED_KEYS" ] || die "no client public key at $VM_SSHD_AUTHORIZED_KEYS (set VM_SSHD_AUTHORIZED_KEYS)"
       wait_for_ssh
-      guest_ssh 'mkdir -p ~/.config/sshd && umask 077 && cat > ~/.config/sshd/authorized_keys && sudo mkdir -p /run/sshd' < "$VM_SSHD_AUTHORIZED_KEYS"
-      guest_ssh "export PATH=\$HOME/.local/bin:\$PATH MISE_YES=1 SSHD_USER='$VM_USER' SSHD_LISTEN='0.0.0.0:$VM_SSHD_PORT' SSHD_ALLOW_FROM='$VM_SSHD_ALLOW_FROM'
+      guest_ssh 'mkdir -p ~/.config/sshd && umask 077 && cat > ~/.config/sshd/authorized_keys' < "$VM_SSHD_AUTHORIZED_KEYS"
+      guest_ssh "$SSHD_PID_FN
+        export PATH=\$HOME/.local/bin:\$PATH MISE_YES=1 SSHD_USER='$VM_USER' SSHD_LISTEN='0.0.0.0:$VM_SSHD_PORT' SSHD_ALLOW_FROM='$VM_SSHD_ALLOW_FROM'
+        [ -d /run/sshd ] || sudo -n mkdir -p /run/sshd || echo 'warn: /run/sshd missing and sudo needs a password' >&2
         cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
-        pkill -f 'sshd -D -e -f .*/.config/sshd/sshd_config' || true
+        if p=\$(sshd_pid); then kill \$p; sleep 1; fi
         setsid nohup mise run sshd -m $minutes > ~/.config/sshd/sshd.log 2>&1 < /dev/null &
-        sleep 3; cat ~/.config/sshd/sshd.log"
+        sleep 3; cat ~/.config/sshd/sshd.log
+        sshd_pid >/dev/null || { echo 'sshd did not start' >&2; exit 1; }"
       log "ephemeral sshd up for ${minutes}m: ssh -p $VM_SSHD_PORT $VM_USER@$(sshd_fwd_addr)" ;;
     stop)
-      guest_ssh "pkill -f 'mise run sshd' ; pkill -f 'sshd -D -e -f .*/.config/sshd/sshd_config' ; true" ;;
+      # Killing sshd ends the `mise run sshd` task, whose trap stops its timer. A stale pid file
+      # is harmless: sshd_pid checks the process is actually sshd.
+      guest_ssh "$SSHD_PID_FN
+        if p=\$(sshd_pid); then kill \$p && echo stopped; else echo 'not running'; fi" ;;
     status)
-      guest_ssh "pgrep -af 'sshd -D -e -f .*/.config/sshd/sshd_config' || echo stopped"
+      guest_ssh "$SSHD_PID_FN
+        if p=\$(sshd_pid); then echo \"running (pid \$p)\"; else echo stopped; fi"
       nc -z -w 3 "$(sshd_fwd_addr)" "$VM_SSHD_PORT" && echo "forward reachable" || echo "forward not reachable" ;;
     *) die "usage: $0 sshd [start [minutes]|stop|status]" ;;
   esac
 }
 
+# Copy the Mac's GitHub auth and signing keys into the guest's ~/.ssh, pin github.com's host keys
+# (from the TLS-served api.github.com/meta) and add a managed Host block. Separate from
+# VM_SSH_PUBKEY, which only authorises SSH *into* the guest. Files stream straight into place
+# over SSH, so no copy of a private key is staged on the host.
+cmd_github_keys() {
+  local key b pub hosts n=0
+  wait_for_ssh
+  guest_ssh 'umask 077 && mkdir -p ~/.ssh'
+  for key in "$VM_GITHUB_AUTH_KEY" "$VM_GITHUB_SIGNING_KEY"; do
+    [ -n "$key" ] || continue
+    [ -f "$key" ] || { warn "GitHub key $key not found; skipping"; continue; }
+    b="$(basename "$key")"
+    guest_ssh "umask 077 && cat > ~/.ssh/$b" < "$key"
+    if [ -f "$key.pub" ]; then pub="$(cat "$key.pub")"
+    else pub="$(ssh-keygen -y -f "$key" 2>/dev/null)" || { pub=""; warn "could not derive $b.pub (passphrase-protected?)"; }
+    fi
+    [ -z "$pub" ] || printf '%s\n' "$pub" | guest_ssh "cat > ~/.ssh/$b.pub && chmod 644 ~/.ssh/$b.pub"
+    log "copied $b"
+    n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] || { warn "no GitHub keys copied"; return 0; }
+
+  hosts="$(curl -fsSL https://api.github.com/meta \
+    | grep -oE '"(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/=]+"' | tr -d '"' | sed 's/^/github.com /')" || hosts=""
+  if [ -n "$hosts" ]; then
+    printf '%s\n' "$hosts" | guest_ssh 'cd ~/.ssh && touch known_hosts &&
+      { grep -v "^github\.com " known_hosts || true; cat; } > known_hosts.tmp &&
+      mv known_hosts.tmp known_hosts && chmod 600 known_hosts'
+  else
+    warn "could not fetch GitHub host keys; first connection will prompt"
+  fi
+
+  if [ -n "$VM_GITHUB_AUTH_KEY" ] && [ -f "$VM_GITHUB_AUTH_KEY" ]; then
+    guest_ssh 'cd ~/.ssh && touch config &&
+      { sed "/^# >>> vm.sh github >>>\$/,/^# <<< vm.sh github <<<\$/d" config; cat; } > config.tmp &&
+      mv config.tmp config && chmod 600 config' <<EOF
+# >>> vm.sh github >>>
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/$(basename "$VM_GITHUB_AUTH_KEY")
+  IdentitiesOnly yes
+# <<< vm.sh github <<<
+EOF
+    # GitHub answers a successful auth with exit status 1, so only the message matters.
+    guest_ssh 'ssh -T -o BatchMode=yes git@github.com 2>&1 | head -n1' || true
+  fi
+}
+
 cmd_all() {
-  cmd_prereqs; cmd_iso; cmd_cidata; cmd_create; cmd_install; cmd_provision; cmd_snapshot
+  cmd_prereqs; cmd_iso; cmd_cidata; cmd_create
+  if [ "$SHARE_OK" != 1 ]; then
+    if [ -t 0 ]; then
+      read -r -p "Set the VirtFS share in UTM now (VM is stopped), then press Enter to install... " _
+    else
+      warn "continuing without a VirtFS share; ~/utm stays empty until it is set"
+    fi
+  fi
+  cmd_install; cmd_provision; cmd_snapshot
 }
 
 usage() {
@@ -366,6 +485,7 @@ Usage: $0 <command>
   provision   run the dotfiles bootstrap in the guest over SSH
   check       print acceptance-check results
   forward     re-point the LAN sshd forward at the current en0 address (VM stopped)
+  github-keys copy GitHub auth/signing keys into the guest (also run by provision)
   sshd        sshd start [minutes] | stop | status  (ephemeral LAN sshd in the guest)
   snapshot    stop VM and create a snapshot (default tag: provisioned)
   all         prereqs -> iso -> cidata -> create -> install -> provision -> snapshot
@@ -375,5 +495,6 @@ EOF
 
 case "${1:-}" in
   prereqs|iso|cidata|create|install|provision|check|snapshot|forward|sshd|all) c="$1"; shift; "cmd_$c" "$@" ;;
+  github-keys) shift; cmd_github_keys "$@" ;;
   *) usage; exit 1 ;;
 esac

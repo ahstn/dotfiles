@@ -5,7 +5,9 @@ and GPU-accelerated, then applies [ahstn/dotfiles](https://github.com/ahstn/dotf
 
 **Status: untested on a Mac with UTM installed.** `cidata` rendering and YAML were checked; everything
 that talks to UTM (AppleScript property names, `utmctl` snapshot/exec syntax, plist keys, GRUB keystrokes)
-follows the research notes and is unverified. Each of those steps warns instead of failing hard where it can.
+follows UTM's scripting reference (`Scripting/UTM.sdef`) and `utmctl` source but has not been run. Steps whose
+failure is recoverable warn; ejecting the install media fails hard, because booting the installer again would
+rerun autoinstall over the disk.
 
 ## Usage
 
@@ -17,6 +19,8 @@ export VM_PASSWORD=...             # or enter it when prompted
 ```
 
 Or step by step: `prereqs`, `iso`, `cidata`, `create`, `install`, `provision`, `check`, `snapshot`.
+Settings come from exported env vars, then `config.env`, then defaults, so `GRUB_AUTOINSTALL=1 ./vm.sh install`
+overrides the file.
 
 Defaults: 8 GiB RAM, 64 GiB disk, CPU cores 0 (host performance-core count), guest user = your macOS
 username, `~/git` shared to `~/utm` in the guest. Override via env or `config.env`.
@@ -28,12 +32,12 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
    preferences. This is app-wide, not part of the VM bundle. Writing to the container plist (not plain
    `defaults write com.utmapp.UTM`) is what the sandboxed app actually reads, but verify in
    UTM > Settings > QEMU Graphics Acceleration.
-3. Have an SSH key (`ssh-keygen -t ed25519`); its public key is injected for `provision`.
+3. Have an SSH key (`ssh-keygen -t ed25519`); its public key (`VM_SSH_PUBKEY`) authorises SSH *into* the guest.
 
 ## Manual steps
 
-- **Shared folder:** after `create`, set Edit > Sharing > VirtFS > Browse to `$VM_SHARE_DIR`. It is a
-  sandbox bookmark and cannot be scripted.
+- **Shared folder (fallback only):** `create` sets `$VM_SHARE_DIR` with AppleScript `update registry`. If that
+  fails, set Edit > Sharing > VirtFS > Browse by hand; `./vm.sh all` pauses for this before installing.
 - **Autoinstall confirmation:** if the installer waits for confirmation, rerun with `GRUB_AUTOINSTALL=1`
   (sends the `autoinstall` kernel arg through GRUB's editor; tune `GRUB_LINUX_LINE_DOWNS`), or confirm by hand.
 
@@ -46,10 +50,27 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
 | VM | AppleScript `make new virtual machine`: aarch64, hypervisor, UEFI, `virtio-gpu-gl-pci`, dynamic resolution, VirtFS, emulated-VLAN network with two port forwards |
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
-| Provision | `guest/provision.sh` over SSH to `127.0.0.1:2222`: apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+| GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+| Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
-Passwordless sudo is enabled in the guest (`VM_PASSWORDLESS_SUDO=0` to disable) because bootstrap needs
-unattended sudo. The seed ISO and `build/` are gitignored; the seed holds a password hash.
+Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
+`VM_PASSWORDLESS_SUDO=0`, `provision` must run from an interactive terminal so sudo can prompt. The seed ISO and `build/` are gitignored; the seed holds a password hash.
+
+## GitHub SSH keys
+
+`provision` (or `./vm.sh github-keys` on its own) copies the Mac's GitHub keys into the guest, so `git` over SSH
+and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which is only for SSH into the guest.
+
+- `VM_GITHUB_AUTH_KEY` (default `~/.ssh/github`) and its `.pub` go to `~/.ssh/` with the same name. A managed
+  `Host github.com` block (`IdentitiesOnly yes`) is written to `~/.ssh/config`. The script then runs
+  `ssh -T git@github.com` to check the key works.
+- `VM_GITHUB_SIGNING_KEY` (default `~/.ssh/github-signing-key`) and its `.pub` are copied alongside.
+- Set either to empty to skip it. Private keys stream over SSH straight into place, so they are never staged on the host.
+- Passphrase-protected keys need an `ssh-agent` in the guest.
+- **Signing caveat:** `.config/git/.gitconfig` sets `signingkey = /Users/ahstn/.ssh/github-signing-key.pub`,
+  an absolute macOS path that does not exist in the guest. Signed commits fail there until that path is made
+  portable (e.g. `~/.ssh/github-signing-key.pub`). Not changed here.
 
 ## Networking and the LAN sshd
 
@@ -71,6 +92,8 @@ ssh -p 48222 <user>@<mac-lan-ip>   # from the LAN client
 
 `sshd start` copies `VM_SSHD_AUTHORIZED_KEYS` (the **LAN client's** public key; defaults to the Mac's own key)
 into the guest's dedicated `~/.config/sshd/authorized_keys`, then reuses the dotfiles' sshd template and task.
+The daemon is tracked through the template's `PidFile`. `pkill -f` is not used, because on Linux it would also match
+the remote shell running the command.
 
 Differences from the Mac sshd in `.config/sshd/sshd_config.tera`:
 - **No per-client IP allowlist.** QEMU's user-mode NAT makes every connection look like `10.0.2.2` to the guest,
