@@ -250,7 +250,7 @@ patch_plist() {
       || warn "could not set $1 in config.plist"
   }
   set_bool :Sharing:ClipboardSharing true
-  set_bool :QEMU:Balloon true
+  set_bool :QEMU:BalloonDevice true   # key names from UTM's Configuration/UTMQemuConfiguration*.swift
   log "patched config.plist (clipboard sharing, balloon)"
   # `reload configuration` (UTM 5.0.4+) takes the VM as its direct parameter.
   osascript -e "tell application \"UTM\" to reload configuration (virtual machine named \"$VM_NAME\")" 2>/dev/null \
@@ -347,7 +347,10 @@ cmd_check() {
   log "acceptance checks (guest)"
   guest_ssh 'set -x; uname -a; mise ls 2>&1 | head -20; echo "shell=$SHELL"; mount | grep -E "utm" || echo "VirtFS not mounted"; touch ~/utm/.vm-write-test && rm ~/utm/.vm-write-test && echo "share writable"; systemctl is-active qemu-guest-agent'
   log "glxinfo (needs a graphical session; expect virgl and OpenGL 4.1)"
-  guest_ssh 'DISPLAY=:0 glxinfo -B 2>&1 | grep -E "renderer|OpenGL version" || echo "no X display via ssh; run glxinfo -B in the guest desktop"' || true
+  # GNOME is Wayland-only; reach its Xwayland via mutter's auth file. Needs a logged-in desktop session.
+  guest_ssh 'export DISPLAY=:0 XAUTHORITY="$(ls /run/user/$(id -u)/.mutter-Xwaylandauth.* 2>/dev/null | head -1)"; glxinfo -B 2>&1 | grep -E "renderer|OpenGL version" || echo "no Xwayland display; log in to the guest desktop first"' || true
+  log "clipboard agent (system daemon, virtio port, per-session agent)"
+  guest_ssh 'systemctl is-active spice-vdagentd; ls -l /dev/virtio-ports/ 2>&1 | grep -i spice || echo "no com.redhat.spice.0 port: clipboard sharing is off in UTM"; pgrep -a -u "$(id -u)" -x spice-vdagent || echo "session spice-vdagent not running"' || true
   "$UTMCTL" ip-address "$VM_NAME" || true   # emulated VLAN: expect 10.0.2.x, not reachable from the host
   "$UTMCTL" exec "$VM_NAME" --cmd uname -a || warn "utmctl exec syntax unverified; check: utmctl exec --help"
   echo "Manual: GTK4 apps render, clipboard both ways, window resize resizes desktop."
