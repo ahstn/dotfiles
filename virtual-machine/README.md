@@ -57,6 +57,12 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
 `VM_PASSWORDLESS_SUDO=0`, `provision` must run from an interactive terminal so sudo can prompt. The seed ISO and `build/` are gitignored; the seed holds a password hash.
 
+Guest passwords only need 4+ characters, since the VM already sits behind the Mac's login. libpwquality
+cannot go below 6, so `provision` sets it to warn only (`/etc/security/pwquality.conf.d/90-vm.conf`) and adds
+`minlen=4` to `pam_unix` in `/etc/pam.d/common-password`. `passwd` still prints a "BAD PASSWORD" warning, but
+accepts the password. `pam-auth-update` then leaves `common-password` alone as locally modified. To apply this to an
+existing VM, run `./vm.sh provision`: these lines run before the already-provisioned check.
+
 ## GitHub SSH keys
 
 `provision` (or `./vm.sh github-keys` on its own) copies the Mac's GitHub keys into the guest, so `git` over SSH

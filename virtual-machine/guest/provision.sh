@@ -2,6 +2,13 @@
 # Runs inside the guest as the login user (piped over SSH by vm.sh provision).
 set -eux -o pipefail
 
+# Local VM behind the host login: the only password rule is >= 4 characters. libpwquality cannot go
+# below 6, so it only warns (enforcing = 0) and pam_unix enforces the length. Runs on every provision.
+sudo mkdir -p /etc/security/pwquality.conf.d
+printf '%s\n' '# vm.sh: warn only; pam_unix minlen=4 in common-password enforces length.' 'enforcing = 0' \
+  | sudo tee /etc/security/pwquality.conf.d/90-vm.conf >/dev/null
+sudo sed -i -E '/pam_unix\.so/{/minlen=/!s/pam_unix\.so obscure/pam_unix.so obscure minlen=4/}' /etc/pam.d/common-password
+
 if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
   echo "already provisioned (FORCE=1 to rerun)"; exit 0
 fi

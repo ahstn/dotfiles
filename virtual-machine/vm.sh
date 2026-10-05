@@ -141,6 +141,7 @@ password_hash() {
     local again; read -r -s -p "Repeat: " again; echo >&2
     [ "$pw" = "$again" ] || die "passwords differ"
   fi
+  [ "${#pw}" -ge 4 ] || die "guest password must be at least 4 characters"
   for ossl in openssl "$(brew --prefix openssl 2>/dev/null || true)/bin/openssl"; do
     if h="$(printf '%s' "$pw" | "$ossl" passwd -6 -stdin 2>/dev/null)" && [ -n "$h" ]; then
       printf '%s\n' "$h"; return
