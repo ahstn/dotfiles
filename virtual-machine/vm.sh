@@ -404,9 +404,11 @@ cmd_sshd() {
         [ -d /run/sshd ] || sudo -n mkdir -p /run/sshd || echo 'warn: /run/sshd missing and sudo needs a password' >&2
         cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
         if p=\$(sshd_pid); then kill \$p; sleep 1; fi
-        setsid nohup mise run sshd -m $minutes > ~/.config/sshd/sshd.log 2>&1 < /dev/null &
-        sleep 3; cat ~/.config/sshd/sshd.log
-        sshd_pid >/dev/null || { echo 'sshd did not start' >&2; exit 1; }"
+        # The task needs no tools; without this, mise first installs every tool in mise.toml (minutes on a fresh VM).
+        MISE_TASK_RUN_AUTO_INSTALL=false setsid nohup mise run sshd -m $minutes > ~/.config/sshd/sshd.log 2>&1 < /dev/null &
+        for _ in \$(seq 60); do sshd_pid >/dev/null && break; sleep 1; done
+        tail -20 ~/.config/sshd/sshd.log
+        sshd_pid >/dev/null || { echo 'sshd did not start within 60s (log above)' >&2; exit 1; }"
       log "ephemeral sshd up for ${minutes}m: ssh -p $VM_SSHD_PORT $VM_USER@$(sshd_fwd_addr)" ;;
     stop)
       # Killing sshd ends the `mise run sshd` task, whose trap stops its timer. A stale pid file
