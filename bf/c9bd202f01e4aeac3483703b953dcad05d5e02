@@ -1,0 +1,21 @@
+.config/git/.gitconfig
+  s_940c186323c6f9::t_9626f94a8ac2b0 4
+virtual-machine/README.md
+  s_940c186323c6f9::t_07e5bc015c5d95 71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfc9bd202f01e4aeac3483703b953dcad05d5e02",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
