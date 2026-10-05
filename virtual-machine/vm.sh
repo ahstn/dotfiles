@@ -132,17 +132,18 @@ cmd_iso() {
   log "ISO verified"
 }
 
+# Called inside $(...): only the hash may reach stdout. Prompts and newlines go to stderr.
 password_hash() {
-  local pw="${VM_PASSWORD:-}" ossl
+  local pw="${VM_PASSWORD:-}" ossl h
   if [ -z "$pw" ]; then
     [ -t 0 ] || die "set VM_PASSWORD or run interactively"
-    read -r -s -p "Password for guest user '$VM_USER': " pw; echo
-    local again; read -r -s -p "Repeat: " again; echo
+    read -r -s -p "Password for guest user '$VM_USER': " pw; echo >&2
+    local again; read -r -s -p "Repeat: " again; echo >&2
     [ "$pw" = "$again" ] || die "passwords differ"
   fi
   for ossl in openssl "$(brew --prefix openssl 2>/dev/null || true)/bin/openssl"; do
     if h="$(printf '%s' "$pw" | "$ossl" passwd -6 -stdin 2>/dev/null)" && [ -n "$h" ]; then
-      echo "$h"; return
+      printf '%s\n' "$h"; return
     fi
   done
   die "no openssl with 'passwd -6' support; run: brew install openssl"
@@ -152,6 +153,7 @@ cmd_cidata() {
   mkdir -p "$BUILD"
   local hash keys="" sudo_cmd="" seed="$BUILD/cidata"
   hash="$(password_hash)"
+  [[ "$hash" =~ ^\$6\$[A-Za-z0-9./]+\$[A-Za-z0-9./]+$ ]] || die "unexpected password hash format (want a single-line \$6\$ crypt)"
   if [ -f "$VM_SSH_PUBKEY" ]; then
     keys="      - $(cat "$VM_SSH_PUBKEY")"
   else
