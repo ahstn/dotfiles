@@ -68,9 +68,8 @@ and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which 
 - `VM_GITHUB_SIGNING_KEY` (default `~/.ssh/github-signing-key`) and its `.pub` are copied alongside.
 - Set either to empty to skip it. Private keys stream over SSH straight into place, so they are never staged on the host.
 - Passphrase-protected keys need an `ssh-agent` in the guest.
-- **Signing caveat:** `.config/git/.gitconfig` sets `signingkey = /Users/ahstn/.ssh/github-signing-key.pub`,
-  an absolute macOS path that does not exist in the guest. Signed commits fail there until that path is made
-  portable (e.g. `~/.ssh/github-signing-key.pub`). Not changed here.
+- `.config/git/.gitconfig` sets `signingkey = ~/.ssh/github-signing-key.pub`. Git expands `~` per machine, so
+  the copied signing key works for signed commits in the guest once the dotfiles are applied.
 
 ## Networking and the LAN sshd
 
