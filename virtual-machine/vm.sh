@@ -196,6 +196,8 @@ cmd_create() {
   local fwd_addr; fwd_addr="$(sshd_fwd_addr)"
   log "creating VM '$VM_NAME' (forwards: 127.0.0.1:$VM_SSH_LOCAL_PORT->22, $fwd_addr:$VM_SSHD_PORT->$VM_SSHD_PORT)"
   # Hypervisor, UEFI and the display are all off/absent by default for scripted VMs.
+  # Port-forward protocol is the raw code for `network protocol` TCP: AppleScript terms are case-insensitive,
+  # so a bare `TCP` resolves to the `serial interface` enumerator `tcp` and UTM rejects the record (-1700).
   osascript - "$VM_NAME" "$ISO_FILE" "$CIDATA_ISO" "$VM_MEMORY_MIB" "$VM_DISK_MIB" "$VM_CPU_CORES" "$VM_SSH_LOCAL_PORT" "$fwd_addr" "$VM_SSHD_PORT" <<'APPLESCRIPT'
 on run argv
   set vmName to item 1 of argv
@@ -208,7 +210,7 @@ on run argv
   set fwdAddr to item 8 of argv
   set sshdPort to (item 9 of argv) as integer
   tell application "UTM"
-    make new virtual machine with properties {backend:qemu, configuration:{name:vmName, architecture:"aarch64", hypervisor:true, uefi:true, memory:memMiB, cpu cores:cores, drives:{{removable:true, source:isoFile}, {removable:true, source:cidataFile}, {guest size:diskMiB}}, displays:{{hardware:"virtio-gpu-gl-pci", dynamic resolution:true, native resolution:false}}, directory share mode:VirtFS, network interfaces:{{mode:emulated, port forwards:{{protocol:TCP, host address:"127.0.0.1", host port:sshLocal, guest port:22}, {protocol:TCP, host address:fwdAddr, host port:sshdPort, guest port:sshdPort}}}}}}
+    make new virtual machine with properties {backend:qemu, configuration:{name:vmName, architecture:"aarch64", hypervisor:true, uefi:true, memory:memMiB, cpu cores:cores, drives:{{removable:true, source:isoFile}, {removable:true, source:cidataFile}, {guest size:diskMiB}}, displays:{{hardware:"virtio-gpu-gl-pci", dynamic resolution:true, native resolution:false}}, directory share mode:VirtFS, network interfaces:{{mode:emulated, port forwards:{{protocol:«constant ****TcPp», host address:"127.0.0.1", host port:sshLocal, guest port:22}, {protocol:«constant ****TcPp», host address:fwdAddr, host port:sshdPort, guest port:sshdPort}}}}}}
   end tell
 end run
 APPLESCRIPT
@@ -369,7 +371,7 @@ on run argv
     set vm to virtual machine named (item 1 of argv)
     set cfg to configuration of vm
     set i to index of item 1 of network interfaces of cfg
-    set item 1 of network interfaces of cfg to {index:i, mode:emulated, port forwards:{{protocol:TCP, host address:"127.0.0.1", host port:sshLocal, guest port:22}, {protocol:TCP, host address:fwdAddr, host port:sshdPort, guest port:sshdPort}}}
+    set item 1 of network interfaces of cfg to {index:i, mode:emulated, port forwards:{{protocol:«constant ****TcPp», host address:"127.0.0.1", host port:sshLocal, guest port:22}, {protocol:«constant ****TcPp», host address:fwdAddr, host port:sshdPort, guest port:sshdPort}}}
     update configuration of vm with cfg
   end tell
 end run
