@@ -21,13 +21,13 @@ dotfiles.default_mode = "symlink"
 "~/.config/zsh" = { source = ".config/zsh" }
 "~/.zshenv" = { source = ".config/zsh/.zshenv" }
 
-# Pi & Oh-my-pi 
+# Pi & Oh-my-pi
 # Pi for everyday, small tasks. Oh-my-pi for more complex, multi-step tasks.
 "~/.pi/" = { source = ".pi" }
 # Fabric lives under this same link; its models.json links to ../../agent/models.json.
 "~/.omp/agent/config.yml" = { source = ".omp/agent/config.yml" }
 "~/.omp/agent/models.yml" = { source = ".omp/agent/models.yml" }
-"~/.omp/agent/extensions/openrouter-routing.ts" = { source = ".omp/agent/extensions/openrouter-routing.ts" }
+"~/.omp/agent/extensions/git-ai.ts" = { source = ".omp/agent/extensions/git-ai.ts" }
 "~/.omp/agent/APPEND_SYSTEM.md" = { source = ".omp/agent/APPEND_SYSTEM.md" }
 
 # Skills - NB: Some harnesses don't resolve symlinks.

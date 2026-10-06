@@ -14,6 +14,7 @@
   - ["Custom" Extensions](#custom-extensions)
   - [Packages](#packages)
   - [Acknowledgements](#acknowledgements)
+- [Oh-my-pi](#oh-my-pi)
 - [Agent Skills](#agent-skills)
 - [Setup & Application Specifics](#sparkles-setup--application-specifics)
   - [ZSH](#zsh)
@@ -52,6 +53,30 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
 #### Feynman
 
 The `research-*` agents and [agent/prompts/deepresearch.md] prompt are copied from [getcompanion-ai/feynman].
+
+## Oh-my-pi
+
+[`.omp/agent/extensions/git-ai.ts`](.omp/agent/extensions/git-ai.ts) ports the Pi Git AI integration to OMP's TypeScript extension API. Run `mise dotfiles apply '~/.omp/agent/extensions/git-ai.ts'`, then restart OMP (or `/reload`) to load it from `~/.omp/agent/extensions/`.
+
+- Tracks `write`, multi-file hashline `edit` (including moves/deletes), apply-patch edits, and bash changes through Git AI's existing `pi` preset. Authorship is labeled `pi`; session IDs and models come from OMP.
+- Uses `git-ai` from `PATH`, falling back to `~/.git-ai/bin/git-ai`. Failed checkpoints warn without blocking tools. Failed tool results do not produce an AI checkpoint, matching the Pi extension.
+- Adds no telemetry or network client. Before **every** Git AI invocation, requires `~/.git-ai/config.json` to contain `"telemetry_oss": "off"` and no non-empty `telemetry_enterprise_dsn`. Missing, invalid, or unsafe config disables checkpoints with a warning; the extension never changes that file.
+- This telemetry guard does not disable Git AI's separate prompt-sharing or Git-note synchronization features. See [Git AI configuration](https://usegitai.com/docs/get-started/configuration).
+- Bash detection inherits Git AI's snapshot limits, including its two-second filesystem-mtime grace window. Very rapid edits around a Git AI watermark can be missed; explicit file edit/write checkpoints do not rely on that snapshot.
+
+Optional user-owned `~/.omp/agent/git-ai.override.json` uses the Pi extension's version-1 tool policy format. Policies override defaults; `bash` can also be ignored:
+
+```json
+{
+  "version": 1,
+  "tools": {
+    "custom_edit": { "kind": "mutating", "canonical": "edit", "filepath_fields": ["path", "paths"] },
+    "bash": { "kind": "ignore" }
+  }
+}
+```
+
+Canonical names: `edit`, `write`, `replace`, `rename`, `bash`. Path fields accept strings or arrays; built-in hashline/apply-patch inputs are extracted automatically. The Pi source and its override file remain unchanged.
 
 ## Agent Skills
 
