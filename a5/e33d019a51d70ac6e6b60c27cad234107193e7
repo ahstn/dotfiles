@@ -1,0 +1,14 @@
+.config/mise/config.toml
+  h_2f452a9c375069 22,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5e33d019a51d70ac6e6b60c27cad234107193e7",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
