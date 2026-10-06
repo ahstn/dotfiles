@@ -14,8 +14,7 @@ exa-results/
 # pi
 .pi/agent/auth.json
 .pi/agent/models-store.json
-.pi/agent/mcp-cache.json
-.pi/agent/mcp-npx-cache.json
+.pi/agent/mcp-*.json
 .pi/agent/.extmgr-cache
 .pi/agent/sessions
 .pi/agent/missions
@@ -24,6 +23,8 @@ exa-results/
 .pi/agent/work
 .pi/agent/*.work.json
 .pi/pi-acp/session-map.json
+.pi/agent/pi-subagents/
+.pi/agent/pi-pretty/
 .pi-subagents/artifacts
 **/node_modules
 exa-usage.json
