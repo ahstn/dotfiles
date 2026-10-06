@@ -29,9 +29,14 @@ A channel ID is stable and unique. Most channels start with `C`. A private chann
 - `https://<workspace>.slack.com/archives/<channel-id>` needs the workspace subdomain.
 - `slack://channel?team=<team-id>&id=<channel-id>` needs the team ID (`T` plus letters and digits). Slack documents that `slack://` links accept IDs only, not channel names or subdomains. Source: https://docs.slack.dev/interactivity/deep-linking
 
-Pass either form to `launch_app` in `urls`. Then read `window_title`. If it names the channel, the link worked. If it still names the old channel, or a new window opened, use the sidebar route in [Read recent messages](#read-recent-messages-no-writes).
+Pass either form to `launch_app` in `urls`. Then poll `window_title` for a few seconds. If it names the channel, the link worked. If it still names the old channel, or a new window opened, use the sidebar route in [Fallback: foreground navigation and scrolling](#fallback-foreground-navigation-and-scrolling).
 
-Status: the `slack://` and `archives` forms are documented by Slack. Upstream Cua docs say `launch_app` with `urls` restores focus for Electron apps. Neither form has been tested live with `launch_app`. Record the result here after the first live test.
+Test results, each from one live run on macOS with Slack already open:
+
+- `slack://channel?team=<team-id>&id=<channel-id>` through `launch_app` switched the open window to the channel. The title changed within about 2 seconds.
+- `https://<workspace>.slack.com/archives/<channel-id>` did not switch the channel. The title still named the old channel after 2 seconds. A longer wait was not tried, so treat this form as unreliable, not as broken.
+- The window list in the `launch_app` response is a snapshot from launch time. It showed the old title even when the switch succeeded a moment later. Read the title with `list_windows` or `get_window_state` instead.
+- The response reports a background launch. Which app was frontmost afterwards was not checked.
 
 ### Local variables
 
@@ -84,19 +89,52 @@ Pitfalls:
 
 ## Read recent messages (no writes)
 
-Use this route to read a channel when no Slack API or connector is available. It sends nothing.
+Use this route to read a channel when no Slack API or connector is available. It types and sends nothing. It does change what Slack shows, so read [Restore the view and report what you touched](#restore-the-view-and-report-what-you-touched) before you start.
 
-1. **Take a large snapshot.** Slack's web tree has hundreds of elements and over a thousand walked nodes. The size varies with the workspace. A budget of 50 nodes ran out before the sidebar and gave a partial tree. Use `max_elements: 3000`, `max_depth: 40`, `timeout_ms: 8000`, and a `query` for the channel name. The first snapshot can show only native menus. Take a second one.
-2. **Find the sidebar row.** Do this only if you have no channel ID or the URL route failed. It is an `AXRow` inside the `AXOutline` named `Channels and direct messages`. Its label can carry a suffix such as `<channel> (has unread messages)`.
-3. **Do not trust a background press.** A background `element_token` press on that row sets `selected: true` in the tree, but the window title and the pane stay on the old channel. A background pixel `click` reports `PX hit-test pressed the background element via AX` and does the same. Neither call opens the channel.
-4. **Use foreground delivery for navigation.** A pixel `click` with `delivery_mode:"foreground"` at the row's screenshot coordinates opened the channel. Foreground delivery briefly moves Slack to the front and moves the pointer. Use it only if the user already authorized visible control for this task. Otherwise ask first. If the user says no, stop and report the blocker.
-5. **Verify with `window_title`.** After a successful open, `get_window_state` returns `<channel> (Channel) - <workspace> - Slack`. The `selected` flag and the action response are not proof. Read the messages from the screenshot.
-6. **Scroll in the foreground.** Background `scroll` returns `background_unavailable` on Slack. Use `scroll` with `delivery_mode:"foreground"` and window-local `x,y` over the message pane. The newest messages are at the bottom, and the pane may open near the bottom already. Scroll down first to be sure. Then scroll up in steps of 5 lines. Five lines moved the view by about 360 screenshot pixels. Take a new snapshot with a screenshot after each step.
-7. **Keep a screenshot in the latest snapshot.** A snapshot with `include_screenshot:false` replaces the screenshot context. The next `x,y` action then fails with `screenshot_context_missing`. Take a new snapshot with a screenshot before each pixel action.
-8. **Report only what is on screen.** The pane shows top-level posts and a reply count such as `<n> replies`. It does not show the replies. Do not open threads unless the user asks. State that the summary covers top-level posts only.
-9. **Re-check the title on a shared desktop.** The user may change the Slack pane between calls. Read `window_title` again before you report which channel you read.
+This route was run end to end on macOS without `delivery_mode:"foreground"` and without `bring_to_front`. If it fails, use the [fallback](#fallback-foreground-navigation-and-scrolling), which needs the user's authorization.
 
-Message text also appears as `AXStaticText` in web content. This was seen in the Threads view, where some rows reported a height of about 2 px. It was not tested on a channel pane. Until it is tested, treat the screenshot as the source of truth.
+1. **Open the channel.** Use a `slack://` link with `launch_app`, as described above. Wait until `window_title` names the channel.
+2. **Take a large snapshot.** Channel panes had roughly 700 to 1,000 elements. Use `max_elements: 3000`, `max_depth: 40`, and `timeout_ms: 8000`. A budget of 50 nodes ran out before the sidebar and gave a partial tree. The first snapshot can show only native menus, so take a second one. A full snapshot is large, on the order of 10K tokens. After the first one, narrow later snapshots with `query`.
+3. **Read the loaded posts from the tree.** Message text is `AXStaticText`. Each top-level post has an `AXLink` whose label looks like `<d> <Mon> at HH:MM:SS`. Use that as the post's unique key. A reply count is an `AXButton` labelled `<n> replies` or `1 reply`. `query` is a case-insensitive substring match. `a|b` is not alternation: three such queries returned no rows. Run one query per term.
+4. **Load more posts with keys.** Slack renders only part of a channel. A fresh pane held about 5 top-level posts. Send `press_key` with `key` set to `pageup`, `pagedown`, `home`, or `end`, `delivery_mode:"background"`, and the `element_token` of the `AXWebArea`. Background `scroll` was refused with `background_unavailable` in 3 of 3 tries, so do not use it.
+   - The key response says `effect: unverifiable`. Wait 1 to 2 seconds, take a new snapshot, and compare the post timestamps. The pane can keep moving after the key press, so an immediate read can show a mid-scroll view.
+   - Keys stopped having any effect after the key target was an `AXList` node that sat after the posts. Targeting the `AXWebArea` token worked again. A thread pane was also open at the time. Whether it caused the stall was not tested, so close it before paging.
+   - Do not bound the message block by where `AXList (<channel> (channel))` sits. It comes before the posts in some snapshots and after them in others. Use the post timestamps instead.
+5. **Open a thread only when the user asked for replies.** A background `AXPress` on the `<n> replies` button opens the thread pane. Take a new snapshot, because the old token is stale. The text is under `AXList (Thread in <channel> (channel, <n> replies))`. Slack folds consecutive replies from one author under one header, so counting author headers undercounts. Compare your written reply count with the button's number.
+6. **Check coverage by date.** One scroll position can miss posts. In one run, a pass by scrolling missed several posts, and jumping by date found them. The cause was not established, so do not treat a single scroll position as complete.
+   - Press an `AXPopUpButton` labelled `Jump to date`. There is one per date divider, and any visible one works.
+   - The menu items seen were `Most recent`, `Today`, and `Jump to a specific date`. The calendar days are `AXButton` entries labelled like `<Weekday>, <d> <Month> <yyyy>`.
+   - A background `AXPress` worked on all of these. This is navigation only.
+   - Check the start and the end of the range you were asked to cover.
+7. **Convert relative dates.** Recent posts show `Yesterday` or a weekday name instead of a date. Convert them from today's date, and write the assumption into your notes.
+8. **Do not trust a screenshot over the tree.** Once, three snapshots in a row returned identical screenshots while the tree changed. Take a fresh snapshot before you rely on a screenshot, and treat the tree as the live source for text.
+9. **Read images from a preview.** The tree shows an attachment only as an `AXLink` and an `AXImage` named like `image.png`. A background `AXPress` on the link opened the preview. Then take a snapshot with `include_accessibility_tree:false` and `max_image_dimension:0` to get a native-resolution screenshot and read the content from it. `zoom` needs a screenshot from a `get_window_state` call on the same connection. A snapshot taken on another connection, such as an eval bridge instead of the direct tool route, returned `screenshot_context_missing`. If you cannot read the image, say so. Do not infer its content.
+10. **Verify the title before you report.** The title is `<channel> (Channel) - <workspace> - Slack`. It can also carry a leading `*` or `!` and a count such as `<n> new items`, so match by containment, not equality. The user may change the pane between calls, so read the title again before you say which channel you read.
+
+Message text is in the tree on channel panes and thread panes. Rows that are off-screen can report a frame height of 1 or 2 px. The text is still in the tree.
+
+### Restore the view and report what you touched
+
+Opening a thread, a menu, or a preview changes what Slack shows, and Slack may mark items as read. Record the starting state, then restore it and report the changes.
+
+- Record the window title and whether a thread pane was open before you begin.
+- **Thread pane.** A background `Escape` did not close it. Press the pane's `Close` `AXButton`. Two buttons labelled `Close` matched in one snapshot, so check which one belongs to the thread pane. Then confirm that no `AXList (Thread in …)` remains.
+- **Date menu.** `AXCancel` on the `AXMenu` left it open, and its `Today` item was still in the tree. Choosing an item closes it. A background `Escape` closed the channel-options menu described earlier, but it was not tried on this menu.
+- **Image preview.** No close route was verified. After you open one, look for a modal in the next snapshot. If one remains, tell the user.
+- **Unexpected channel switch.** The window switched to another channel once mid-run. The cause was not found. It could have been a key press or the user. Check the title before each pass.
+- **Saved files.** Screenshots and snapshot dumps of messages hold private content. Delete them when the task is done, and end your session.
+
+### Fallback: foreground navigation and scrolling
+
+Use this only if the `slack://` route did not switch the channel, or you must read from the sidebar. It needs `delivery_mode:"foreground"`, which briefly moves Slack to the front and moves the pointer. Use it only if the user already authorized visible control for this task. Otherwise ask first. If the user says no, stop and report the blocker.
+
+1. **Find the sidebar row.** It is an `AXRow` inside the `AXOutline` named `Channels and direct messages`. Its label can carry a suffix such as `<channel> (has unread messages)`.
+2. **Do not trust a background press.** A background `element_token` press on that row sets `selected: true` in the tree, but the window title and the pane stay on the old channel. A background pixel `click` reports `PX hit-test pressed the background element via AX` and does the same. Neither call opens the channel.
+3. **Navigate with a foreground pixel click.** A pixel `click` with `delivery_mode:"foreground"` at the row's screenshot coordinates opened the channel.
+4. **Verify with `window_title`.** The `selected` flag and the action response are not proof.
+5. **Scroll in the foreground.** Use `scroll` with `delivery_mode:"foreground"` and window-local `x,y` over the message pane. The newest messages are at the bottom, and the pane may open near the bottom already. Scroll down first to be sure. Then scroll up in steps of 5 lines. Five lines moved the view by about 360 screenshot pixels. Take a new snapshot with a screenshot after each step.
+6. **Keep a screenshot in the latest snapshot.** A snapshot with `include_screenshot:false` replaces the screenshot context. The next `x,y` action then fails with `screenshot_context_missing`. Take a new snapshot with a screenshot before each pixel action.
+7. **Report what the pane shows.** A screenshot of the pane shows top-level posts and a reply count such as `<n> replies`. It does not show the replies. If you did not open the threads, state that the summary covers top-level posts only.
 
 ## Enable and inspect Electron accessibility
 
@@ -169,8 +207,11 @@ A successful keypress or click response is not delivery evidence.
 - Slack restarted or the window disappeared: call `list_windows`; if the `pid` changed, reacquire both `pid` and `window_id` before continuing.
 - Mention picker remains open: do not send. Select the intended suggestion or stop on ambiguity.
 - Background typing did not render: follow the action's escalation hint and verify after each rung.
-- Sidebar press shows `selected: true` but the pane did not change: the press did not navigate. See [Read recent messages](#read-recent-messages-no-writes) for the foreground pixel click and the `window_title` check.
+- Sidebar press shows `selected: true` but the pane did not change: the press did not navigate. See the [fallback](#fallback-foreground-navigation-and-scrolling) for the foreground pixel click and the `window_title` check.
 - Page/DOM query finds nothing: return to the accessibility path. Do not restart a signed-in Slack process or enable DevTools only to simplify automation.
+- Keys were sent but the pane did not move: wait 1 to 2 seconds and take a new snapshot, because the key response is `unverifiable`. If the pane is still the same, target the `AXWebArea` token, and close any open thread pane.
+- Thread pane still open after `Escape`: press the pane's `Close` `AXButton`. See [Restore the view and report what you touched](#restore-the-view-and-report-what-you-touched).
+- Window title still names the old channel after a `launch_app` URL: poll for a few seconds before you change route. The window list in the `launch_app` response is not current.
 
 ## References
 
