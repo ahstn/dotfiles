@@ -51,7 +51,7 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
 | Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
@@ -76,6 +76,25 @@ and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which 
 - Passphrase-protected keys need an `ssh-agent` in the guest.
 - `.config/git/.gitconfig` sets `signingkey = ~/.ssh/github-signing-key.pub`. Git expands `~` per machine, so
   the copied signing key works for signed commits in the guest once the dotfiles are applied.
+
+## Apps and x86_64 binaries
+
+`provision` installs these on every run, before the already-provisioned check, so `./vm.sh provision` adds them
+to existing VMs. Steps that are already done are skipped.
+
+- `ghostty` from the Ubuntu archive.
+- [FEX-Emu](https://fex-emu.com) from `ppa:fex-emu/fex`, for apps that only ship x86_64 Linux builds. The package
+  variant (`armv8.0/8.2/8.4`) is chosen from `/proc/cpuinfo`, as FEX's `InstallFEX.py` does. `fex-emu-binfmt64`
+  lets x86_64 binaries run directly, without a `FEXBash` prefix. The x86 libraries come from FEX's Ubuntu 24.04 RootFS
+  (about 1.9 GB, in `~/.local/share/fex-emu/RootFS`; the newest FEX offers). It is set in
+  `~/.config/fex-emu/Config.json`, because the fetcher does not save its own default.
+- [tty7](https://github.com/l0ng-ai/tty7) via `install_x86_release l0ng-ai/tty7 tty7`. This installs the newest
+  stable `vX.Y.Z` release tarball, checked against its `checksums.txt`, into `~/.local/opt/tty7/<ver>`. It links the
+  executables into `~/.local/bin` and adds a desktop entry. Other x86-only apps that publish
+  `<name>-<ver>-linux-x86_64.tar.gz` plus `checksums.txt` can use the same function.
+
+Tested in an arm64 Ubuntu 26.04 container: `tty7 --version` runs under FEX, and `tty7-app` loads and starts its
+daemon. The GUI window and binfmt registration need the VM's desktop and systemd, which a container lacks.
 
 ## Networking and the LAN sshd
 
