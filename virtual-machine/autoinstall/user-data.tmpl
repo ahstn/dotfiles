@@ -1,13 +1,13 @@
 #cloud-config
 autoinstall:
   version: 1
-  locale: @VM_LOCALE@
+  locale: '@VM_LOCALE@'
   keyboard:
-    layout: @VM_KEYBOARD@
-  timezone: @VM_TIMEZONE@
+    layout: '@VM_KEYBOARD@'
+  timezone: '@VM_TIMEZONE@'
   identity:
-    hostname: @VM_HOSTNAME@
-    username: @VM_USER@
+    hostname: '@VM_HOSTNAME@'
+    username: '@VM_USER@'
     password: "@VM_PASSWORD_HASH@"
   ssh:
     install-server: true

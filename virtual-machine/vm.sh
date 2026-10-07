@@ -215,13 +215,16 @@ cmd_cidata() {
   export V_NAME="$VM_NAME" V_HOST="$VM_HOSTNAME" V_USER="$VM_USER" V_HASH="$hash" V_KEYS="$keys" \
          V_SUDO="$sudo_cmd" V_LOCALE="$VM_LOCALE" V_KB="$VM_KEYBOARD" V_TZ="$VM_TIMEZONE" \
          V_UID="$uid" V_GID="$gid"
+  # Free-form values sit in single-quoted YAML scalars in the templates (so `no` stays the Norwegian layout,
+  # not YAML 1.1 false); sq() doubles any embedded quote. VM_USER is validated, so it needs no escaping.
   render() {
     perl -pe '
-      s/\@VM_NAME\@/$ENV{V_NAME}/g;           s/\@VM_HOSTNAME\@/$ENV{V_HOST}/g;
+      BEGIN { sub sq { (my $v = shift) =~ s/\x27/\x27\x27/g; $v } }
+      s/\@VM_NAME\@/sq($ENV{V_NAME})/ge;      s/\@VM_HOSTNAME\@/sq($ENV{V_HOST})/ge;
       s/\@VM_USER\@/$ENV{V_USER}/g;           s/\@VM_PASSWORD_HASH\@/$ENV{V_HASH}/g;
       s/\@SSH_KEYS\@/$ENV{V_KEYS}/g;          s/\@SUDO_LATE_COMMAND\@/$ENV{V_SUDO}/g;
-      s/\@VM_LOCALE\@/$ENV{V_LOCALE}/g;       s/\@VM_KEYBOARD\@/$ENV{V_KB}/g;
-      s/\@VM_TIMEZONE\@/$ENV{V_TZ}/g;         s/\@HOST_UID\@/$ENV{V_UID}/g;
+      s/\@VM_LOCALE\@/sq($ENV{V_LOCALE})/ge;  s/\@VM_KEYBOARD\@/sq($ENV{V_KB})/ge;
+      s/\@VM_TIMEZONE\@/sq($ENV{V_TZ})/ge;    s/\@HOST_UID\@/$ENV{V_UID}/g;
       s/\@\@HOST_GID\@/\@$ENV{V_GID}/g;
     ' "$1"
   }

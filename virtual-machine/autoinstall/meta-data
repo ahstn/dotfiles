@@ -1,2 +1,2 @@
-instance-id: @VM_NAME@
-local-hostname: @VM_HOSTNAME@
+instance-id: '@VM_NAME@'
+local-hostname: '@VM_HOSTNAME@'
