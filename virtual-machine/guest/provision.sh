@@ -80,6 +80,24 @@ Terminal=false
 Categories=System;TerminalEmulator;
 EOF
 
+# Pin to the Ubuntu dock (GNOME favorites), appending to existing pins. Over SSH, use the logged-in session's bus
+# so the dock updates live; otherwise a throwaway bus writes dconf and it applies at next login.
+pin_to_dock() {
+  local cur new
+  cur="$(gsettings get org.gnome.shell favorite-apps)"
+  new="$(python3 -c '
+import ast, sys
+cur = ast.literal_eval(sys.argv[1].removeprefix("@as "))
+print(str(cur + [a for a in sys.argv[2:] if a not in cur]))' "$cur" "$@")"
+  [ "$new" = "$cur" ] || gsettings set org.gnome.shell favorite-apps "$new"
+}
+bus="/run/user/$(id -u)/bus"
+if [ -S "$bus" ]; then
+  DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" pin_to_dock helium.desktop tty7.desktop
+else
+  export -f pin_to_dock && dbus-run-session -- bash -c 'pin_to_dock helium.desktop tty7.desktop'
+fi
+
 if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
   echo "already provisioned (FORCE=1 to rerun)"; exit 0
 fi

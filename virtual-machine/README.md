@@ -96,6 +96,9 @@ to existing VMs. Steps that are already done are skipped.
   executables into `~/.local/bin` and adds a desktop entry. Other x86-only apps that publish
   `<name>-<ver>-linux-x86_64.tar.gz` plus `checksums.txt` can use the same function.
 
+Helium and tty7 are pinned to the Ubuntu dock (`org.gnome.shell favorite-apps`), after any existing pins and
+without duplicates. When you are logged in to the desktop, the dock updates immediately; otherwise it applies at next login.
+
 Tested in an arm64 Ubuntu 26.04 container: `tty7 --version` runs under FEX, and `tty7-app` loads and starts its
 daemon. The GUI window and binfmt registration need the VM's desktop and systemd, which a container lacks.
 
