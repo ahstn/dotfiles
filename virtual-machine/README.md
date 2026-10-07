@@ -32,7 +32,10 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
    preferences. This is app-wide, not part of the VM bundle. Writing to the container plist (not plain
    `defaults write com.utmapp.UTM`) is what the sandboxed app actually reads, but verify in
    UTM > Settings > QEMU Graphics Acceleration.
-3. Have an SSH key (`ssh-keygen -t ed25519`); its public key (`VM_SSH_PUBKEY`) authorises SSH *into* the guest.
+3. Have an SSH key (`ssh-keygen -t ed25519`); its public key (`VM_SSH_PUBKEY`) authorises SSH *into* the guest,
+   and `vm.sh` passes its private half (same path without `.pub`) to `ssh -i`.
+4. The guest user defaults to your macOS short name. If that is reserved on Ubuntu (`admin`, `staff`, ...) or not
+   a valid Linux name, set `VM_USER`; `cidata` and `all` refuse it up front.
 
 ## Updating an existing VM
 
@@ -85,10 +88,11 @@ existing VM, run `./vm.sh provision`: these lines run before the already-provisi
 `provision` (or `./vm.sh github-keys` on its own) copies the Mac's GitHub keys into the guest, so `git` over SSH
 and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which is only for SSH into the guest.
 
-- `VM_GITHUB_AUTH_KEY` (default `~/.ssh/github`) and its `.pub` go to `~/.ssh/` with the same name. A managed
+- `VM_GITHUB_AUTH_KEY` (default `~/.ssh/github`) and its `.pub` go to the guest's `~/.ssh/github`, whatever the
+  file is called on the Mac. A managed
   `Host github.com` block (`IdentitiesOnly yes`) is written to `~/.ssh/config`. The script then runs
   `ssh -T git@github.com` to check the key works.
-- `VM_GITHUB_SIGNING_KEY` (default `~/.ssh/github-signing-key`) and its `.pub` are copied alongside.
+- `VM_GITHUB_SIGNING_KEY` (default `~/.ssh/github-signing-key`) and its `.pub` go to `~/.ssh/github-signing-key`.
 - Set either to empty to skip it. Private keys stream over SSH straight into place, so they are never staged on the host.
 - Passphrase-protected keys need an `ssh-agent` in the guest.
 - `.config/git/.gitconfig` sets `signingkey = ~/.ssh/github-signing-key.pub`. Git expands `~` per machine, so
@@ -140,7 +144,8 @@ ssh -p 48222 <user>@<mac-lan-ip>   # from the LAN client
 `sshd start` copies `VM_SSHD_AUTHORIZED_KEYS` (the **LAN client's** public key; defaults to the Mac's own key)
 into the guest's dedicated `~/.config/sshd/authorized_keys`, then reuses the dotfiles' sshd template and task.
 The daemon is tracked through the template's `PidFile`. `pkill -f` is not used, because on Linux it would also match
-the remote shell running the command.
+the remote shell running the command. `sshd stop`, and the task's timer, end established sessions as well as
+the listener, because OpenSSH session processes otherwise outlive it.
 
 Differences from the Mac sshd in `.config/sshd/sshd_config.tera`:
 - **No per-client IP allowlist.** QEMU's user-mode NAT makes every connection look like `10.0.2.2` to the guest,

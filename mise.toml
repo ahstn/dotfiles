@@ -82,9 +82,11 @@ fi
 /usr/sbin/sshd -D -e \
   -f "$dir/sshd_config" &
 sshd_pid=$!
-( sleep $(( {{ usage.minutes | int }} * 60 )) && echo "sshd: time window elapsed, stopping" >&2 && kill "$sshd_pid" ) &
+# Established sessions are children of the listener and outlive it, so end them too.
+stop_sshd() { pkill -TERM -P "$sshd_pid" 2>/dev/null || true; kill "$sshd_pid" 2>/dev/null || true; }
+( sleep $(( {{ usage.minutes | int }} * 60 )) && echo "sshd: time window elapsed, stopping" >&2 && stop_sshd ) &
 timer_pid=$!
-trap 'pkill -P "$timer_pid" 2>/dev/null || true; kill "$sshd_pid" "$timer_pid" 2>/dev/null || true' EXIT INT TERM
+trap 'pkill -P "$timer_pid" 2>/dev/null || true; kill "$timer_pid" 2>/dev/null || true; stop_sshd' EXIT INT TERM
 wait "$sshd_pid" || [ $? -eq 143 ]  # 143 = stopped by the timer
 '''
 

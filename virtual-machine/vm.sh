@@ -47,6 +47,19 @@ log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# version_ge <a> <b>: numeric dotted-version comparison, a >= b. Trailing text such as " (beta)" is ignored.
+version_ge() {
+  local a b i x y
+  a="$(printf '%s' "$1" | grep -oE '^[0-9]+(\.[0-9]+)*')" || return 1
+  b="$2"
+  for i in 1 2 3 4; do
+    x="$(printf '%s' "$a" | cut -d. -f"$i")"; y="$(printf '%s' "$b" | cut -d. -f"$i")"
+    [ "${x:-0}" -gt "${y:-0}" ] && return 0
+    [ "${x:-0}" -lt "${y:-0}" ] && return 1
+  done
+  return 0
+}
+
 utm_status() { "$UTMCTL" status "$VM_NAME" 2>/dev/null | tr -d '[:space:]'; }
 
 wait_for_status() { # wait_for_status <status> <timeout-seconds>
@@ -71,6 +84,8 @@ stop_vm() {
 }
 
 SSH_OPTS=(-p "$VM_SSH_LOCAL_PORT" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$BUILD/known_hosts" -o ConnectTimeout=10)
+# Offer the private half of VM_SSH_PUBKEY explicitly: ssh only tries ~/.ssh/id_* (and the agent) by default.
+[ -f "${VM_SSH_PUBKEY%.pub}" ] && SSH_OPTS+=(-i "${VM_SSH_PUBKEY%.pub}")
 
 # Emulated-VLAN guests sit behind QEMU's NAT, so the only way in is the loopback forward.
 guest_ssh() { ssh "${SSH_OPTS[@]}" "$VM_USER@127.0.0.1" "$@"; }
@@ -94,6 +109,10 @@ sshd_fwd_addr() {
 cmd_prereqs() {
   [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || die "needs an Apple Silicon Mac"
   [ -d /Applications/UTM.app ] || die "UTM.app not found. Install v5.0.6+ (GitHub pre-release UTM.dmg)."
+  # 5.0.6+ for config reloading and `utmctl snapshot`.
+  local utm_ver
+  utm_ver="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' /Applications/UTM.app/Contents/Info.plist 2>/dev/null)" || utm_ver=""
+  version_ge "$utm_ver" 5.0.6 || die "UTM ${utm_ver:-(unknown version)} is too old; install v5.0.6+"
   [ -x "$UTMCTL" ] || die "utmctl not found at $UTMCTL"
   command -v hdiutil >/dev/null || die "hdiutil missing"
   mkdir -p "$BUILD"
@@ -118,15 +137,19 @@ cmd_iso() {
   curl -fsSL "$base/SHA256SUMS" -o "$BUILD/SHA256SUMS"
   want="$(grep -F "$(basename "$ISO_FILE")" "$BUILD/SHA256SUMS" | awk '{print $1}')"
   [ -n "$want" ] || die "no checksum for $(basename "$ISO_FILE") in SHA256SUMS"
-  if [ -f "$ISO_FILE" ]; then
-    got="$(shasum -a 256 "$ISO_FILE" | awk '{print $1}')"
-  else
-    got=""
-  fi
+  iso_hash() { [ -f "$ISO_FILE" ] && shasum -a 256 "$ISO_FILE" | awk '{print $1}' || true; }
+  got="$(iso_hash)"
   if [ "$got" != "$want" ]; then
     log "downloading $(basename "$ISO_FILE") (~3.9 GB)"
-    curl -fL -C - --progress-bar -o "$ISO_FILE" "$UBUNTU_ISO_URL"
-    got="$(shasum -a 256 "$ISO_FILE" | awk '{print $1}')"
+    # Resume a partial file; if the result still fails verification, the existing bytes were bad, so start over.
+    curl -fL -C - --progress-bar -o "$ISO_FILE" "$UBUNTU_ISO_URL" || true
+    got="$(iso_hash)"
+    if [ "$got" != "$want" ]; then
+      warn "download did not verify; discarding it and downloading from scratch"
+      rm -f "$ISO_FILE"
+      curl -fL --progress-bar -o "$ISO_FILE" "$UBUNTU_ISO_URL"
+      got="$(iso_hash)"
+    fi
   fi
   [ "$got" = "$want" ] || die "checksum mismatch for $ISO_FILE"
   log "ISO verified"
@@ -150,13 +173,36 @@ password_hash() {
   die "no openssl with 'passwd -6' support; run: brew install openssl"
 }
 
+# Subiquity rejects these as the install user (canonical/subiquity reserved-usernames), and a macOS short name
+# can be one of them (admin, staff). Checked before anything slow so `all` fails up front.
+RESERVED_USERNAMES=" root daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody
+  adm tty disk kmem dialout fax voice cdrom floppy tape sudo audio dip operator src shadow utmp video sasl plugdev staff
+  users nogroup netplan ftn mysql tac-plus alias qmail qmaild qmails qmailr qmailq qmaill qmailp asterisk vpopmail vchkpw
+  slurm hacluster haclient grsec-tpe grsec-sock-all grsec-sock-clt grsec-sock-srv grsec-proc ceph opensrf libvirt-qemu
+  admin Debian-exim bind crontab cupsys dcc dhcp dictd dnsmasq dovecot fetchmail firebird ftp fuse gdm haldaemon hplilp
+  identd input jwhois klog kvm lpadmin maas messagebus mythtv netdev powerdev radvd render saned sbuild scanner sgx
+  slocate ssh sshd ssl-cert sslwrap statd syslog telnetd tftpd "
+check_vm_user() {
+  [[ "$VM_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] \
+    || die "VM_USER '$VM_USER' is not a valid Linux username (lowercase, starts with a letter or _); set VM_USER"
+  case "$(printf '%s' "$RESERVED_USERNAMES" | tr -s ' \n' '  ')" in
+    *" $VM_USER "*) die "VM_USER '$VM_USER' is reserved on Ubuntu; set VM_USER to another name" ;;
+  esac
+}
+
 cmd_cidata() {
   mkdir -p "$BUILD"
-  local hash keys="" sudo_cmd="" seed="$BUILD/cidata"
+  local hash keys="" line q="'" sudo_cmd="" seed="$BUILD/cidata"
+  check_vm_user
   hash="$(password_hash)"
   [[ "$hash" =~ ^\$6\$[A-Za-z0-9./]+\$[A-Za-z0-9./]+$ ]] || die "unexpected password hash format (want a single-line \$6\$ crypt)"
   if [ -f "$VM_SSH_PUBKEY" ]; then
-    keys="      - $(cat "$VM_SSH_PUBKEY")"
+    # One single-quoted YAML scalar per key, so comments such as "Work key: laptop" stay plain text.
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in ''|'#'*) continue ;; esac
+      keys="$keys${keys:+$'\n'}      - '${line//$q/$q$q}'"
+    done < "$VM_SSH_PUBKEY"
+    [ -n "$keys" ] || die "no keys in $VM_SSH_PUBKEY"
   else
     warn "no SSH public key at $VM_SSH_PUBKEY; 'provision' needs one (ssh-keygen -t ed25519)"
     keys="      []"
@@ -291,8 +337,16 @@ cmd_install() {
   "$UTMCTL" start "$VM_NAME"
   [ "$GRUB_AUTOINSTALL" = 1 ] && grub_autoinstall
   log "waiting for the installer to power off (up to 90 min)..."
+  local started=$SECONDS disk_kib
   sleep 60
   wait_for_status stopped 5400
+  # A stop is only trusted as "installed" if it took a while and the disk holds a system; ejecting after an
+  # early crash or a manual stop would leave an empty disk with no installer. Only the qcow2 disk is measured
+  # (allocated KiB), so an ISO stored in the bundle cannot count.
+  disk_kib="$(du -ck "$UTM_DOCS/$VM_NAME.utm/Data/"*.qcow2 2>/dev/null | awk 'END {print $1}')"
+  if [ $((SECONDS - started)) -lt 300 ] || [ "${disk_kib:-0}" -lt $((3 * 1024 * 1024)) ]; then
+    die "VM stopped after $(( (SECONDS - started) / 60 )) min with $(( ${disk_kib:-0} / 1024 )) MiB on disk; that is not a finished install. Install media left attached: check the VM in UTM, then rerun: $0 install"
+  fi
   eject_media || die "install media still attached. Remove both CD/DVD drives in UTM's Edit dialog, then: utmctl start $VM_NAME && $0 provision"
   log "first boot"
   "$UTMCTL" start "$VM_NAME"
@@ -345,7 +399,7 @@ cmd_provision() {
 
 cmd_check() {
   log "acceptance checks (guest)"
-  guest_ssh 'set -x; uname -a; mise ls 2>&1 | head -20; echo "shell=$SHELL"; mount | grep -E "utm" || echo "VirtFS not mounted"; touch ~/utm/.vm-write-test && rm ~/utm/.vm-write-test && echo "share writable"; systemctl is-active qemu-guest-agent'
+  guest_ssh 'set -x; uname -a; mise ls 2>&1 | head -20; echo "shell=$SHELL"; mount | grep -E "utm" || echo "VirtFS not mounted"; f=$(mktemp ~/utm/.vm-write-test.XXXXXX) && rm -f "$f" && echo "share writable"; systemctl is-active qemu-guest-agent'
   log "glxinfo (needs a graphical session; expect virgl and OpenGL 2.1 (ANGLE Metal))"
   # GNOME is Wayland-only; reach its Xwayland via mutter's auth file. Needs a logged-in desktop session.
   guest_ssh 'export DISPLAY=:0 XAUTHORITY="$(ls /run/user/$(id -u)/.mutter-Xwaylandauth.* 2>/dev/null | head -1)"; glxinfo -B 2>&1 | grep -E "renderer|OpenGL version" || echo "no Xwayland display; log in to the guest desktop first"' || true
@@ -389,8 +443,10 @@ APPLESCRIPT
 # nowhere: authentication is key-only via a dedicated authorized_keys, nothing else.
 # The daemon is tracked through the template's PidFile; matching command lines with pkill -f
 # would also match the remote shell running these commands.
+# Established sessions are children of the listener and outlive it, so they are ended first.
 SSHD_PID_FN='pidf=$HOME/.config/sshd/sshd.pid
-sshd_pid() { p=$(cat "$pidf" 2>/dev/null) && [ "$(ps -p "$p" -o comm= 2>/dev/null)" = sshd ] && echo "$p"; }'
+sshd_pid() { p=$(cat "$pidf" 2>/dev/null) && [ "$(ps -p "$p" -o comm= 2>/dev/null)" = sshd ] && echo "$p"; }
+sshd_stop() { pkill -TERM -P "$1" 2>/dev/null; kill "$1"; }'
 
 cmd_sshd() {
   local action="${1:-start}" minutes="${2:-180}"
@@ -403,7 +459,7 @@ cmd_sshd() {
         export PATH=\$HOME/.local/bin:\$PATH MISE_YES=1 SSHD_USER='$VM_USER' SSHD_LISTEN='0.0.0.0:$VM_SSHD_PORT' SSHD_ALLOW_FROM='$VM_SSHD_ALLOW_FROM'
         [ -d /run/sshd ] || sudo -n mkdir -p /run/sshd || echo 'warn: /run/sshd missing and sudo needs a password' >&2
         cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
-        if p=\$(sshd_pid); then kill \$p; sleep 1; fi
+        if p=\$(sshd_pid); then sshd_stop \$p; sleep 1; fi
         # The task needs no tools; without this, mise first installs every tool in mise.toml (minutes on a fresh VM).
         MISE_TASK_RUN_AUTO_INSTALL=false setsid nohup mise run sshd -m $minutes > ~/.config/sshd/sshd.log 2>&1 < /dev/null &
         for _ in \$(seq 60); do sshd_pid >/dev/null && break; sleep 1; done
@@ -411,10 +467,10 @@ cmd_sshd() {
         sshd_pid >/dev/null || { echo 'sshd did not start within 60s (log above)' >&2; exit 1; }"
       log "ephemeral sshd up for ${minutes}m: ssh -p $VM_SSHD_PORT $VM_USER@$(sshd_fwd_addr)" ;;
     stop)
-      # Killing sshd ends the `mise run sshd` task, whose trap stops its timer. A stale pid file
-      # is harmless: sshd_pid checks the process is actually sshd.
+      # Ends open sessions and the listener; that ends the `mise run sshd` task, whose trap stops its timer.
+      # A stale pid file is harmless: sshd_pid checks the process is actually sshd.
       guest_ssh "$SSHD_PID_FN
-        if p=\$(sshd_pid); then kill \$p && echo stopped; else echo 'not running'; fi" ;;
+        if p=\$(sshd_pid); then sshd_stop \$p && echo stopped; else echo 'not running'; fi" ;;
     status)
       guest_ssh "$SSHD_PID_FN
         if p=\$(sshd_pid); then echo \"running (pid \$p)\"; else echo stopped; fi"
@@ -428,19 +484,21 @@ cmd_sshd() {
 # VM_SSH_PUBKEY, which only authorises SSH *into* the guest. Files stream straight into place
 # over SSH, so no copy of a private key is staged on the host.
 cmd_github_keys() {
-  local key b pub hosts n=0
+  local pair key b pub hosts n=0
   wait_for_ssh
   guest_ssh 'umask 077 && mkdir -p ~/.ssh'
-  for key in "$VM_GITHUB_AUTH_KEY" "$VM_GITHUB_SIGNING_KEY"; do
+  # Fixed guest names, whatever the Mac's files are called: .gitconfig's signingkey and the Host block below
+  # point at them, and two keys with the same basename cannot overwrite each other.
+  for pair in "$VM_GITHUB_AUTH_KEY|github" "$VM_GITHUB_SIGNING_KEY|github-signing-key"; do
+    key="${pair%|*}" b="${pair##*|}"
     [ -n "$key" ] || continue
     [ -f "$key" ] || { warn "GitHub key $key not found; skipping"; continue; }
-    b="$(basename "$key")"
     guest_ssh "umask 077 && cat > ~/.ssh/$b" < "$key"
     if [ -f "$key.pub" ]; then pub="$(cat "$key.pub")"
     else pub="$(ssh-keygen -y -f "$key" 2>/dev/null)" || { pub=""; warn "could not derive $b.pub (passphrase-protected?)"; }
     fi
     [ -z "$pub" ] || printf '%s\n' "$pub" | guest_ssh "cat > ~/.ssh/$b.pub && chmod 644 ~/.ssh/$b.pub"
-    log "copied $b"
+    log "copied $key to ~/.ssh/$b"
     n=$((n + 1))
   done
   [ "$n" -gt 0 ] || { warn "no GitHub keys copied"; return 0; }
@@ -463,7 +521,7 @@ cmd_github_keys() {
 Host github.com
   HostName github.com
   User git
-  IdentityFile ~/.ssh/$(basename "$VM_GITHUB_AUTH_KEY")
+  IdentityFile ~/.ssh/github
   IdentitiesOnly yes
 # <<< vm.sh github <<<
 EOF
@@ -473,6 +531,9 @@ EOF
 }
 
 cmd_all() {
+  # Fail before the download and the long install, not at provisioning.
+  check_vm_user
+  [ -f "$VM_SSH_PUBKEY" ] || die "no SSH public key at $VM_SSH_PUBKEY; provisioning needs one (ssh-keygen -t ed25519)"
   cmd_prereqs; cmd_iso; cmd_cidata; cmd_create
   if [ "$SHARE_OK" != 1 ]; then
     if [ -t 0 ]; then
