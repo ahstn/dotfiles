@@ -28,11 +28,28 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
 ## Per-Mac prerequisites
 
 1. Install UTM 5.0.6 (GitHub pre-release `UTM.dmg`), launch it once, quit it.
-2. `./vm.sh prereqs` writes `QEMURendererBackend=3` (Apple Core OpenGL) into UTM's sandbox container
+2. `./vm.sh prereqs` writes `QEMURendererBackend=2` (ANGLE Metal) into UTM's sandbox container
    preferences. This is app-wide, not part of the VM bundle. Writing to the container plist (not plain
    `defaults write com.utmapp.UTM`) is what the sandboxed app actually reads, but verify in
    UTM > Settings > QEMU Graphics Acceleration.
 3. Have an SSH key (`ssh-keygen -t ed25519`); its public key (`VM_SSH_PUBKEY`) authorises SSH *into* the guest.
+
+## Updating an existing VM
+
+The VM keeps running except for the renderer switch, which needs UTM itself quit.
+
+```bash
+git pull                     # on feat/utm-ubuntu-vm
+# Shut the guest down and quit UTM (Cmd-Q), then:
+./vm.sh prereqs              # renderer -> ANGLE Metal; refuses while UTM is open
+/Applications/UTM.app/Contents/MacOS/utmctl start ubuntu-dev   # or start it from UTM
+./vm.sh provision            # waits for SSH; apps, dock pins, password policy; earlier steps are skipped
+./vm.sh check
+```
+
+`provision` re-runs the parts that are safe to repeat (password policy, ghostty, Helium, FEX-Emu, tty7, dock pins)
+even on a VM that is already provisioned. `FORCE=1` also re-runs the apt packages and `mise bootstrap` after them.
+Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and the new dock pins show up.
 
 ## Manual steps
 
@@ -138,8 +155,8 @@ Differences from the Mac sshd in `.config/sshd/sshd_config.tera`:
 ## Acceptance checks
 
 `./vm.sh check` covers most. Then `./vm.sh sshd start` and connect from a LAN client on port 48222. Also by hand: `glxinfo -B` in the guest desktop reports `virgl` and
-OpenGL 4.1 (2.1 means the renderer pref is not active; `llvmpipe` means no acceleration); GNOME Files and
-Settings render without black regions; clipboard works both ways; resizing the window resizes the desktop.
+OpenGL 2.1 with ANGLE Metal (4.1 means Apple Core OpenGL is still active; `llvmpipe` means no acceleration); GNOME
+Files and Settings render without missing text, black regions or window trails; clipboard works both ways; resizing the window resizes the desktop.
 
 ## Known blockers in the dotfiles repo (not changed here)
 

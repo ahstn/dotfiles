@@ -98,17 +98,17 @@ cmd_prereqs() {
   command -v hdiutil >/dev/null || die "hdiutil missing"
   mkdir -p "$BUILD"
 
-  # QEMURendererBackend 3 = Apple Core OpenGL (OpenGL 4.1 for the guest). App-wide, so per Mac.
+  # QEMURendererBackend: 0 default, 1 ANGLE GL, 2 ANGLE Metal, 3 Apple Core OpenGL. Core OpenGL gives the guest
+  # OpenGL 4.1, but GTK/GNOME drew missing text and window trails with it; ANGLE Metal (2.1) renders cleanly.
+  # App-wide, so per Mac. UTM reads it only at launch and may overwrite it while running.
   if [ ! -d "$(dirname "$UTM_PREFS")" ]; then
     die "UTM container not found. Launch UTM once, quit it, then rerun."
   fi
-  if pgrep -x UTM >/dev/null; then
-    warn "UTM is running; it may overwrite the renderer preference. Quit UTM and rerun if the check below fails."
-  fi
-  defaults write "$UTM_PREFS" QEMURendererBackend -int 3
-  [ "$(defaults read "$UTM_PREFS" QEMURendererBackend)" = 3 ] \
+  pgrep -x UTM >/dev/null && die "quit UTM first (it reads the renderer preference only at launch), then rerun"
+  defaults write "$UTM_PREFS" QEMURendererBackend -int 2
+  [ "$(defaults read "$UTM_PREFS" QEMURendererBackend)" = 2 ] \
     || warn "renderer preference did not stick; set it in UTM > Settings > QEMU Graphics Acceleration"
-  log "prereqs ok (renderer = Apple Core OpenGL)"
+  log "prereqs ok (renderer = ANGLE Metal)"
 }
 
 cmd_iso() {
@@ -346,7 +346,7 @@ cmd_provision() {
 cmd_check() {
   log "acceptance checks (guest)"
   guest_ssh 'set -x; uname -a; mise ls 2>&1 | head -20; echo "shell=$SHELL"; mount | grep -E "utm" || echo "VirtFS not mounted"; touch ~/utm/.vm-write-test && rm ~/utm/.vm-write-test && echo "share writable"; systemctl is-active qemu-guest-agent'
-  log "glxinfo (needs a graphical session; expect virgl and OpenGL 4.1)"
+  log "glxinfo (needs a graphical session; expect virgl and OpenGL 2.1 (ANGLE Metal))"
   # GNOME is Wayland-only; reach its Xwayland via mutter's auth file. Needs a logged-in desktop session.
   guest_ssh 'export DISPLAY=:0 XAUTHORITY="$(ls /run/user/$(id -u)/.mutter-Xwaylandauth.* 2>/dev/null | head -1)"; glxinfo -B 2>&1 | grep -E "renderer|OpenGL version" || echo "no Xwayland display; log in to the guest desktop first"' || true
   log "clipboard agent (system daemon, virtio port, per-session agent)"
@@ -487,7 +487,7 @@ cmd_all() {
 usage() {
   cat <<EOF
 Usage: $0 <command>
-  prereqs     check host, set renderer to Apple Core OpenGL
+  prereqs     check host, set renderer to ANGLE Metal (quit UTM first)
   iso         download and verify the Ubuntu ISO
   cidata      render autoinstall seed and build build/cidata.iso
   create      create the VM through UTM's AppleScript interface
