@@ -51,7 +51,7 @@ username, `~/git` shared to `~/utm` in the guest. Override via env or `config.en
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
 | Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
@@ -83,6 +83,9 @@ and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which 
 to existing VMs. Steps that are already done are skipped.
 
 - `ghostty` from the Ubuntu archive.
+- [Helium](https://helium.computer) (`helium-bin`, native arm64) from its apt repo, so `apt upgrade` updates it.
+  Its signing key is checked against a pinned fingerprint (`BE677C19…01D6378E`, expires 2028-10-10). The package
+  declares no dependencies, so the Chromium runtime libraries (`libnss3`, `libcups2t64`, ...) are installed with it.
 - [FEX-Emu](https://fex-emu.com) from `ppa:fex-emu/fex`, for apps that only ship x86_64 Linux builds. The package
   variant (`armv8.0/8.2/8.4`) is chosen from `/proc/cpuinfo`, as FEX's `InstallFEX.py` does. `fex-emu-binfmt64`
   lets x86_64 binaries run directly, without a `FEXBash` prefix. The x86 libraries come from FEX's Ubuntu 24.04 RootFS

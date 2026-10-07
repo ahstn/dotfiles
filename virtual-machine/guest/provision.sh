@@ -12,6 +12,21 @@ sudo sed -i -E '/pam_unix\.so/{/minlen=/!s/pam_unix\.so obscure/pam_unix.so obsc
 # Apps, also before the provisioned check so `./vm.sh provision` adds them to existing VMs. Each step is a no-op once done.
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ghostty
 
+# Helium browser: native arm64 from its apt repo, so `apt upgrade` keeps it current. The key is pinned by fingerprint.
+if ! dpkg -s helium-bin >/dev/null 2>&1; then
+  helium_fpr=BE677C1989D35EAB2C5F26C9351601AD01D6378E
+  tmp="$(mktemp)"
+  curl -fsSL https://raw.githubusercontent.com/imputnet/helium-linux/main/pubkey.asc -o "$tmp"
+  gpg --show-keys --with-colons "$tmp" | grep -q "^fpr:*$helium_fpr:" || { echo "Helium key fingerprint mismatch" >&2; exit 1; }
+  sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/helium.gpg "$tmp" && rm -f "$tmp"
+  printf '%s\n' 'Types: deb' 'URIs: https://pkg.helium.computer/deb' 'Suites: stable' 'Components: main' \
+    'Architectures: arm64' 'Signed-By: /usr/share/keyrings/helium.gpg' | sudo tee /etc/apt/sources.list.d/helium.sources >/dev/null
+  sudo apt-get update
+  # helium-bin declares no Depends; these are the Chromium runtime libs it needs (Qt shims are optional, KDE only).
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y helium-bin libnss3 libasound2t64 libatk-bridge2.0-0t64 \
+    libcups2t64 libxdamage1 libpango-1.0-0 libcairo2 fonts-liberation libvulkan1 xdg-utils
+fi
+
 # FEX-Emu runs x86_64 Linux binaries on this arm64 guest (binfmt, so they run directly). The package is chosen by
 # CPU feature level, as FEX's InstallFEX.py does. Its newest x86 RootFS is Ubuntu 24.04, which is fine on 26.04.
 if ! command -v FEXLoader >/dev/null; then
