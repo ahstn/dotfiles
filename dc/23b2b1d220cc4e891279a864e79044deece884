@@ -1,0 +1,23 @@
+virtual-machine/autoinstall/meta-data
+  s_940c186323c6f9::t_ae515d7a6f55fa 1-2
+virtual-machine/autoinstall/user-data.tmpl
+  s_940c186323c6f9::t_a16c1e1fca990f 4,6-7,9-10
+virtual-machine/vm.sh
+  s_940c186323c6f9::t_01f8a3df6c33f7 218-219,222-223,226-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc23b2b1d220cc4e891279a864e79044deece884",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
