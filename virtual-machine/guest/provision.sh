@@ -28,6 +28,30 @@ if ! dpkg -s helium-bin >/dev/null 2>&1; then
     libcups2t64 libxdamage1 libpango-1.0-0 libcairo2 fonts-liberation libvulkan1 xdg-utils
 fi
 
+# Tailscale from its apt repo (key pinned by fingerprint). The repo serves a binary keyring, so no dearmor.
+if ! dpkg -s tailscale >/dev/null 2>&1; then
+  ts_fpr=2596A99EAAB33821893C0A79458CA832957F5868
+  tmp="$(mktemp)"
+  curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg -o "$tmp"
+  gpg --show-keys --with-colons "$tmp" | grep -q "^fpr:*$ts_fpr:" || { echo "Tailscale key fingerprint mismatch" >&2; exit 1; }
+  sudo install -m 644 "$tmp" /usr/share/keyrings/tailscale-archive-keyring.gpg && rm -f "$tmp"
+  printf '%s\n' 'Types: deb' 'URIs: https://pkgs.tailscale.com/stable/ubuntu' 'Suites: resolute' 'Components: main' \
+    'Signed-By: /usr/share/keyrings/tailscale-archive-keyring.gpg' | sudo tee /etc/apt/sources.list.d/tailscale.sources >/dev/null
+  sudo apt-get update
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tailscale
+fi
+# Log in only with an auth key that vm.sh streamed into ~/.tailscale-authkey; otherwise leave it to the user.
+# tailscaled reads the key from the file, so it never appears in a command line. --operator lets $USER run
+# `tailscale` without sudo.
+if [ -f ~/.tailscale-authkey ]; then
+  tailscale status >/dev/null 2>&1 \
+    || sudo tailscale up --operator="$USER" --auth-key="file:$HOME/.tailscale-authkey" \
+    || { rm -f ~/.tailscale-authkey; exit 1; }
+  rm -f ~/.tailscale-authkey
+elif ! tailscale status >/dev/null 2>&1; then
+  echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up --operator=\$USER"
+fi
+
 # FEX-Emu runs x86_64 Linux binaries on this arm64 guest (binfmt, so they run directly). The package is chosen by
 # CPU feature level, as FEX's InstallFEX.py does. Its newest x86 RootFS is Ubuntu 24.04, which is fine on 26.04.
 if ! command -v FEXLoader >/dev/null || ! dpkg -s fex-emu-binfmt64 >/dev/null 2>&1; then

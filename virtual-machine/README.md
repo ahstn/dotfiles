@@ -50,7 +50,7 @@ git pull                     # on feat/utm-ubuntu-vm
 ./vm.sh check
 ```
 
-`provision` re-runs the parts that are safe to repeat (password policy, ghostty, Helium, FEX-Emu, tty7, dock pins)
+`provision` re-runs the parts that are safe to repeat (password policy, ghostty, Helium, Tailscale, FEX-Emu, tty7, dock pins)
 even on a VM that is already provisioned. `FORCE=1` also re-runs the apt packages and `mise bootstrap` after them.
 Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and the new dock pins show up.
 
@@ -71,7 +71,7 @@ Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and 
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
 | Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
@@ -103,7 +103,16 @@ and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which 
 `provision` installs these on every run, before the already-provisioned check, so `./vm.sh provision` adds them
 to existing VMs. Steps that are already done are skipped.
 
-- `ghostty` from the Ubuntu archive.
+- `ghostty` from the Ubuntu archive. This tends to trail upstream by a point release (1.3.0 against 1.3.1 in
+  October 2026); the community `.deb` or the snap are newer if that matters.
+- [Tailscale](https://tailscale.com) from its apt repo, with the signing key pinned by fingerprint
+  (`2596A99E…957F5868`, no expiry). Provisioning does not log in by default; afterwards run
+  `sudo tailscale up --operator=$USER` in the guest and open the URL it prints. To log in unattended, export
+  `VM_TAILSCALE_AUTHKEY` for `./vm.sh provision`. The key goes over SSH stdin into a private file, which
+  `tailscale up --auth-key=file:...` reads and provisioning then deletes. Do not put it in `config.env`.
+  The guest reaches the tailnet outbound through QEMU's NAT, so tailnet peers can reach it even when the
+  Mac's firewall blocks the LAN forward. If no direct path gets through both NATs, traffic is relayed (DERP),
+  which is slower.
 - [Helium](https://helium.computer) (`helium-bin`, native arm64) from its apt repo, so `apt upgrade` updates it.
   Its signing key is checked against a pinned fingerprint (`BE677C19…01D6378E`, expires 2028-10-10). The package
   declares no dependencies, so the Chromium runtime libraries (`libnss3`, `libcups2t64`, ...) are installed with it.

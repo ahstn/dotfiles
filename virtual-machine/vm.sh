@@ -394,6 +394,10 @@ cmd_provision() {
   [ "$VM_PASSWORDLESS_SUDO" = 1 ] || [ "$tty" = -t ] \
     || die "VM_PASSWORDLESS_SUDO=0 needs an interactive terminal so sudo can prompt"
   cmd_github_keys
+  if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
+    # Over stdin into a private file, so the key is not in either side's process list; provision.sh deletes it.
+    printf '%s' "$VM_TAILSCALE_AUTHKEY" | guest_ssh 'umask 077 && cat > ~/.tailscale-authkey'
+  fi
   log "running guest/provision.sh as $VM_USER"
   guest_ssh 'cat > /tmp/vm-provision.sh' < "$HERE/guest/provision.sh"
   ssh "$tty" "${SSH_OPTS[@]}" "$VM_USER@127.0.0.1" "FORCE=${FORCE:-0} bash /tmp/vm-provision.sh"
