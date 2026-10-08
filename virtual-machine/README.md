@@ -1,205 +1,191 @@
-# Ubuntu Desktop VM on UTM (Apple Silicon)
+# macOS VM on Tart (Apple Silicon)
 
-Builds a GUI Ubuntu 26.04.1 LTS (arm64) VM on UTM 5.0.6+ with the QEMU backend, hardware-virtualised
-and GPU-accelerated, then applies [ahstn/dotfiles](https://github.com/ahstn/dotfiles) inside it.
+Builds a macOS Tahoe VM with [Tart](https://tart.run) from Cirrus Labs' `macos-tahoe-base` image, then applies
+[ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the same apps as the Ubuntu VM inside it. A macOS guest
+runs on Apple's Virtualization.framework with paravirtualised graphics, so it is faster than the Ubuntu/UTM
+VM. It also runs the Mac builds of tty7, MonoCode and Paseo, with no FEX-Emu or llvmpipe workarounds.
 
-**Status: untested on a Mac with UTM installed.** `cidata` rendering and YAML were checked; everything
-that talks to UTM (AppleScript property names, `utmctl` snapshot/exec syntax, plist keys, GRUB keystrokes)
-follows UTM's scripting reference (`Scripting/UTM.sdef`) and `utmctl` source but has not been run. Steps whose
-failure is recoverable warn; ejecting the install media fails hard, because booting the installer again would
-rerun autoinstall over the disk.
+The Ubuntu Desktop VM on UTM lives in [`_ubuntu/`](_ubuntu/README.md).
 
 ## Usage
 
 ```bash
 cd virtual-machine
 cp config.env.example config.env   # optional
-export VM_PASSWORD=...             # or enter it when prompted
+export VM_PASSWORD=...             # optional: replaces the image's admin/admin
 ./vm.sh all
 ```
 
-Or step by step: `prereqs`, `iso`, `cidata`, `create`, `install`, `provision`, `check`, `snapshot`.
-Settings come from exported env vars, then `config.env`, then defaults, so `GRUB_AUTOINSTALL=1 ./vm.sh install`
-overrides the file.
+`all` runs `prereqs`, `create`, `start`, `keys`, `password` (only if `VM_PASSWORD` is set), `provision`,
+`snapshot`, then `start` again. The first run pulls about 27 GB. Settings come from exported env vars, then
+`config.env`, then defaults.
 
-Defaults: 8 GiB RAM, 64 GiB disk, CPU cores 0 (host performance-core count), guest user = your macOS
-username, `~/git` shared to `~/utm` in the guest. Override via env or `config.env`.
+Defaults:
+
+- VM name `macos-dev`;
+- half the host's cores, 8 GiB RAM, a 100 GB disk and a 1920x1200 display;
+- `~/git` shared into the guest;
+- NAT networking;
+- a window for the VM. Set `VM_HEADLESS=1` for none.
+
+Other commands: `configure`, `stop`, `check`, `github-keys`, `sshd`, `ssh [cmd]`, `ip`.
 
 ## Per-Mac prerequisites
 
-1. Install UTM 5.0.6 (GitHub pre-release `UTM.dmg`), launch it once, quit it.
-2. `./vm.sh prereqs` writes `QEMURendererBackend=2` (ANGLE Metal) into UTM's sandbox container
-   preferences. This is app-wide, not part of the VM bundle. Writing to the container plist (not plain
-   `defaults write com.utmapp.UTM`) is what the sandboxed app actually reads, but verify in
-   UTM > Settings > QEMU Graphics Acceleration.
-3. Have an SSH key (`ssh-keygen -t ed25519`); its public key (`VM_SSH_PUBKEY`) authorises SSH *into* the guest,
-   and `vm.sh` passes its private half (same path without `.pub`) to `ssh -i`.
-4. The guest user defaults to your macOS short name. If that is reserved on Ubuntu (`admin`, `staff`, ...) or not
-   a valid Linux name, set `VM_USER`; `cidata` and `all` refuse it up front.
+1. `./vm.sh prereqs` installs Tart:
+   - with Homebrew first (`brew install cirruslabs/cli/tart`). That tap currently fails on Homebrew 7
+     (`depends_on :macos` is disabled).
+   - otherwise from the GitHub release `tart.tar.gz` (pinned `TART_VERSION`). It is checked against the release's
+     checksum list, its code signature (team `9M2P8L4D89`, Cirrus Labs) and Gatekeeper. It is installed into
+     `~/.local/opt/tart/<ver>`, with a `~/.local/bin/tart` wrapper.
+2. Have an SSH key (`ssh-keygen -t ed25519`). `VM_SSH_PUBKEY` authorises SSH into the guest. Its private half
+   is passed to `ssh -i` with `IdentitiesOnly=yes`, so an agent with many keys cannot exhaust `MaxAuthTries` first.
+3. Apple's licence allows two macOS VMs running at once per Mac.
 
-## Updating an existing VM
+## The guest account
 
-The VM keeps running except for the renderer switch, which needs UTM itself quit.
+The base image has one account, `admin` / `admin`:
 
-```bash
-git pull                     # on feat/utm-ubuntu-vm
-# Shut the guest down and quit UTM (Cmd-Q), then:
-./vm.sh prereqs              # renderer -> ANGLE Metal; refuses while UTM is open
-/Applications/UTM.app/Contents/MacOS/utmctl start ubuntu-dev   # or start it from UTM
-./vm.sh provision            # waits for SSH; apps, dock pins, password policy; earlier steps are skipped
-./vm.sh check
-```
+- passwordless sudo;
+- automatic login;
+- Remote Login (SSH) and Screen Sharing on;
+- Homebrew and mise preinstalled;
+- the Tart guest agent running.
 
-`provision` re-runs the parts that are safe to repeat (password policy, ghostty, Helium, Tailscale, FEX-Emu, tty7, MonoCode host, dock pins)
-even on a VM that is already provisioned. `FORCE=1` also re-runs the apt packages, `mise bootstrap` and Paseo after them.
-Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and the new dock pins show up.
+`vm.sh` keeps that account (`VM_USER=admin`).
 
-## Manual steps
-
-- **Shared folder (fallback only):** `create` sets `$VM_SHARE_DIR` with AppleScript `update registry`. If that
-  fails, set Edit > Sharing > VirtFS > Browse by hand; `./vm.sh all` pauses for this before installing.
-- **Autoinstall confirmation:** if the installer waits for confirmation, rerun with `GRUB_AUTOINSTALL=1`
-  (sends the `autoinstall` kernel arg through GRUB's editor; tune `GRUB_LINUX_LINE_DOWNS`), or confirm by hand.
+- `keys` logs in once with the image password (`VM_IMAGE_PASSWORD`) to install `VM_SSH_PUBKEY`. It then
+  writes `/etc/ssh/sshd_config.d/100-vm-keys-only.conf`, so SSH accepts keys only.
+- `password` (or `VM_PASSWORD` with `all`) replaces the password. It updates the account with `dscl`, the login
+  keychain with `security set-keychain-password`, and auto-login's `/etc/kcpassword`.
+  - `/etc/kcpassword` is written directly, because `sysadminctl -autologin set` fails in the guest
+    (`SACSetAutoLoginPassword error:22`) yet still exits 0. The script also makes the file mode 600; the image
+    leaves it 644.
+  - `VM_IMAGE_PASSWORD` must be the current password, so set it to the old one to change the password again.
+  - The passwords are briefly visible in the guest's process list.
+- Keeping `admin` / `admin` is fine behind NAT, where only this Mac reaches the guest. With `VM_NET=bridged`,
+  Screen Sharing is on the LAN, so set a password.
 
 ## How it works
 
 | Step | Mechanism |
 |---|---|
-| ISO | downloaded and checked against `SHA256SUMS` into `build/` |
-| Seed | `autoinstall/user-data.tmpl` rendered (password hashed with `openssl passwd -6`), packed with `hdiutil` as a `CIDATA` ISO |
-| VM | AppleScript `make new virtual machine`: aarch64, hypervisor, UEFI, `virtio-gpu-gl-pci`, dynamic resolution, VirtFS, emulated-VLAN network with two port forwards |
-| Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
-| Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
-| GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7, MonoCode host), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos`, Paseo, login shell set to zsh |
-| Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
+| Image | `tart clone ghcr.io/cirruslabs/macos-tahoe-base:latest <name>`, an APFS copy of the cached OCI image |
+| Hardware | `tart set --cpu --memory --display --disk-size`. The guest daemon grows APFS into the larger disk at boot |
+| Run | `tart run` detached with `nohup`, plus `--dir git:~/git` and optionally `--net-bridged en0` and `--no-graphics`. The log goes to `build/run.log` |
+| Address | `tart ip --wait` (DHCP leases under NAT, the ARP table when bridged) |
+| SSH | known hosts in `build/known_hosts`; key installed with an `SSH_ASKPASS` helper, then password SSH turned off |
+| GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written |
+| Provision | `guest/provision.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone and `mise bootstrap --skip files,repos` |
+| Snapshot | `tart stop`, then `tart clone <name> <name>-<tag>` (cheap APFS copy). To restore: `tart delete <name> && tart clone <name>-<tag> <name>` |
 
-Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
-`VM_PASSWORDLESS_SUDO=0`, `provision` must run from an interactive terminal so sudo can prompt. The seed ISO and `build/` are gitignored; the seed holds a password hash.
+The shared folder appears in the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git`.
 
-Guest passwords only need 4+ characters, since the VM already sits behind the Mac's login. libpwquality
-cannot go below 6, so `provision` sets it to warn only (`/etc/security/pwquality.conf.d/90-vm.conf`) and adds
-`minlen=4` to `pam_unix` in `/etc/pam.d/common-password`. `passwd` still prints a "BAD PASSWORD" warning, but
-accepts the password. `pam-auth-update` then leaves `common-password` alone as locally modified. To apply this to an
-existing VM, run `./vm.sh provision`: these lines run before the already-provisioned check.
+## Updating an existing VM
 
-## GitHub SSH keys
+```bash
+git pull
+./vm.sh start
+./vm.sh provision     # apps, Dock pins, daemons; the dotfiles steps are skipped unless FORCE=1
+./vm.sh check
+```
 
-`provision` (or `./vm.sh github-keys` on its own) copies the Mac's GitHub keys into the guest, so `git` over SSH
-and SSH commit signing work there. This is separate from `VM_SSH_PUBKEY`, which is only for SSH into the guest.
+## Apps
 
-- `VM_GITHUB_AUTH_KEY` (default `~/.ssh/github`) and its `.pub` go to the guest's `~/.ssh/github`, whatever the
-  file is called on the Mac. A managed
-  `Host github.com` block (`IdentitiesOnly yes`) is written to `~/.ssh/config`. The script then runs
-  `ssh -T git@github.com` to check the key works.
-- `VM_GITHUB_SIGNING_KEY` (default `~/.ssh/github-signing-key`) and its `.pub` go to `~/.ssh/github-signing-key`.
-- Set either to empty to skip it. Private keys stream over SSH straight into place, so they are never staged on the host.
-- Passphrase-protected keys need an `ssh-agent` in the guest.
-- `.config/git/.gitconfig` sets `signingkey = ~/.ssh/github-signing-key.pub`. Git expands `~` per machine, so
-  the copied signing key works for signed commits in the guest once the dotfiles are applied.
+`provision` installs these on every run, before the already-provisioned check. Steps that are already done
+are skipped.
 
-## Apps and x86_64 binaries
+- **Ghostty, Helium, Paseo (desktop):** Homebrew casks `ghostty`, `helium-browser` and `paseo`. Note that the
+  cask `helium` is an unrelated, disabled app.
+- **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
+  release's `checksums.txt`.
+- **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release. The DMG has no checksum
+  file, so it is checked against the sha256 digest GitHub publishes for the release asset.
+- The tty7 and MonoCode apps must pass `codesign --verify --deep --strict`, and Gatekeeper is asked about them.
+  All five apps report "Notarized Developer ID". They are copied into `/Applications` and replaced only when
+  the version changes.
+- **MonoCode host:**
+  - `monocode-host-darwin-arm64.tar.gz`, checked against its `.sha256`, into `~/.local/opt/monocode-host/<ver>`,
+    with a wrapper in `~/.local/bin`.
+  - `monocode-host service install` registers it as the `com.monocode.host` launchd agent.
+  - From the host Mac's MonoCode, add the VM under Settings → Connections → Add machine, as `admin@<./vm.sh ip>`.
+- **Paseo daemon:**
+  - The `sh.paseo.daemon` launchd agent runs the cask's `paseo daemon run` on `127.0.0.1:6767`, with the web UI
+    enabled and the relay off. It is up without the desktop app open, and the log is
+    `~/Library/Logs/paseo-daemon.log`.
+  - The cask's CLI runs on the app's bundled runtime, so it needs no Node and upgrades with the app.
+  - The agent is reloaded only when its plist changes.
+  - The host Mac's Paseo can add `ssh://admin@<./vm.sh ip>` as a Remote SSH host.
+- **Tailscale:**
+  - Homebrew formula `tailscale`, run as a root launchd daemon (`tailscaled install-system-daemon`).
+  - The Tailscale app is not used: its network system extension has to be approved in the GUI, so it cannot be
+    installed unattended.
+  - Provisioning does not log in by default. Run `sudo tailscale up` in the guest afterwards.
+  - To log in unattended, export `VM_TAILSCALE_AUTHKEY` for `./vm.sh provision`. The key goes over SSH stdin
+    into a private file that `tailscale up --auth-key=file:...` reads and provisioning deletes. Do not put it in
+    `config.env`.
+- **Dock:** Ghostty, Helium and tty7 are pinned, after existing pins and without duplicates.
 
-`provision` installs these on every run, before the already-provisioned check, so `./vm.sh provision` adds them
-to existing VMs. Steps that are already done are skipped.
+Tested in a VM (macOS 26.6.2 guest on a macOS 27 host):
 
-- `ghostty` from the Ubuntu archive. This tends to trail upstream by a point release (1.3.0 against 1.3.1 in
-  October 2026); the community `.deb` or the snap are newer if that matters.
-- [Tailscale](https://tailscale.com) from its apt repo, with the signing key pinned by fingerprint
-  (`2596A99E…957F5868`, no expiry). Provisioning does not log in by default; afterwards run
-  `sudo tailscale up --operator=$USER` in the guest and open the URL it prints. To log in unattended, export
-  `VM_TAILSCALE_AUTHKEY` for `./vm.sh provision`. The key goes over SSH stdin into a private file, which
-  `tailscale up --auth-key=file:...` reads and provisioning then deletes. Do not put it in `config.env`.
-  The guest reaches the tailnet outbound through QEMU's NAT, so tailnet peers can reach it even when the
-  Mac's firewall blocks the LAN forward. If no direct path gets through both NATs, traffic is relayed (DERP),
-  which is slower.
-- [Helium](https://helium.computer) (`helium-bin`, native arm64) from its apt repo, so `apt upgrade` updates it.
-  Its signing key is checked against a pinned fingerprint (`BE677C19…01D6378E`, expires 2028-10-10). The package
-  declares no dependencies, so the Chromium runtime libraries (`libnss3`, `libcups2t64`, ...) are installed with it.
-- [FEX-Emu](https://fex-emu.com) from `ppa:fex-emu/fex`, for apps that only ship x86_64 Linux builds. The package
-  variant (`armv8.0/8.2/8.4`) is chosen from `/proc/cpuinfo`, as FEX's `InstallFEX.py` does. `fex-emu-binfmt64`
-  lets x86_64 binaries run directly, without a `FEXBash` prefix. The x86 libraries come from FEX's Ubuntu 24.04 RootFS
-  (about 1.9 GB, in `~/.local/share/fex-emu/RootFS`; the newest FEX offers). It is set in
-  `~/.config/fex-emu/Config.json`, because the fetcher does not save its own default.
-- [tty7](https://github.com/l0ng-ai/tty7) via `install_x86_release l0ng-ai/tty7 tty7`. This installs the newest
-  stable `vX.Y.Z` release tarball, checked against its `checksums.txt`, into `~/.local/opt/tty7/<ver>`. It links the
-  executables into `~/.local/bin` and adds a desktop entry. Other x86-only apps that publish
-  `<name>-<ver>-linux-x86_64.tar.gz` plus `checksums.txt` can use the same function.
-  The desktop entry sets `VK_ICD_FILENAMES` to the RootFS's llvmpipe driver, because `tty7-app` aborts under FEX
-  right after choosing the virtio-gpu Venus Vulkan device. Rendering is therefore on the CPU.
-- [MonoCode](https://www.usemono.dev) host (`monocode-host-linux-arm64.tar.gz` from the latest release, checked
-  against its `.sha256`, bundling its own Node) in `~/.local/opt/monocode-host/<ver>`, with a `monocode-host` wrapper in
-  `~/.local/bin`. `monocode-host service install` runs it as the `monocode-host.service` systemd user unit on
-  `127.0.0.1:3774` and enables lingering; a new version restarts it. On the Mac, add the VM in MonoCode under
-  Settings → Connections → Add machine (an SSH alias for `127.0.0.1:2222`); it reuses this host and pairs itself.
-  MonoCode's desktop app has no arm64 Linux build, and the x86_64 one needs WebKitGTK 4.1, which FEX's RootFS lacks.
+- all five apps installed and accepted by Gatekeeper;
+- the Paseo daemon (web UI returns 200) and the MonoCode host running as launchd agents, including after a reboot;
+- `tailscaled` up and awaiting login;
+- auto-login working after a password change.
 
-[Paseo](https://paseo.sh) needs the mise Node, so it is installed after `mise bootstrap` (first provision, or
-`FORCE=1`): `npm install -g --prefix ~/.local @getpaseo/cli`, with the bundled web UI enabled and the relay left off.
-The `paseo.service` systemd user unit runs `paseo daemon run` on `127.0.0.1:6767`, so open that in Helium in the guest,
-or add the VM in the Mac's Paseo desktop as a Remote SSH host (`ssh://<user>@127.0.0.1:2222`). `bzip2` is installed
-for its local speech models. Paseo's Linux desktop app is x86_64 only.
-
-Helium and tty7 are pinned to the Ubuntu dock (`org.gnome.shell favorite-apps`), after any existing pins and
-without duplicates. When you are logged in to the desktop, the dock updates immediately; otherwise it applies at next login.
-
-Tested in the VM: `tty7-app` runs under FEX with llvmpipe; the Paseo daemon, its web UI and the MonoCode host run
-natively as user services.
+The Tailscale auth-key login was not exercised.
 
 ## Networking and the LAN sshd
 
-The VM uses UTM's **Emulated VLAN** mode (the only mode with port forwarding), not Shared. The guest sits
-behind QEMU's NAT at `10.0.2.x`, so `utmctl ip-address` is not reachable from the host. Two forwards:
-
-| Host side | Guest | Purpose |
+| `VM_NET` | Guest address | Who can reach it |
 |---|---|---|
-| `127.0.0.1:2222` | `:22` | provisioning and admin (system sshd; loopback only) |
-| `<en0 IPv4>:48222` | `:48222` | ephemeral LAN sshd |
+| `nat` (default) | `192.168.64.x` on Apple's vmnet | this Mac only (SSH, the host Mac's MonoCode/Paseo) |
+| `bridged` | its own DHCP address on `VM_BRIDGE_IF` (`en0`) | the LAN |
+
+Both modes reach the internet and the tailnet outbound.
 
 ```bash
+VM_NET=bridged ./vm.sh start
 ./vm.sh sshd start 180     # renders ~/.config/sshd/sshd_config in the guest, runs `mise run sshd -m 180`
 ./vm.sh sshd status
 ./vm.sh sshd stop
-ssh -p 48222 <user>@<mac-lan-ip>   # from the LAN client
-./vm.sh forward            # VM stopped: re-point the forward after your Mac's DHCP address changes
+ssh -p 48222 admin@<guest LAN ip>   # from the LAN client
 ```
 
-`sshd start` copies `VM_SSHD_AUTHORIZED_KEYS` (the **LAN client's** public key; defaults to the Mac's own key)
-into the guest's dedicated `~/.config/sshd/authorized_keys`, then reuses the dotfiles' sshd template and task.
-The daemon is tracked through the template's `PidFile`. `pkill -f` is not used, because on Linux it would also match
-the remote shell running the command. `sshd stop`, and the task's timer, end established sessions as well as
-the listener, because OpenSSH session processes otherwise outlive it.
+`sshd start`:
 
-Differences from the Mac sshd in `.config/sshd/sshd_config.tera`:
-- **The allowlist includes `10.0.2.2`.** QEMU's user-mode NAT keeps a LAN client's real source IP on forwarded
-  connections, so `AllowUsers user@192.168.1.168` works as on the Mac. Connections from the host itself arrive as
-  `10.0.2.2`. Set `VM_SSHD_ALLOW_FROM` to your client IPs/CIDRs (default `10.0.2.2,192.168.1.168`).
-- The Mac must be reachable on its LAN address: allow incoming connections to UTM/QEMU in the macOS firewall.
-- The forward binds the address at create time. If that DHCP lease changes, QEMU may fail to start or the
-  forward goes stale; run `./vm.sh forward`, or set `VM_SSHD_FWD_ADDR=0.0.0.0` (all interfaces).
-- UTM's GUI docs say an empty host address means loopback, while the scripting reference says any interface.
-  That is why the address is always set explicitly.
+- copies `VM_SSHD_AUTHORIZED_KEYS` (the LAN client's public key; defaults to this Mac's) into the guest's
+  dedicated `~/.config/sshd/authorized_keys`;
+- runs the dotfiles' template and task unchanged, as on the Mac. It listens on the guest's `en0`, with
+  `AllowUsers admin@<VM_SSHD_ALLOW_FROM>` (default `192.168.1.168`) and keys only.
+
+Bridging keeps client source IPs, so the allowlist applies as written. The daemon is tracked through the
+template's `PidFile`, and `stop` ends open sessions as well as the listener. Under NAT the guest is not on the
+LAN, so `sshd start` warns.
+
+Tested bridged on Wi-Fi: start, connect from the host's LAN address, status, stop, port closed.
 
 ## Acceptance checks
 
-`./vm.sh check` covers most. Then `./vm.sh sshd start` and connect from a LAN client on port 48222. Also by hand: `glxinfo -B` in the guest desktop reports `virgl` and
-OpenGL 2.1 with ANGLE Metal (4.1 means Apple Core OpenGL is still active; `llvmpipe` means no acceleration); GNOME
-Files and Settings render without missing text, black regions or window trails; clipboard works both ways; resizing the window resizes the desktop.
+`./vm.sh check` prints:
+
+- the macOS version and mise tools;
+- the login shell and disk size;
+- the shared folder;
+- the five apps;
+- Tailscale state;
+- the Paseo agent and its web UI;
+- GitHub SSH auth.
+
+By hand: open the apps in the VM window, and check that clipboard sharing works both ways (it needs the
+guest agent, which the image runs).
 
 ## Known blockers in the dotfiles repo (not changed here)
 
-1. `mise.toml` links `.omp/agent/extensions/openrouter-routing.ts`, which is missing from the repo, so
-   `mise dotfiles apply` fails on a fresh clone until it is committed or the entry removed.
-2. The `files` phase needs `TERN_TAILSCALE_EMAIL` / `TERN_SSH_FINGERPRINT`; skipped.
-3. `brew:` entries in `[bootstrap.packages]` are attempted on Linux; outcome on ARM Ubuntu unknown.
-4. `[tasks.bootstrap]` installs a crontab in the VM too.
-5. `[bootstrap.repos]` uses an SSH URL; skipped.
-6. Provisioning sets the login shell to zsh (`sudo chsh` after bootstrap); log out and back in.
+1. The `files` phase needs `TERN_TAILSCALE_EMAIL` / `TERN_SSH_FINGERPRINT`, so it is skipped.
+2. `[bootstrap.repos]` uses an SSH URL, so it is skipped; `~/git/dotfiles` is cloned over HTTPS.
+3. The base image ships a CI `~/.gitconfig` (git-credential-manager, LFS) that blocks the dotfiles' symlink.
+   Provisioning moves it to `~/.gitconfig.base-image`.
+4. `[tasks.bootstrap]` installs the crontab in the VM too.
 
-Provisioning surfaces these failures rather than hiding them. Rerun with `FORCE=1 ./vm.sh provision`.
-
-## Fallbacks
-
-- Graphics broken: change the display card to `virtio-gpu-pci` (software rendering).
-- Auto-resize stuck: delete `~/.config/monitors.xml` in the guest and log out.
-- Wayland: keep the default GNOME session for clipboard support.
+Rerun with `FORCE=1 ./vm.sh provision`.
