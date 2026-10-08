@@ -119,6 +119,31 @@ Terminal=false
 Categories=System;TerminalEmulator;
 EOF
 
+# MonoCode host (native arm64; bundles its own Node): the Mac's MonoCode desktop drives agents here through
+# Settings → Connections → Add machine (SSH), and reuses this running host. Its desktop app has no arm64 Linux build.
+# `service install` writes a systemd user unit pointing at this version and enables lingering.
+mono_tag="$(curl -fsSL https://api.github.com/repos/hardbeat920/monocode/releases/latest | python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])')"
+mono_dir="$HOME/.local/opt/monocode-host/${mono_tag#v}"
+if [ ! -d "$mono_dir" ]; then
+  tmp="$(mktemp -d)" asset=monocode-host-linux-arm64.tar.gz
+  curl -fsSL -o "$tmp/$asset" "https://github.com/hardbeat920/monocode/releases/download/$mono_tag/$asset"
+  curl -fsSL -o "$tmp/$asset.sha256" "https://github.com/hardbeat920/monocode/releases/download/$mono_tag/$asset.sha256"
+  (cd "$tmp" && sha256sum -c "$asset.sha256")
+  rm -rf "$mono_dir".partial.* && mkdir -p "$(dirname "$mono_dir")" && stage="$(mktemp -d "$mono_dir.partial.XXXXXX")"
+  tar -xzf "$tmp/$asset" -C "$stage" && chmod 755 "$stage" && mv "$stage" "$mono_dir"
+  rm -rf "$tmp"
+  mono_new=1
+fi
+# The launcher resolves its runtime from its own path, so ~/.local/bin gets a wrapper rather than a symlink.
+mkdir -p ~/.local/bin
+printf '#!/bin/sh\nexec %s/monocode-host "$@"\n' "$mono_dir" > ~/.local/bin/monocode-host
+chmod 755 ~/.local/bin/monocode-host
+if [ -n "${mono_new:-}" ] || ! systemctl --user is-active --quiet monocode-host.service; then
+  ~/.local/bin/monocode-host service install
+  # install keeps an already-running (older) host; restart so the unit's new version takes over.
+  [ -z "${mono_new:-}" ] || systemctl --user restart monocode-host.service
+fi
+
 # Pin to the Ubuntu dock (GNOME favorites), appending to existing pins. Over SSH, use the logged-in session's bus
 # so the dock updates live; otherwise a throwaway bus writes dconf and it applies at next login.
 pin_to_dock() {
@@ -156,6 +181,19 @@ command -v mise >/dev/null || curl -fsSL https://mise.run | sh
 cd "$HOME/git/dotfiles"
 # `files` needs Tern secrets; `repos` uses an SSH clone URL. See ../README.md for other known blockers.
 mise bootstrap --skip files,repos
+
+# Paseo daemon with its bundled web UI on http://127.0.0.1:6767 (relay stays off), native through npm on the
+# mise Node; its desktop app has no arm64 Linux build. The Mac's Paseo desktop can add it as a Remote SSH host.
+# bzip2 unpacks its local speech models.
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y bzip2
+[ -x ~/.local/bin/paseo ] || mise x node@lts -- npm install -g --prefix ~/.local @getpaseo/cli
+mise x node@lts -- paseo daemon config set features.webUi.enabled true >/dev/null
+mkdir -p ~/.config/systemd/user
+printf '%s\n' '[Unit]' 'Description=Paseo agent daemon (http://127.0.0.1:6767)' '[Service]' 'WorkingDirectory=%h' \
+  'ExecStart=%h/.local/bin/mise x node@lts -- %h/.local/bin/paseo daemon run' 'Restart=on-failure' \
+  '[Install]' 'WantedBy=default.target' > ~/.config/systemd/user/paseo.service
+systemctl --user daemon-reload
+systemctl --user enable --now paseo.service
 
 # Bootstrap installs zsh (apt:zsh) but leaves the login shell as bash in the guest; plain chsh would prompt for
 # the password, so set it through sudo. Takes effect on the next login.

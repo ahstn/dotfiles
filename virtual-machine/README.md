@@ -50,8 +50,8 @@ git pull                     # on feat/utm-ubuntu-vm
 ./vm.sh check
 ```
 
-`provision` re-runs the parts that are safe to repeat (password policy, ghostty, Helium, Tailscale, FEX-Emu, tty7, dock pins)
-even on a VM that is already provisioned. `FORCE=1` also re-runs the apt packages and `mise bootstrap` after them.
+`provision` re-runs the parts that are safe to repeat (password policy, ghostty, Helium, Tailscale, FEX-Emu, tty7, MonoCode host, dock pins)
+even on a VM that is already provisioned. `FORCE=1` also re-runs the apt packages, `mise bootstrap` and Paseo after them.
 Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and the new dock pins show up.
 
 ## Manual steps
@@ -71,7 +71,7 @@ Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and 
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos`, login shell set to zsh |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7, MonoCode host), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos`, Paseo, login shell set to zsh |
 | Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
@@ -125,12 +125,26 @@ to existing VMs. Steps that are already done are skipped.
   stable `vX.Y.Z` release tarball, checked against its `checksums.txt`, into `~/.local/opt/tty7/<ver>`. It links the
   executables into `~/.local/bin` and adds a desktop entry. Other x86-only apps that publish
   `<name>-<ver>-linux-x86_64.tar.gz` plus `checksums.txt` can use the same function.
+  The desktop entry sets `VK_ICD_FILENAMES` to the RootFS's llvmpipe driver, because `tty7-app` aborts under FEX
+  right after choosing the virtio-gpu Venus Vulkan device. Rendering is therefore on the CPU.
+- [MonoCode](https://www.usemono.dev) host (`monocode-host-linux-arm64.tar.gz` from the latest release, checked
+  against its `.sha256`, bundling its own Node) in `~/.local/opt/monocode-host/<ver>`, with a `monocode-host` wrapper in
+  `~/.local/bin`. `monocode-host service install` runs it as the `monocode-host.service` systemd user unit on
+  `127.0.0.1:3774` and enables lingering; a new version restarts it. On the Mac, add the VM in MonoCode under
+  Settings → Connections → Add machine (an SSH alias for `127.0.0.1:2222`); it reuses this host and pairs itself.
+  MonoCode's desktop app has no arm64 Linux build, and the x86_64 one needs WebKitGTK 4.1, which FEX's RootFS lacks.
+
+[Paseo](https://paseo.sh) needs the mise Node, so it is installed after `mise bootstrap` (first provision, or
+`FORCE=1`): `npm install -g --prefix ~/.local @getpaseo/cli`, with the bundled web UI enabled and the relay left off.
+The `paseo.service` systemd user unit runs `paseo daemon run` on `127.0.0.1:6767`, so open that in Helium in the guest,
+or add the VM in the Mac's Paseo desktop as a Remote SSH host (`ssh://<user>@127.0.0.1:2222`). `bzip2` is installed
+for its local speech models. Paseo's Linux desktop app is x86_64 only.
 
 Helium and tty7 are pinned to the Ubuntu dock (`org.gnome.shell favorite-apps`), after any existing pins and
 without duplicates. When you are logged in to the desktop, the dock updates immediately; otherwise it applies at next login.
 
-Tested in an arm64 Ubuntu 26.04 container: `tty7 --version` runs under FEX, and `tty7-app` loads and starts its
-daemon. The GUI window and binfmt registration need the VM's desktop and systemd, which a container lacks.
+Tested in the VM: `tty7-app` runs under FEX with llvmpipe; the Paseo daemon, its web UI and the MonoCode host run
+natively as user services.
 
 ## Networking and the LAN sshd
 
