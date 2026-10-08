@@ -71,7 +71,7 @@ Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and 
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos` |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos`, login shell set to zsh |
 | Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
@@ -157,9 +157,9 @@ the remote shell running the command. `sshd stop`, and the task's timer, end est
 the listener, because OpenSSH session processes otherwise outlive it.
 
 Differences from the Mac sshd in `.config/sshd/sshd_config.tera`:
-- **No per-client IP allowlist.** QEMU's user-mode NAT makes every connection look like `10.0.2.2` to the guest,
-  so `AllowUsers user@192.168.1.168` cannot work; the guest allows `10.0.2.2`. Key-only auth, no forwarding,
-  and the time window remain. If you need source filtering, add a pf rule on the Mac for the forwarded port.
+- **The allowlist includes `10.0.2.2`.** QEMU's user-mode NAT keeps a LAN client's real source IP on forwarded
+  connections, so `AllowUsers user@192.168.1.168` works as on the Mac. Connections from the host itself arrive as
+  `10.0.2.2`. Set `VM_SSHD_ALLOW_FROM` to your client IPs/CIDRs (default `10.0.2.2,192.168.1.168`).
 - The Mac must be reachable on its LAN address: allow incoming connections to UTM/QEMU in the macOS firewall.
 - The forward binds the address at create time. If that DHCP lease changes, QEMU may fail to start or the
   forward goes stale; run `./vm.sh forward`, or set `VM_SSHD_FWD_ADDR=0.0.0.0` (all interfaces).
@@ -180,7 +180,7 @@ Files and Settings render without missing text, black regions or window trails; 
 3. `brew:` entries in `[bootstrap.packages]` are attempted on Linux; outcome on ARM Ubuntu unknown.
 4. `[tasks.bootstrap]` installs a crontab in the VM too.
 5. `[bootstrap.repos]` uses an SSH URL; skipped.
-6. Bootstrap sets the login shell to zsh; log out and back in.
+6. Provisioning sets the login shell to zsh (`sudo chsh` after bootstrap); log out and back in.
 
 Provisioning surfaces these failures rather than hiding them. Rerun with `FORCE=1 ./vm.sh provision`.
 

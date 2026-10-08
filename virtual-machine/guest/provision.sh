@@ -54,7 +54,7 @@ fi
 
 # FEX-Emu runs x86_64 Linux binaries on this arm64 guest (binfmt, so they run directly). The package is chosen by
 # CPU feature level, as FEX's InstallFEX.py does. Its newest x86 RootFS is Ubuntu 24.04, which is fine on 26.04.
-if ! command -v FEXLoader >/dev/null || ! dpkg -s fex-emu-binfmt64 >/dev/null 2>&1; then
+if ! command -v FEX >/dev/null || ! dpkg -s fex-emu-binfmt64 >/dev/null 2>&1; then
   sudo add-apt-repository -y ppa:fex-emu/fex
   feats=" $(grep -m1 '^Features' /proc/cpuinfo | cut -d: -f2) "
   fex=fex-emu-armv8.0
@@ -105,13 +105,15 @@ print(next(r["tag_name"] for r in json.load(sys.stdin)
 }
 
 install_x86_release l0ng-ai/tty7 tty7
+# The GUI aborts right after choosing the virtio-gpu Venus Vulkan device under FEX, so the launcher pins
+# the RootFS's software Vulkan driver (llvmpipe). The CLI (tty7) needs no GPU.
 mkdir -p ~/.local/share/applications
 cat > ~/.local/share/applications/tty7.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=tty7
 Comment=Terminal (x86_64, via FEX-Emu)
-Exec=$HOME/.local/bin/tty7-app
+Exec=env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json $HOME/.local/bin/tty7-app
 Icon=utilities-terminal
 Terminal=false
 Categories=System;TerminalEmulator;
@@ -154,5 +156,10 @@ command -v mise >/dev/null || curl -fsSL https://mise.run | sh
 cd "$HOME/git/dotfiles"
 # `files` needs Tern secrets; `repos` uses an SSH clone URL. See ../README.md for other known blockers.
 mise bootstrap --skip files,repos
+
+# Bootstrap installs zsh (apt:zsh) but leaves the login shell as bash in the guest; plain chsh would prompt for
+# the password, so set it through sudo. Takes effect on the next login.
+zsh_path="$(command -v zsh)" || { echo "zsh not installed by mise bootstrap" >&2; exit 1; }
+[ "$(getent passwd "$USER" | cut -d: -f7)" = "$zsh_path" ] || sudo chsh -s "$zsh_path" "$USER"
 
 touch "$HOME/.provisioned"

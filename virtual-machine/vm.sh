@@ -30,7 +30,7 @@ unset _env_overrides
 : "${VM_SSH_LOCAL_PORT:=2222}"      # 127.0.0.1:<port> -> guest :22 (admin/provisioning, loopback only)
 : "${VM_SSHD_PORT:=48222}"           # <LAN addr>:<port> -> guest :<port> (ephemeral sshd)
 : "${VM_SSHD_FWD_ADDR:=}"            # LAN address to bind; default: en0 IPv4. 0.0.0.0 = every interface
-: "${VM_SSHD_ALLOW_FROM:=10.0.2.2}"  # QEMU user-mode NAT shows every client as 10.0.2.2
+: "${VM_SSHD_ALLOW_FROM:=10.0.2.2,192.168.1.168}"  # LAN clients keep their IP; the host itself shows as 10.0.2.2
 : "${VM_SSHD_AUTHORIZED_KEYS:=$VM_SSH_PUBKEY}"  # public key(s) of the LAN client allowed into the ephemeral sshd
 : "${VM_GITHUB_AUTH_KEY=$HOME/.ssh/github}"                 # private key for git@github.com; empty = skip
 : "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
@@ -446,8 +446,8 @@ APPLESCRIPT
 }
 
 # Ephemeral LAN sshd in the guest, using the dotfiles' `mise run sshd` task + template.
-# The guest only ever sees clients as 10.0.2.2 (QEMU NAT), so per-client IP filtering happens
-# nowhere: authentication is key-only via a dedicated authorized_keys, nothing else.
+# QEMU's NAT keeps a LAN client's source IP on forwarded connections (only the host's own connections show
+# as 10.0.2.2), so the template's AllowUsers user@IP filtering works; auth is key-only via a dedicated authorized_keys.
 # The daemon is tracked through the template's PidFile; matching command lines with pkill -f
 # would also match the remote shell running these commands.
 # Established sessions are children of the listener and outlive it, so they are ended first.
