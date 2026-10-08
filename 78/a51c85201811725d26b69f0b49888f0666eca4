@@ -1,0 +1,27 @@
+virtual-machine/_ubuntu/.gitignore
+  s_940c186323c6f9::t_90dace9d0cf5dd 1-2
+virtual-machine/_ubuntu/README.md
+  s_940c186323c6f9::t_c96ab7e16caf19 1-208
+virtual-machine/_ubuntu/config.env.example
+  s_940c186323c6f9::t_de94026575b810 1-26
+virtual-machine/_ubuntu/guest/provision.sh
+  s_940c186323c6f9::t_0a7513da240655 1-203
+virtual-machine/config.env.example
+  s_940c186323c6f9::t_0c48651e52ef5b 1-2,4-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78a51c85201811725d26b69f0b49888f0666eca4",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
