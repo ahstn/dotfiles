@@ -140,29 +140,6 @@ else
   rm -f "$plist.new"
 fi
 
-# Tailscale: the open-source tailscaled as a root launchd daemon. The App Store/standalone app needs its
-# system extension approved in the GUI, so it cannot be set up unattended.
-brew install tailscale
-if ! sudo launchctl print system/com.tailscale.tailscaled >/dev/null 2>&1; then
-  sudo "$(brew --prefix)/bin/tailscaled" install-system-daemon
-fi
-# `status --json` answers once tailscaled is up, logged in or not.
-ts_ready=""
-for _ in $(seq 30); do sudo tailscale status --json >/dev/null 2>&1 && { ts_ready=1; break; }; sleep 1; done
-[ -n "$ts_ready" ] || { echo "tailscaled did not respond within 30s" >&2; exit 1; }
-ts_up() { sudo tailscale status --json | python3 -c 'import json, sys; sys.exit(json.load(sys.stdin)["BackendState"] != "Running")'; }
-# Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
-# on no command line.
-if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-  if ! ts_up; then
-    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
-    sudo tailscale up --auth-key="file:$key"
-    rm -f "$key" && trap - EXIT
-  fi
-elif ! ts_up; then
-  echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up"
-fi
-
 # Pin to the Dock, appending to existing pins.
 pin_to_dock() {
   local app changed=""
@@ -177,26 +154,51 @@ pin_to_dock() {
 }
 pin_to_dock /Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app
 
+# Tailscale needs the brew:tailscale package from the bootstrap; it reruns on every provision.
 if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
-  echo "already provisioned (FORCE=1 to rerun)"; exit 0
+  echo "already provisioned (FORCE=1 to rerun): skipping mise bootstrap"
+else
+  export MISE_YES=1 MISE_ENV=vm
+  export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
+
+  command -v mise >/dev/null || curl -fsSL https://mise.run | sh
+  [ -d "$HOME/git/dotfiles" ] || git clone https://github.com/ahstn/dotfiles.git "$HOME/git/dotfiles"
+
+  cd "$HOME/git/dotfiles"
+  # A ~/.gitconfig that is not the dotfiles' symlink blocks bootstrap; keep it aside.
+  [ ! -f ~/.gitconfig ] || [ -L ~/.gitconfig ] || mv ~/.gitconfig ~/.gitconfig.pre-dotfiles
+  # Bootstrap installs brew packages before it links dotfiles, from the config it loaded at the start, so the
+  # packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
+  # clone URL. See ../README.md for other known blockers.
+  mise bootstrap --only dotfiles
+  mise bootstrap --skip files,repos
+
+  # macOS defaults to /bin/zsh; set it if the image's account differs. Takes effect on the next login.
+  [ "$(dscl . -read "$HOME" UserShell | awk '{print $2}')" = /bin/zsh ] || sudo chsh -s /bin/zsh "$USER"
+
+  touch "$HOME/.provisioned"
 fi
 
-export MISE_YES=1
-export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
-
-command -v mise >/dev/null || curl -fsSL https://mise.run | sh
-[ -d "$HOME/git/dotfiles" ] || git clone https://github.com/ahstn/dotfiles.git "$HOME/git/dotfiles"
-
-cd "$HOME/git/dotfiles"
-# A ~/.gitconfig that is not the dotfiles' symlink blocks bootstrap; keep it aside.
-[ ! -f ~/.gitconfig ] || [ -L ~/.gitconfig ] || mv ~/.gitconfig ~/.gitconfig.pre-dotfiles
-# Bootstrap installs brew packages before it links dotfiles, from the config it loaded at the start, so the
-# packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
-# clone URL. See ../README.md for other known blockers.
-mise bootstrap --only dotfiles
-mise bootstrap --skip files,repos
-
-# macOS defaults to /bin/zsh; set it if the image's account differs. Takes effect on the next login.
-[ "$(dscl . -read "$HOME" UserShell | awk '{print $2}')" = /bin/zsh ] || sudo chsh -s /bin/zsh "$USER"
-
-touch "$HOME/.provisioned"
+# Tailscale: the open-source tailscaled as a root launchd daemon. The App Store/standalone app needs its
+# system extension approved in the GUI, so it cannot be set up unattended.
+# brew:tailscale comes from ~/.config/mise/config.toml, scoped to MISE_ENV=vm.
+ts="$(mise bootstrap packages where brew:tailscale)/bin"
+if ! sudo launchctl print system/com.tailscale.tailscaled >/dev/null 2>&1; then
+  sudo "$ts/tailscaled" install-system-daemon
+fi
+# `status --json` answers once tailscaled is up, logged in or not.
+ts_ready=""
+for _ in $(seq 30); do sudo "$ts/tailscale" status --json >/dev/null 2>&1 && { ts_ready=1; break; }; sleep 1; done
+[ -n "$ts_ready" ] || { echo "tailscaled did not respond within 30s" >&2; exit 1; }
+ts_up() { sudo "$ts/tailscale" status --json | python3 -c 'import json, sys; sys.exit(json.load(sys.stdin)["BackendState"] != "Running")'; }
+# Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
+# on no command line.
+if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
+  if ! ts_up; then
+    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
+    sudo "$ts/tailscale" up --auth-key="file:$key"
+    rm -f "$key" && trap - EXIT
+  fi
+elif ! ts_up; then
+  echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up"
+fi
