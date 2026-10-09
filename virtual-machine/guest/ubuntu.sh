@@ -210,7 +210,7 @@ want = [a for a in sys.argv[2:] if any(os.path.exists(os.path.join(d, a)) for d 
 print(str(cur + [a for a in want if a not in cur]))' "$cur" "$@")"
   [ "$new" = "$cur" ] || gsettings set org.gnome.shell favorite-apps "$new"
 }
-pin_to_dock com.mitchellh.ghostty.desktop helium.desktop tty7.desktop
+pin_to_dock com.mitchellh.ghostty.desktop helium.desktop tty7.desktop org.gnome.Settings.desktop net.nokyan.Resources.desktop
 
 export MISE_YES=1
 export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
