@@ -1,7 +1,7 @@
 [user]
   email = phazyy9@gmail.com
   name = Adam Houston
-	signingkey = /Users/ahstn/.ssh/github-signing-key.pub
+	signingkey = ~/.ssh/github-signing-key.pub
 
 [alias]
   lg = log --graph --oneline --decorate
