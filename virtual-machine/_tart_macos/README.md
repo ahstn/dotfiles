@@ -76,7 +76,7 @@ The base image has one account, `admin` / `admin`:
 | Address | `tart ip --wait` (DHCP leases under NAT, the ARP table when bridged) |
 | SSH | known hosts in `build/known_hosts`; key installed with an `SSH_ASKPASS` helper, then password SSH turned off |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written |
-| Provision | `guest/provision.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone and `mise bootstrap --skip files,repos` |
+| Provision | `guest/provision.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
 | Snapshot | `tart stop`, then `tart clone <name> <name>-<tag>` (cheap APFS copy). To restore: `tart delete <name> && tart clone <name>-<tag> <name>` |
 
 The shared folder appears in the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git`.

@@ -173,7 +173,10 @@ command -v mise >/dev/null || curl -fsSL https://mise.run | sh
 cd "$HOME/git/dotfiles"
 # The base image's CI ~/.gitconfig (git-credential-manager, LFS) blocks the dotfiles' symlink; keep it aside.
 [ ! -f ~/.gitconfig ] || [ -L ~/.gitconfig ] || mv ~/.gitconfig ~/.gitconfig.base-image
-# `files` needs Tern secrets; `repos` uses an SSH clone URL. See ../README.md for other known blockers.
+# Bootstrap installs brew packages before it links dotfiles, from the config it loaded at the start, so the
+# packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
+# clone URL. See ../README.md for other known blockers.
+mise bootstrap --only dotfiles
 mise bootstrap --skip files,repos
 
 # macOS defaults to /bin/zsh; set it if the image's account differs. Takes effect on the next login.

@@ -179,7 +179,10 @@ command -v mise >/dev/null || curl -fsSL https://mise.run | sh
 [ -d "$HOME/git/dotfiles" ] || git clone https://github.com/ahstn/dotfiles.git "$HOME/git/dotfiles"
 
 cd "$HOME/git/dotfiles"
-# `files` needs Tern secrets; `repos` uses an SSH clone URL. See ../README.md for other known blockers.
+# Bootstrap installs apt packages before it links dotfiles, from the config it loaded at the start, so the
+# packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
+# clone URL. See ../README.md for other known blockers.
+mise bootstrap --only dotfiles
 mise bootstrap --skip files,repos
 
 # Paseo daemon with its bundled web UI on http://127.0.0.1:6767 (relay stays off), native through npm on the

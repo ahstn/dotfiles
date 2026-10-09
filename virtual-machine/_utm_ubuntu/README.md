@@ -73,7 +73,7 @@ Log out of the guest and back in afterwards, so `~/.local/bin` is on `PATH` and 
 | Clipboard, balloon | PlistBuddy edits to `config.plist` (not scriptable), then `reload configuration` |
 | Install | autoinstall powers the VM off; the script then ejects both ISOs and boots the installed system |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, managed `Host github.com` block |
-| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7, MonoCode host), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --skip files,repos`, Paseo, login shell set to zsh |
+| Provision | `guest/provision.sh` uploaded and run over SSH to `127.0.0.1:2222`: password policy, apps (ghostty, Helium, Tailscale, FEX-Emu, tty7, MonoCode host), apt packages, mise, clone dotfiles to `~/git/dotfiles`, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos`, Paseo, login shell set to zsh |
 | Snapshot | guest shutdown requested (`utmctl stop --request`), forced only after 3 minutes, then `utmctl snapshot create` |
 
 Passwordless sudo is enabled in the guest because bootstrap needs unattended sudo. With
