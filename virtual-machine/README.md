@@ -83,7 +83,7 @@ again only with `FORCE=1`.
 | App | Source |
 |---|---|
 | Ghostty | Ubuntu archive (`ghostty`) |
-| Helium | its apt repo, signing key pinned by fingerprint |
+| Helium | its apt repo, signing key pinned by fingerprint; set as the default browser (`xdg-settings`) |
 | Tailscale | its apt repo, signing key pinned by fingerprint |
 | tty7 | x86_64 Linux tarball via Rosetta, checked against `checksums.txt`, in `~/.local/opt/tty7/<ver>` |
 | MonoCode | amd64 `.deb` via Rosetta (desktop), checked against the GitHub release digest; the arm64 `monocode host` runs as a systemd user service |
@@ -107,7 +107,8 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 `guest/macos.sh` installs Homebrew if missing, then the same apps as the Tart VM (Mac builds, so no Rosetta),
 the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. After the bootstrap, the Dock is set to exactly
 Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown; the
-shared mise config's Dock settings are for the host Macs. The guest's `~/.config/mise/miserc.toml` selects
+shared mise config's Dock settings are for the host Macs. The shared mise config also makes Helium the default
+browser on every Mac where it is installed; macOS may ask to confirm that once in the guest. The guest's `~/.config/mise/miserc.toml` selects
 the `vm` config environment, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`); `tailscaled` is set up after it, on every
 provision.
 

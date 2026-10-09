@@ -121,4 +121,21 @@ show_all_files = true
 "com.apple.WindowManager" = { StandardHideWidgets = true, StageManagerHideWidgets = true }
 
 [bootstrap.hooks.post-defaults]
-run = "killall Dock || true; killall WindowManager || true"
+run = [
+  "killall Dock || true; killall WindowManager || true",
+  # Helium as the default browser (http, https, .html) on macOS, when installed. macOS asks to confirm the change.
+  '''[ "$(uname)" = Darwin ] || exit 0
+osascript -l JavaScript -e '
+ObjC.import("AppKit"); ObjC.import("CoreServices");
+const id = "net.imput.helium", ws = $.NSWorkspace.sharedWorkspace;
+const app = ws.URLForApplicationWithBundleIdentifier(id);
+const cur = ws.URLForApplicationToOpenURL($.NSURL.URLWithString("https://example.com"));
+if (app.isNil()) "Helium is not installed: default browser unchanged";
+else if (!cur.isNil() && cur.path.js === app.path.js) "Helium is already the default browser";
+else {
+  for (const s of ["http", "https"]) $.LSSetDefaultHandlerForURLScheme($(s), $(id));
+  $.LSSetDefaultRoleHandlerForContentType($("public.html"), $.kLSRolesViewer, $(id));
+  "Helium set as the default browser: confirm the macOS dialog if it asks";
+}'
+''',
+]

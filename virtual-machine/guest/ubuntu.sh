@@ -76,6 +76,8 @@ apt_repo helium https://raw.githubusercontent.com/imputnet/helium-linux/main/pub
   'Types: deb' 'URIs: https://pkg.helium.computer/deb' 'Suites: stable' 'Components: main' 'Architectures: arm64'
 apt_install helium-bin libnss3 libasound2t64 libatk-bridge2.0-0t64 libcups2t64 libxdamage1 libpango-1.0-0 libcairo2 \
   fonts-liberation libvulkan1 xdg-utils
+# Default browser: http, https and HTML files, for GNOME and xdg-open.
+[ "$(xdg-settings get default-web-browser 2>/dev/null)" = helium.desktop ] || xdg-settings set default-web-browser helium.desktop
 
 # Tailscale from its apt repo.
 apt_repo tailscale https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg \
