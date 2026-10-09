@@ -1,0 +1,29 @@
+.config/mise/config.toml
+  s_940c186323c6f9::t_1b64df6e6cb181 120-121,124
+virtual-machine/README.md
+  s_940c186323c6f9::t_19c681a16f248c 98-99,108-110
+virtual-machine/_tart_macos/README.md
+  s_940c186323c6f9::t_c8795316931e24 128-129
+virtual-machine/_tart_macos/guest/provision.sh
+  s_940c186323c6f9::t_a44dff1ca83c05 163-187
+virtual-machine/guest/macos.sh
+  s_940c186323c6f9::t_93734ae8449007 174-198
+virtual-machine/guest/ubuntu.sh
+  s_940c186323c6f9::t_e14262600ac53a 200-202,209,211-212,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d2fa456d362decf51f45cba7aaa34873213115f",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
