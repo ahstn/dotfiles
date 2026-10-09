@@ -3,8 +3,7 @@
 Builds a GUI Ubuntu 26.04.1 LTS (arm64) VM on UTM 5.0.6+ with the QEMU backend, hardware-virtualised
 and GPU-accelerated, then applies [ahstn/dotfiles](https://github.com/ahstn/dotfiles) inside it.
 
-Superseded by the macOS guest on Tart in [`..`](../README.md), which is faster and runs the Mac apps natively.
-Kept for when a Linux desktop is needed.
+Superseded by the VMPal VMs in [`..`](../README.md). Kept for reference.
 
 **Status: untested on a Mac with UTM installed.** `cidata` rendering and YAML were checked; everything
 that talks to UTM (AppleScript property names, `utmctl` snapshot/exec syntax, plist keys, GRUB keystrokes)
@@ -15,7 +14,7 @@ rerun autoinstall over the disk.
 ## Usage
 
 ```bash
-cd virtual-machine/_ubuntu
+cd virtual-machine/_utm_ubuntu
 cp config.env.example config.env   # optional
 export VM_PASSWORD=...             # or enter it when prompted
 ./vm.sh all
