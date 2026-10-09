@@ -5,8 +5,16 @@ Builds an Ubuntu (default) or macOS VM with [VMPal](https://vmpal.com), then app
 unattended and runs commands in the guest through its own tools (`vmpal exec` / `vmpal cp`), so provisioning
 needs no SSH, no autoinstall ISO and no image password.
 
-Earlier engines, kept for reference: [`_tart_macos`](_tart_macos/README.md) (Tart) and
-[`_utm_ubuntu`](_utm_ubuntu/README.md) (UTM/QEMU).
+## Engines
+
+| Engine | Use it for | Notes |
+|---|---|---|
+| **VMPal** (this dir) | Default: Ubuntu and macOS desktops | Apple's Virtualization.framework, plus its own GPU acceleration for Linux (OpenGL 4.1). Unattended OS installs and guest tools (`exec`/`cp`), so provisioning needs no SSH |
+| **Tart** ([`_tart_macos`](_tart_macos/README.md)) | Headless or CI VMs, mainly macOS | Same framework. Runs macOS and Linux, in a window or `--no-graphics`, with Rosetta for Linux and prebuilt OCI images. Linux guests get no 3D acceleration |
+| **UTM** ([`_utm_ubuntu`](_utm_ubuntu/README.md)) | Fallback | QEMU (or Apple's framework). Widest guest support, including x86 emulation. QEMU's virgl GPU works but is less stable (Vulkan crashed), and setup is the most manual |
+
+VMPal and Tart use the same Apple hypervisor, so CPU, memory and disk performance are about equal. VMPal
+wins for Linux desktops (GPU) and hands-off setup; Tart is lighter for scripted, headless runs.
 
 ## Usage
 
