@@ -52,8 +52,9 @@ Plain `vmpal` works too (`vmpal ui <name> screenshot -o shot.png`, `vmpal info <
 
 ## The guest account
 
-VMPal creates an account named after your Mac user, with a generated password that it keeps in this Mac's
-keychain (`vmpal info <name> --show-password`). The guest signs in automatically.
+VMPal creates an account named `VM_USER` (default: your Mac user; it applies only at `create`), with a generated
+password that it keeps in this Mac's keychain (`vmpal info <name> --show-password`). The guest signs in
+automatically.
 
 - `sudo` gives the account passwordless sudo (`/etc/sudoers.d/90-vm-nopasswd`), which provisioning and
   `mise bootstrap` need unattended. On Ubuntu this goes through `vmpal exec --admin` (root); on macOS through

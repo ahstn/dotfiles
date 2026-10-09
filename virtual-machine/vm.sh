@@ -23,6 +23,7 @@ esac
 : "${VM_MEMORY_GB:=8}"
 : "${VM_SHARE_DIR=$HOME/git}"              # shared live into the guest; empty = none
 : "${VM_SHARE_NAME:=git}"
+: "${VM_USER:=$(id -un)}"                 # guest account, set at create only (VMPal's default is this Mac's user)
 : "${VM_SSH_PUBKEY:=$HOME/.ssh/id_ed25519.pub}"
 : "${VM_GITHUB_AUTH_KEY=$HOME/.ssh/github}"                 # private key for git@github.com; empty = skip
 : "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
@@ -91,9 +92,9 @@ cmd_create() {
     *"$VM_OS"*) ;;
     *) die "VM_SYSTEM '$VM_SYSTEM' is not a $VM_OS system (VM_OS=$VM_OS); see: vmpal systems" ;;
   esac
-  log "creating '$VM_NAME' from $VM_SYSTEM: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk (installs unattended)"
+  log "creating '$VM_NAME' from $VM_SYSTEM as $VM_USER: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk (installs unattended)"
   vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
-    --wait --timeout 2h -q >/dev/null
+    --user "$VM_USER" --wait --timeout 2h -q >/dev/null
   log "'$VM_NAME' installed as $(guest_user); VMPal keeps its password (vmpal info '$VM_NAME' --show-password)"
   cmd_configure
 }
