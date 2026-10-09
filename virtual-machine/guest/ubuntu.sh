@@ -197,20 +197,22 @@ if [ -n "$paseo" ]; then
   paseo_unit "$paseo"
 fi
 
-# Pin to the Ubuntu dock (GNOME favorites), appending to existing pins. VMPal Tools run in the desktop session, so
-# its bus is there and the dock updates live.
-pin_to_dock() {
+# The Ubuntu dock (GNOME favorites): exactly these apps, those installed, on the right and always shown. VMPal Tools
+# run in the desktop session, so its bus is there and the dock updates live.
+set_dock() {
   local cur new
   cur="$(gsettings get org.gnome.shell favorite-apps)"
   new="$(python3 -c '
 import ast, os, sys
 cur = ast.literal_eval(sys.argv[1].removeprefix("@as "))
 dirs = [os.path.expanduser("~/.local/share/applications"), "/usr/share/applications"]
-want = [a for a in sys.argv[2:] if any(os.path.exists(os.path.join(d, a)) for d in dirs)]
-print(str(cur + [a for a in want if a not in cur]))' "$cur" "$@")"
+print(str([a for a in sys.argv[2:] if any(os.path.exists(os.path.join(d, a)) for d in dirs)]))' "$cur" "$@")"
   [ "$new" = "$cur" ] || gsettings set org.gnome.shell favorite-apps "$new"
+  gsettings set org.gnome.shell.extensions.dash-to-dock dock-position RIGHT
+  gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed true
 }
-pin_to_dock com.mitchellh.ghostty.desktop helium.desktop tty7.desktop org.gnome.Settings.desktop net.nokyan.Resources.desktop
+set_dock org.gnome.Nautilus.desktop com.mitchellh.ghostty.desktop helium.desktop tty7.desktop Paseo.desktop \
+  MonoCode.desktop org.gnome.Settings.desktop net.nokyan.Resources.desktop
 
 export MISE_YES=1
 export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"

@@ -140,20 +140,6 @@ else
   rm -f "$plist.new"
 fi
 
-# Pin to the Dock, appending to existing pins.
-pin_to_dock() {
-  local app changed=""
-  for app; do
-    [ -d "$app" ] || continue
-    defaults read com.apple.dock persistent-apps 2>/dev/null | grep -q "file://$app/" && continue
-    defaults write com.apple.dock persistent-apps -array-add "<dict><key>tile-data</key><dict><key>file-data</key><dict>
-      <key>_CFURLString</key><string>file://$app/</string><key>_CFURLStringType</key><integer>15</integer></dict></dict></dict>"
-    changed=1
-  done
-  [ -z "$changed" ] || killall Dock || true
-}
-pin_to_dock /Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app
-
 # Select the `vm` config environment for every mise run in this guest, not just provisioning, so mise keeps
 # treating its env = "vm" packages (brew:tailscale) as declared. ~/.config/mise/miserc.toml is per-host:
 # the dotfiles link only config.toml in that directory.
@@ -184,6 +170,31 @@ else
 
   touch "$HOME/.provisioned"
 fi
+
+# Dock, after the bootstrap: its shared [bootstrap.macos.dock] (bottom, autohide) is for the host Macs. A VM gets
+# exactly these apps (Finder is always first), on the right and always shown. Rewritten only when it differs.
+dock_apps=(/Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app /Applications/Paseo.app
+  /Applications/MonoCode.app "/System/Applications/System Settings.app")
+want=""
+for app in "${dock_apps[@]}"; do [ ! -d "$app" ] || want+="$app"$'\n'; done
+have="$(defaults export com.apple.dock - | python3 -c '
+import plistlib, sys, urllib.parse
+for t in plistlib.loads(sys.stdin.buffer.read()).get("persistent-apps", []):
+    url = t.get("tile-data", {}).get("file-data", {}).get("_CFURLString", "")
+    print(urllib.parse.unquote(url.removeprefix("file://")).rstrip("/"))')"
+dock_changed=""
+if [ "$have" != "${want%$'\n'}" ]; then
+  defaults write com.apple.dock persistent-apps -array
+  while IFS= read -r app; do
+    [ -n "$app" ] || continue
+    defaults write com.apple.dock persistent-apps -array-add "<dict><key>tile-data</key><dict><key>file-data</key><dict>
+      <key>_CFURLString</key><string>file://${app// /%20}/</string><key>_CFURLStringType</key><integer>15</integer></dict></dict></dict>"
+  done <<< "$want"
+  dock_changed=1
+fi
+[ "$(defaults read com.apple.dock orientation 2>/dev/null)" = right ] || { defaults write com.apple.dock orientation -string right; dock_changed=1; }
+[ "$(defaults read com.apple.dock autohide 2>/dev/null)" = 0 ] || { defaults write com.apple.dock autohide -bool false; dock_changed=1; }
+[ -z "$dock_changed" ] || killall Dock || true
 
 # Tailscale: the open-source tailscaled as a root launchd daemon. The App Store/standalone app needs its
 # system extension approved in the GUI, so it cannot be set up unattended.

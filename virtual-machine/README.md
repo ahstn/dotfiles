@@ -95,7 +95,8 @@ architecture with the libraries these apps need. Paseo's Electron window does no
 launcher sets `ELECTRON_OZONE_PLATFORM_HINT=x11` (XWayland). With Rosetta off, only the Paseo CLI is installed
 (`npm i -g @getpaseo/cli`).
 
-Ghostty, Helium, tty7, Settings and Resources (the system monitor) are pinned to the Dock.
+The dock holds exactly Files, Ghostty, Helium, tty7, Paseo, MonoCode, Settings and Resources (the system monitor),
+those installed, on the right and always shown. Anything else pinned is removed on the next provision.
 
 Ghostty needs OpenGL 4.3, but VMPal's virgl GPU offers 4.1 (the macOS host's limit). Its launcher and D-Bus
 service are overridden under `~/.local/share` to set `LIBGL_ALWAYS_SOFTWARE=1`, so it renders with Mesa's
@@ -104,7 +105,9 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 ## macOS
 
 `guest/macos.sh` installs Homebrew if missing, then the same apps as the Tart VM (Mac builds, so no Rosetta),
-the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. The guest's `~/.config/mise/miserc.toml` selects
+the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. After the bootstrap, the Dock is set to exactly
+Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown; the
+shared mise config's Dock settings are for the host Macs. The guest's `~/.config/mise/miserc.toml` selects
 the `vm` config environment, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`); `tailscaled` is set up after it, on every
 provision.
 

@@ -125,7 +125,8 @@ are skipped.
   - To log in unattended, export `VM_TAILSCALE_AUTHKEY` for `./vm.sh provision`. The key goes over SSH stdin
     into a private file that `tailscale up --auth-key=file:...` reads and provisioning deletes. Do not put it in
     `config.env`.
-- **Dock:** Ghostty, Helium and tty7 are pinned, after existing pins and without duplicates.
+- **Dock:** set after the bootstrap to exactly Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after
+  Finder), on the right and always shown. Other pins are removed.
 
 Tested in a VM (macOS 26.6.2 guest on a macOS 27 host):
 

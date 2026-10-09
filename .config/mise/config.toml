@@ -117,6 +117,8 @@ show_all_files = true
 
 [bootstrap.macos.defaults]
 "com.apple.finder" = { AppleShowAllFiles = true }
+# Hide widgets on the desktop and in Stage Manager.
+"com.apple.WindowManager" = { StandardHideWidgets = true, StageManagerHideWidgets = true }
 
 [bootstrap.hooks.post-defaults]
-run = "killall Dock || true"
+run = "killall Dock || true; killall WindowManager || true"
