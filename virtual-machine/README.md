@@ -62,8 +62,8 @@ keychain (`vmpal info <name> --show-password`). The guest signs in automatically
 | Create | `vmpal create <system> --name --cpus --memory --disk --wait` (unattended install) |
 | Hardware | `vmpal set --cpus --memory --disk --rosetta --share`; `vmpal restart --apply-settings` when a setting needs it |
 | Shared folder | `vmpal set --share ~/git:git`, live via virtiofs at `/media/VMPal/git` (Ubuntu) or `/Volumes/My Shared Files/git` (macOS), linked as `~/host-git` |
-| GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written |
-| Provision | `guest/<os>.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, Dock pins, daemons, then (first run or `FORCE=1`) dotfiles clone and `mise bootstrap --skip files,repos` |
+| GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written. Setting either variable empty removes that key (and the auth key's Host block) from the guest |
+| Provision | `guest/<os>.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, Dock pins, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` (so the next run sees `~/.config/mise/config.toml`'s packages), and `mise bootstrap --skip files,repos` |
 | Snapshot | `vmpal stop`, then `vmpal snapshot <name> provisioned`. Restore with `vmpal revert <name> provisioned`. A Linux VM with GPU acceleration snapshots only when shut down |
 
 Re-running `./vm.sh provision` is idempotent. Apps update to their latest release; the dotfiles bootstrap runs

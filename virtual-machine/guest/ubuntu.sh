@@ -35,17 +35,19 @@ import json, sys
 print(next(a["digest"] for a in json.load(sys.stdin)["assets"] if a["name"] == sys.argv[1]).removeprefix("sha256:"))' "$3"
 }
 
-# apt_repo <name> <key URL> <fingerprint> <dearmor 0|1> <deb822 lines...>: add a signed apt repo, with its key
-# pinned by fingerprint.
+# apt_repo <name> <key URL> <fingerprint> <deb822 lines...>: add a signed apt repo. Its keyring holds only the
+# pinned key, exported from the download (armored or binary), so any other key in that file is never trusted.
 apt_repo() {
-  local name="$1" url="$2" fpr="$3" dearmor="$4" tmp; shift 4
+  local name="$1" url="$2" fpr="$3" tmp; shift 3
   [ -f "/etc/apt/sources.list.d/$name.sources" ] && return
-  tmp="$(mktemp)"
-  curl -fsSL "$url" -o "$tmp"
-  gpg --show-keys --with-colons "$tmp" | grep -q "^fpr:*$fpr:" || { echo "$name key fingerprint mismatch" >&2; exit 1; }
-  if [ "$dearmor" = 1 ]; then sudo gpg --batch --yes --dearmor -o "/usr/share/keyrings/$name.gpg" "$tmp"
-  else sudo install -m 644 "$tmp" "/usr/share/keyrings/$name.gpg"; fi
-  rm -f "$tmp"
+  tmp="$(mktemp -d)"
+  curl -fsSL "$url" -o "$tmp/key"
+  gpg --homedir "$tmp" --batch --quiet --import "$tmp/key"
+  gpg --homedir "$tmp" --batch --export "$fpr" > "$tmp/$name.gpg"
+  gpg --show-keys --with-colons "$tmp/$name.gpg" | grep -q "^fpr:*$fpr:" || { echo "$name key fingerprint mismatch" >&2; exit 1; }
+  sudo install -m 644 "$tmp/$name.gpg" "/usr/share/keyrings/$name.gpg"
+  gpgconf --homedir "$tmp" --kill all 2>/dev/null || true
+  rm -rf "$tmp"
   printf '%s\n' "$@" "Signed-By: /usr/share/keyrings/$name.gpg" | sudo tee "/etc/apt/sources.list.d/$name.sources" >/dev/null
   sudo apt-get update -qq
 }
@@ -70,23 +72,23 @@ gsettings set org.gnome.desktop.session idle-delay 0
 # Helium browser: native arm64 from its apt repo, so `apt upgrade` keeps it current. helium-bin declares no Depends;
 # these are the Chromium runtime libs it needs.
 apt_repo helium https://raw.githubusercontent.com/imputnet/helium-linux/main/pubkey.asc \
-  BE677C1989D35EAB2C5F26C9351601AD01D6378E 1 \
+  BE677C1989D35EAB2C5F26C9351601AD01D6378E \
   'Types: deb' 'URIs: https://pkg.helium.computer/deb' 'Suites: stable' 'Components: main' 'Architectures: arm64'
 apt_install helium-bin libnss3 libasound2t64 libatk-bridge2.0-0t64 libcups2t64 libxdamage1 libpango-1.0-0 libcairo2 \
   fonts-liberation libvulkan1 xdg-utils
 
-# Tailscale from its apt repo. The repo serves a binary keyring, so no dearmor.
+# Tailscale from its apt repo.
 apt_repo tailscale https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg \
-  2596A99EAAB33821893C0A79458CA832957F5868 0 \
+  2596A99EAAB33821893C0A79458CA832957F5868 \
   'Types: deb' 'URIs: https://pkgs.tailscale.com/stable/ubuntu' 'Suites: resolute' 'Components: main'
 apt_install tailscale
 # Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
 # on no command line. --operator lets $USER run `tailscale` without sudo.
 if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
   if ! tailscale status >/dev/null 2>&1; then
-    key="$(mktemp)" && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
-    sudo tailscale up --operator="$USER" --auth-key="file:$key" || { rm -f "$key"; exit 1; }
-    rm -f "$key"
+    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
+    sudo tailscale up --operator="$USER" --auth-key="file:$key"
+    rm -f "$key" && trap - EXIT
   fi
 elif ! tailscale status >/dev/null 2>&1; then
   echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up --operator=\$USER"
@@ -122,10 +124,10 @@ if [ -e /proc/sys/fs/binfmt_misc/rosetta ]; then
     > ~/.local/share/applications/tty7.desktop
 
   # install_deb <owner/repo> <tag> <asset> <package>: an amd64 .deb release asset, checked against GitHub's digest,
-  # installed only when the package's version differs.
+  # installed unless that version is installed (a removed package's config-files entry keeps its version).
   install_deb() {
     local repo="$1" tag="$2" asset="$3" pkg="$4" tmp
-    [ "$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || true)" != "${tag#v}" ] || return 0
+    [ "$(dpkg-query -W -f='${Status} ${Version}' "$pkg" 2>/dev/null || true)" != "install ok installed ${tag#v}" ] || return 0
     tmp="$(mktemp -d)" && chmod 755 "$tmp"   # apt's _apt user reads the file
     curl -fsSL -o "$tmp/$asset" "https://github.com/$repo/releases/download/$tag/$asset"
     echo "$(gh_digest "$repo" "$tag" "$asset")  $tmp/$asset" | sha256sum -c -
@@ -175,7 +177,7 @@ fi
 
 # Paseo daemon with its bundled web UI on http://127.0.0.1:6767 (relay stays off), as a systemd user service so it
 # runs without the desktop app open. The .deb's `paseo` CLI runs on the app's own runtime, so it needs no Node and
-# upgrades with the app. Without Rosetta, the native npm CLI on mise's Node instead (after bootstrap, below).
+# upgrades with the app. Without Rosetta, the native npm CLI on mise's Node instead (after mise bootstrap, below).
 paseo_unit() {
   mkdir -p ~/.config/systemd/user
   printf '%s\n' '[Unit]' 'Description=Paseo agent daemon (http://127.0.0.1:6767)' '[Service]' 'WorkingDirectory=%h' \
@@ -210,34 +212,38 @@ print(str(cur + [a for a in want if a not in cur]))' "$cur" "$@")"
 }
 pin_to_dock com.mitchellh.ghostty.desktop helium.desktop tty7.desktop
 
-if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
-  echo "already provisioned (FORCE=1 to rerun)"; exit 0
-fi
-
 export MISE_YES=1
 export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
 
-command -v mise >/dev/null || curl -fsSL https://mise.run | sh
-[ -d "$HOME/git/dotfiles" ] || git clone https://github.com/ahstn/dotfiles.git "$HOME/git/dotfiles"
+# mise bootstrap runs once (FORCE=1 to rerun); what follows it runs every time.
+if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
+  echo "already provisioned: skipping mise bootstrap (FORCE=1 to rerun)"
+else
+  command -v mise >/dev/null || curl -fsSL https://mise.run | sh
+  [ -d "$HOME/git/dotfiles" ] || git clone https://github.com/ahstn/dotfiles.git "$HOME/git/dotfiles"
 
-# Bootstrap's login_shell step runs plain chsh, which asks for the password through PAM. Set zsh first with sudo,
-# so bootstrap finds it done. Takes effect on the next login.
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq zsh >/dev/null
-[ "$(getent passwd "$USER" | cut -d: -f7)" = /bin/zsh ] || sudo chsh -s /bin/zsh "$USER"
+  # Bootstrap's login_shell step runs plain chsh, which asks for the password through PAM. Set zsh first with sudo,
+  # so bootstrap finds it done. Takes effect on the next login.
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq zsh >/dev/null
+  [ "$(getent passwd "$USER" | cut -d: -f7)" = /bin/zsh ] || sudo chsh -s /bin/zsh "$USER"
 
-cd "$HOME/git/dotfiles"
-# pi's postinstall hook runs npm, but bootstrap installs tools in parallel, so Node may not be there yet. Install
-# it first and put it on PATH, which this non-interactive shell does not get from mise activation.
-mise install node@lts
-node_bin="$(mise where node@lts)/bin"
-export PATH="$node_bin:$HOME/.local/share/mise/shims:$PATH"
-# `files` needs Tern secrets; `repos` uses an SSH clone URL.
-mise bootstrap --skip files,repos
+  cd "$HOME/git/dotfiles"
+  # pi's postinstall hook runs npm, but bootstrap installs tools in parallel, so Node may not be there yet. Install
+  # it first and put it on PATH, which this non-interactive shell does not get from mise activation.
+  mise install node@lts
+  node_bin="$(mise where node@lts)/bin"
+  export PATH="$node_bin:$HOME/.local/share/mise/shims:$PATH"
+  # Bootstrap installs apt packages before it links dotfiles, from the config it loaded at the start, so the
+  # packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
+  # clone URL.
+  mise bootstrap --only dotfiles
+  mise bootstrap --skip files,repos
+  touch "$HOME/.provisioned"
+fi
 
+# Rosetta off: the native npm CLI, restored when missing; this also repoints the unit away from /opt/Paseo.
 if [ -z "$paseo" ]; then
   [ -x ~/.local/bin/paseo ] || mise x node@lts -- npm install -g --prefix ~/.local @getpaseo/cli
   mise x node@lts -- paseo daemon config set features.webUi.enabled true >/dev/null
   paseo_unit "%h/.local/bin/mise x node@lts -- %h/.local/bin/paseo"
 fi
-
-touch "$HOME/.provisioned"

@@ -77,7 +77,7 @@ if [ "$(app_version /Applications/MonoCode.app)" != "$mono_ver" ]; then
 fi
 
 # MonoCode host, so the host Mac's MonoCode can drive agents here over SSH (Settings → Connections → Add machine).
-# `service install` registers a per-user launchd agent pointing at this version.
+# `service install` registers a per-user launchd agent (com.monocode.host) pointing at this version.
 mono_dir="$HOME/.local/opt/monocode-host/$mono_ver"
 if [ ! -d "$mono_dir" ]; then
   tmp="$(mktemp -d)" asset=monocode-host-darwin-arm64.tar.gz
@@ -93,7 +93,16 @@ fi
 mkdir -p ~/.local/bin
 printf '#!/bin/sh\nexec %s/monocode-host "$@"\n' "$mono_dir" > ~/.local/bin/monocode-host
 chmod 755 ~/.local/bin/monocode-host
-[ -z "${mono_new:-}" ] || ~/.local/bin/monocode-host service install
+mono_agent="gui/$(id -u)/com.monocode.host"
+if [ -n "${mono_new:-}" ] || ! launchctl print "$mono_agent" >/dev/null 2>&1; then
+  # install only kickstarts an agent that is already loaded, keeping the old version's paths, so an upgrade
+  # removes it first. bootout returns before the agent is gone.
+  if [ -n "${mono_new:-}" ] && launchctl print "$mono_agent" >/dev/null 2>&1; then
+    ~/.local/bin/monocode-host service uninstall
+    for _ in $(seq 20); do launchctl print "$mono_agent" >/dev/null 2>&1 || break; sleep 0.5; done
+  fi
+  ~/.local/bin/monocode-host service install
+fi
 
 # Paseo daemon with its bundled web UI on http://127.0.0.1:6767 (relay stays off), as a launchd agent so it runs
 # without the desktop app open. The cask's `paseo` CLI runs on the app's own runtime, so it needs no Node and
@@ -138,15 +147,17 @@ if ! sudo launchctl print system/com.tailscale.tailscaled >/dev/null 2>&1; then
   sudo "$(brew --prefix)/bin/tailscaled" install-system-daemon
 fi
 # `status --json` answers once tailscaled is up, logged in or not.
-for _ in $(seq 30); do sudo tailscale status --json >/dev/null 2>&1 && break; sleep 1; done
+ts_ready=""
+for _ in $(seq 30); do sudo tailscale status --json >/dev/null 2>&1 && { ts_ready=1; break; }; sleep 1; done
+[ -n "$ts_ready" ] || { echo "tailscaled did not respond within 30s" >&2; exit 1; }
 ts_up() { sudo tailscale status --json | python3 -c 'import json, sys; sys.exit(json.load(sys.stdin)["BackendState"] != "Running")'; }
 # Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
 # on no command line.
 if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
   if ! ts_up; then
-    key="$(mktemp)" && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
-    sudo tailscale up --auth-key="file:$key" || { rm -f "$key"; exit 1; }
-    rm -f "$key"
+    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
+    sudo tailscale up --auth-key="file:$key"
+    rm -f "$key" && trap - EXIT
   fi
 elif ! ts_up; then
   echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up"
@@ -179,7 +190,10 @@ command -v mise >/dev/null || curl -fsSL https://mise.run | sh
 cd "$HOME/git/dotfiles"
 # A ~/.gitconfig that is not the dotfiles' symlink blocks bootstrap; keep it aside.
 [ ! -f ~/.gitconfig ] || [ -L ~/.gitconfig ] || mv ~/.gitconfig ~/.gitconfig.pre-dotfiles
-# `files` needs Tern secrets; `repos` uses an SSH clone URL. See ../README.md for other known blockers.
+# Bootstrap installs brew packages before it links dotfiles, from the config it loaded at the start, so the
+# packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
+# clone URL. See ../README.md for other known blockers.
+mise bootstrap --only dotfiles
 mise bootstrap --skip files,repos
 
 # macOS defaults to /bin/zsh; set it if the image's account differs. Takes effect on the next login.

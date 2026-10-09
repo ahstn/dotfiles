@@ -45,7 +45,7 @@ vmpal() {
 # vm_field <python expression over v>: read the VM's `vmpal info --json`; prints "missing" when there is no VM.
 vm_field() {
   local j; j="$(vmpal info "$VM_NAME" --json 2>/dev/null)" || { echo missing; return; }
-  printf '%s' "$j" | python3 -c "import json, sys; v = json.load(sys.stdin); print($1)"
+  printf '%s' "$j" | python3 -c "import json, os, sys; v = json.load(sys.stdin); print($1)"
 }
 vm_state() { vm_field 'v["state"]'; }
 running()  { [ "$(vm_state)" = running ]; }
@@ -86,6 +86,11 @@ cmd_prereqs() {
 
 cmd_create() {
   [ "$(vm_state)" = missing ] || die "VM '$VM_NAME' already exists (delete with: vmpal delete '$VM_NAME' --force)"
+  # guest/$VM_OS.sh provisions only its own OS; catch a mismatch before the unattended install, not after.
+  case "$(printf '%s' "$VM_SYSTEM" | tr '[:upper:]' '[:lower:]')" in
+    *"$VM_OS"*) ;;
+    *) die "VM_SYSTEM '$VM_SYSTEM' is not a $VM_OS system (VM_OS=$VM_OS); see: vmpal systems" ;;
+  esac
   log "creating '$VM_NAME' from $VM_SYSTEM: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk (installs unattended)"
   vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
     --wait --timeout 2h -q >/dev/null
@@ -101,8 +106,16 @@ cmd_configure() {
   [ "$VM_OS" = macos ] || { [ "$VM_ROSETTA" = 1 ] && args+=(--rosetta on) || args+=(--rosetta off); }
   if [ -n "$VM_SHARE_DIR" ]; then
     [ -d "$VM_SHARE_DIR" ] || die "share dir $VM_SHARE_DIR missing (set VM_SHARE_DIR, or empty for none)"
-    [ "$(vm_field "any(f['name'] == '$VM_SHARE_NAME' for f in v['settings']['sharedFolders'])")" = True ] \
-      || args+=(--share "$VM_SHARE_DIR:$VM_SHARE_NAME")
+    # A share by that name from another folder is replaced, before the other settings.
+    case "$(VM_SHARE_DIR="$VM_SHARE_DIR" VM_SHARE_NAME="$VM_SHARE_NAME" vm_field 'next((
+        "same" if os.path.realpath(f["path"]) == os.path.realpath(os.environ["VM_SHARE_DIR"]) else "other"
+        for f in v["settings"]["sharedFolders"] if f["name"] == os.environ["VM_SHARE_NAME"]), "none")')" in
+      same) ;;
+      other) log "replacing share '$VM_SHARE_NAME' with $VM_SHARE_DIR"
+             vmpal set "$VM_NAME" --unshare "$VM_SHARE_NAME" >/dev/null
+             args+=(--share "$VM_SHARE_DIR:$VM_SHARE_NAME") ;;
+      *) args+=(--share "$VM_SHARE_DIR:$VM_SHARE_NAME") ;;
+    esac
   fi
   log "configuring '$VM_NAME': ${args[*]}"
   vmpal set "$VM_NAME" "${args[@]}" >/dev/null
@@ -174,7 +187,8 @@ cmd_keys() {
 }
 
 # Replace the password VMPal made with VM_PASSWORD, in the guest and in VMPal's keychain entry, so VMPal can
-# still sign in. The passwords travel as environment variables, on no command line.
+# still sign in. The passwords reach the guest as environment variables, on no host command line. In a macOS
+# guest, dscl and security take them as arguments, visible to the guest's other processes while they run.
 cmd_password() {
   local pw="${VM_PASSWORD:-}" again
   if [ -z "$pw" ]; then
@@ -257,22 +271,30 @@ cmd_snapshot() {
 # Copy the Mac's GitHub auth and signing keys into the guest's ~/.ssh, pin github.com's host keys
 # (from the TLS-served api.github.com/meta) and add a managed Host block. Separate from VM_SSH_PUBKEY,
 # which only authorises SSH *into* the guest. Each key goes as an environment variable straight into place.
+# An empty setting removes an earlier copy (and, for the auth key, the Host block); a missing file keeps it.
 cmd_github_keys() {
   local pair key b pub hosts n=0
   need_running
   for pair in "$VM_GITHUB_AUTH_KEY|github" "$VM_GITHUB_SIGNING_KEY|github-signing-key"; do
     key="${pair%|*}" b="${pair##*|}"
-    [ -n "$key" ] || continue
-    [ -f "$key" ] || { warn "GitHub key $key not found; skipping"; continue; }
+    if [ -z "$key" ]; then
+      guest --env "VM_B=$b" -- '[ ! -e ~/.ssh/$VM_B ] && [ ! -e ~/.ssh/$VM_B.pub ] ||
+        { rm -f ~/.ssh/$VM_B ~/.ssh/$VM_B.pub && echo "removed ~/.ssh/$VM_B from the guest"; }'
+      continue
+    fi
+    [ -f "$key" ] || { warn "GitHub key $key not found; skipping (an earlier copy in the guest stays)"; continue; }
     if [ -f "$key.pub" ]; then pub="$(cat "$key.pub")"
     else pub="$(ssh-keygen -y -f "$key" 2>/dev/null)" || { pub=""; warn "could not derive $b.pub (passphrase-protected?)"; }
     fi
     VM_KEY="$(cat "$key")" VM_PUB="$pub" guest --env VM_KEY --env VM_PUB --env "VM_B=$b" -- '
-      umask 077 && mkdir -p ~/.ssh && printf "%s\n" "$VM_KEY" > ~/.ssh/$VM_B
+      umask 077 && mkdir -p ~/.ssh && printf "%s\n" "$VM_KEY" > ~/.ssh/$VM_B && chmod 600 ~/.ssh/$VM_B
       [ -z "$VM_PUB" ] || { printf "%s\n" "$VM_PUB" > ~/.ssh/$VM_B.pub && chmod 644 ~/.ssh/$VM_B.pub; }'
     log "copied $key to ~/.ssh/$b"
     n=$((n + 1))
   done
+  [ -n "$VM_GITHUB_AUTH_KEY" ] || guest -- '[ ! -f ~/.ssh/config ] || ! grep -qx "# >>> vm.sh github >>>" ~/.ssh/config ||
+    { cd ~/.ssh && sed "/^# >>> vm.sh github >>>\$/,/^# <<< vm.sh github <<<\$/d" config > config.tmp &&
+      mv config.tmp config && chmod 600 config && echo "removed the github.com Host block from the guest"; }'
   [ "$n" -gt 0 ] || { warn "no GitHub keys copied"; return 0; }
 
   hosts="$(curl -fsSL https://api.github.com/meta \
