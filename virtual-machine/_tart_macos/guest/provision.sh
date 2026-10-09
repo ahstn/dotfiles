@@ -143,11 +143,17 @@ pin_to_dock() {
 }
 pin_to_dock /Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app
 
+# Select the `vm` config environment for every mise run in this guest, not just provisioning, so mise keeps
+# treating its env = "vm" packages (brew:tailscale) as declared. ~/.config/mise/miserc.toml is per-host:
+# the dotfiles link only config.toml in that directory.
+mkdir -p "$HOME/.config/mise"
+[ -f "$HOME/.config/mise/miserc.toml" ] || printf 'env = ["vm"]\n' > "$HOME/.config/mise/miserc.toml"
+
 # Tailscale needs the brew:tailscale package from the bootstrap; it reruns on every provision.
 if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
   echo "already provisioned (FORCE=1 to rerun): skipping mise bootstrap"
 else
-  export MISE_YES=1 MISE_ENV=vm
+  export MISE_YES=1
   export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
 
   command -v mise >/dev/null || curl -fsSL https://mise.run | sh

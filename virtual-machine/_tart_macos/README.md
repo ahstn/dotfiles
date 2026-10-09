@@ -117,8 +117,8 @@ are skipped.
   - The agent is reloaded only when its plist changes.
   - The host Mac's Paseo can add `ssh://admin@<./vm.sh ip>` as a Remote SSH host.
 - **Tailscale:**
-  - Formula `brew:tailscale` from `~/.config/mise/config.toml`, installed by the bootstrap (which runs with
-    `MISE_ENV=vm`) and run as a root launchd daemon (`tailscaled install-system-daemon`).
+  - Formula `brew:tailscale` from `~/.config/mise/config.toml`, installed by the bootstrap (the guest's
+    `~/.config/mise/miserc.toml` selects the `vm` environment) and run as a root launchd daemon (`tailscaled install-system-daemon`).
   - The Tailscale app is not used: its network system extension has to be approved in the GUI, so it cannot be
     installed unattended.
   - Provisioning does not log in by default. Run `sudo tailscale up` in the guest afterwards.

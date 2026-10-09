@@ -84,7 +84,7 @@ pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT
 "brew-cask:vorssaint" = "latest"
 "brew-cask:font-jetbrains-mono-nerd-font" = "latest"
 
-# VMs only (MISE_ENV=vm, set by virtual-machine/ guest scripts)
+# VMs only: env = ["vm"] in the host's ~/.config/mise/miserc.toml (written by the virtual-machine/ guest scripts)
 "brew:tailscale" = { version = "latest", os = "macos", env = "vm" }
 
 # linux servers

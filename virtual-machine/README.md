@@ -103,8 +103,8 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 ## macOS
 
 `guest/macos.sh` installs Homebrew if missing, then the same apps as the Tart VM (Mac builds, so no Rosetta),
-the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. The bootstrap runs with `MISE_ENV=vm`, which
-adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`); `tailscaled` is set up after it, on every
+the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. The guest's `~/.config/mise/miserc.toml` selects
+the `vm` config environment, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`); `tailscaled` is set up after it, on every
 provision.
 
 ## Networking
