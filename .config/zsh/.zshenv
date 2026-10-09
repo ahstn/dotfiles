@@ -29,4 +29,10 @@ if [[ -x /opt/homebrew/bin/brew ]]; then
     export PATH="/opt/homebrew/bin:$PATH"
     eval "$(/opt/homebrew/bin/brew shellenv zsh)" 
 fi
-[[ -x "$HOME/.local/bin/mise" ]] && eval "$("$HOME/.local/bin/mise" activate zsh --shims)"
+for mise_bin in "$HOME/.local/bin/mise" /opt/homebrew/bin/mise; do
+    if [[ -x "$mise_bin" ]]; then
+        eval "$("$mise_bin" activate zsh --shims)"
+        break
+    fi
+done
+unset mise_bin

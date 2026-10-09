@@ -79,6 +79,7 @@ pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT
 [bootstrap.packages]
 # macOS
 "brew:coreutils" = { version = "latest", os = "macos" }
+"brew:curl" = { version = "latest", os = "macos" }
 "brew:weave" = { version = "latest", os = "macos" }
 "brew:zsh" = { version = "latest", os = "macos" }
 "brew-cask:muesli" = "latest"
