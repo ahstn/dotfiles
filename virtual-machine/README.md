@@ -108,7 +108,8 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. After the bootstrap, the Dock is set to exactly
 Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown; the
 shared mise config's Dock settings are for the host Macs. The shared mise config also makes Helium the default
-browser on every Mac where it is installed; macOS may ask to confirm that once in the guest. The guest's `~/.config/mise/miserc.toml` selects
+browser on every Mac where it is installed. macOS confirms that in a dialog, which `vm.sh provision` accepts
+through VMPal's UI control (`vmpal ui ... click`). The guest's `~/.config/mise/miserc.toml` selects
 the `vm` config environment, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`); `tailscaled` is set up after it, on every
 provision.
 
