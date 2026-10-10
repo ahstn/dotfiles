@@ -4,7 +4,9 @@ providers:
 disabledProviders:
   - amazon-bedrock
   - bedrock-mantle
-symbolPreset: unicode
+  - google-vertex
+  - apple
+symbolPreset: nerd
 theme:
   dark: dark-catppuccin
 setupVersion: 2
@@ -68,21 +70,23 @@ retry:
       - xai-oauth/grok-4.5
       - web/ollama
 modelRoles:
-  default: openai-codex/gpt-6-sol:medium
   smol: openai-codex/gpt-6-luna:high
   vision: openai-codex/gpt-6-luna:high
   advisor: anthropic/claude-fable-5:high
   web: web/exa
+  default: anthropic/claude-opus-5-5:medium
+  slow: openai-codex/gpt-6-astra:xhigh
 tier:
   openai: auto
 dev:
   autoqaConsent: granted
 composer:
-  shape: pi
+  shape: claude
+  tokenRate: true
 skills:
   enableClaudeUser: false
   enableClaudeProject: false
-  enableSkillCommands: false  # use `skill://` instead
+  enableSkillCommands: false
   customDirectories:
     - ~/git/dotfiles/skills
   ignoredSkills:
