@@ -1,0 +1,16 @@
+.config/tern/settings.json
+  h_2f452a9c375069 1-22
+mise.toml
+  h_2f452a9c375069 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2fbf877380f473535f73ffe822379a700282cba",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
