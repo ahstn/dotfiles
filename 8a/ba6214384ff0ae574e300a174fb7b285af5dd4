@@ -1,0 +1,82 @@
+skills/_draft/kubes-mode/SKILL.md
+  h_2f452a9c375069 1-105
+skills/_draft/kubes-mode/playbooks/bug-fix.md
+  h_2f452a9c375069 1-15
+skills/_draft/kubes-mode/playbooks/feature.md
+  h_2f452a9c375069 1-21
+skills/_draft/kubes-mode/playbooks/hillclimb.md
+  h_2f452a9c375069 1-21
+skills/_draft/kubes-mode/playbooks/investigation.md
+  h_2f452a9c375069 1-14
+skills/_draft/kubes-mode/playbooks/multi-phase-plan.md
+  h_2f452a9c375069 1-156
+skills/_draft/kubes-mode/playbooks/orchestrate.md
+  h_2f452a9c375069 1-111
+skills/_draft/kubes-mode/playbooks/pause-safely.md
+  h_2f452a9c375069 1-10
+skills/_draft/kubes-mode/playbooks/perf-issue.md
+  h_2f452a9c375069 1-24
+skills/_draft/kubes-mode/playbooks/prototype.md
+  h_2f452a9c375069 1-14
+skills/_draft/kubes-mode/playbooks/refactoring.md
+  h_2f452a9c375069 1-16
+skills/_draft/kubes-mode/playbooks/runtime-forensics.md
+  h_2f452a9c375069 1-11
+skills/_draft/kubes-mode/playbooks/worktree-cleanup.md
+  h_2f452a9c375069 1-14
+skills/_draft/kubes-mode/principles/context-window.md
+  h_2f452a9c375069 1-8
+skills/_draft/kubes-mode/principles/enforce-lessons.md
+  h_2f452a9c375069 1-9
+skills/_draft/kubes-mode/scripts/bootstrap.ts
+  h_2f452a9c375069 1-62
+skills/_draft/kubes-mode/scripts/bun.lock
+  h_2f452a9c375069 1-67
+skills/_draft/kubes-mode/scripts/check-plan.mjs
+  h_2f452a9c375069 1-186
+skills/_draft/kubes-mode/scripts/orch/orch.test.ts
+  h_2f452a9c375069 1-634
+skills/_draft/kubes-mode/scripts/orch/orch.ts
+  h_2f452a9c375069 1-578
+skills/_draft/kubes-mode/scripts/orch/store.ts
+  h_2f452a9c375069 1-1607
+skills/_draft/kubes-mode/scripts/package.json
+  h_2f452a9c375069 1-16
+skills/_draft/kubes-mode/scripts/watch-pr/cli.test.ts
+  h_2f452a9c375069 1-224
+skills/_draft/kubes-mode/scripts/watch-pr/cli.ts
+  h_2f452a9c375069 1-223
+skills/_draft/kubes-mode/scripts/watch-pr/fakes.test-helper.ts
+  h_2f452a9c375069 1-118
+skills/_draft/kubes-mode/scripts/watch-pr/github.test.ts
+  h_2f452a9c375069 1-306
+skills/_draft/kubes-mode/scripts/watch-pr/github.ts
+  h_2f452a9c375069 1-699
+skills/_draft/kubes-mode/scripts/watch-pr/policy.test.ts
+  h_2f452a9c375069 1-420
+skills/_draft/kubes-mode/scripts/watch-pr/policy.ts
+  h_2f452a9c375069 1-832
+skills/_draft/kubes-mode/scripts/watch-pr/render.ts
+  h_2f452a9c375069 1-169
+skills/_draft/kubes-mode/scripts/watch-pr/tsconfig.json
+  h_2f452a9c375069 1-13
+skills/_draft/kubes-mode/scripts/watch-pr/types.compile.ts
+  h_2f452a9c375069 1-93
+skills/_draft/kubes-mode/scripts/watch-pr/types.ts
+  h_2f452a9c375069 1-401
+skills/_draft/kubes-mode/scripts/watch-pr/watch-pr
+  h_2f452a9c375069 1-6
+skills/_draft/kubes-mode/scripts/worktree-audit.sh
+  h_2f452a9c375069 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8aba6214384ff0ae574e300a174fb7b285af5dd4",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
