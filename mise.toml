@@ -7,6 +7,9 @@ minimum_release_age = "3d"
 dotfiles.root = "~/git/dotfiles"
 dotfiles.default_mode = "symlink"
 
+[hooks]
+enter = "mise outdated oh-my-pi pi"
+
 [dotfiles]
 # Listing only directories & files to inherit, ignoring others that shouldn't be tracked (e.g. `~/.aws`)
 "~/.config/mise/config.toml" = { source = ".config/mise/config.toml" }
@@ -65,6 +68,28 @@ mode = "0600"
 [tasks.bootstrap]
 description = "Install user crontab"
 run = "crontab ~/.config/cron/ahstn.crontab"
+
+# Host-level preferences: apply explicitly, never on shell startup or app deployment.
+[tasks.tailscale-server-apply]
+description = "Apply Linux server Tailscale preferences, SSH, and operator access"
+run = '''
+set -eu
+if [ "$(uname -s)" != Linux ]; then
+  printf '%s\n' 'tailscale-server-apply requires a Linux host running tailscaled.' >&2
+  exit 1
+fi
+# Enabling Tailscale SSH can interrupt existing SSH connections over the tailnet.
+# Expand USER before sudo so the operator is the invoking user, not root.
+sudo tailscale set --accept-dns=true --shields-up=false --ssh --operator="$USER"
+'''
+
+[tasks.tailscale-client-apply]
+description = "Accept Tailscale DNS on a client without changing inbound access"
+run = '''
+set -eu
+# Leave SSH, operator access, and shields unchanged on client machines.
+tailscale set --accept-dns=true
+'''
 
 [tasks.sshd]
 description = "Run a ephemeral foreground sshd from ~/.config/sshd"

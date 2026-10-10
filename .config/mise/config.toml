@@ -15,22 +15,23 @@ trusted_config_paths = [
 
 [tools]
 # languages and tooling
-python = "latest"
+python = "3.14"
 rust = "latest"
 ruff = "latest"
 bun = "latest"
-node = "26.8.2"
+node = "26"
 uv = "latest"
 terraform = "latest"
 pitchfork = "latest"
 gcloud = "latest"
 github-cli = "latest"
+kubie = "latest"
 git-lfs = { version = "latest", postinstall = "git-lfs install" }
 
 # llm and ai
 codex = "latest"
 pi = { version = "latest", postinstall = "pi update --extensions" }
-"github:can1357/oh-my-pi" = { version = "latest", postinstall = "omp update --plugins" }
+oh-my-pi = { version = "latest", rename_exe = "omp" }
 
 # containers
 colima = "latest"
@@ -43,7 +44,6 @@ starship = "latest"
 eza = "0.23.5"
 fd = "latest"
 bat = "latest"
-tmux = "latest"
 difftastic = "latest"
 
 # fuzzy finders and navigation
@@ -55,7 +55,6 @@ fzf = "latest"
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
 vale = "latest"
 1password = "latest"
-kubie = "latest"
 
 [hooks]
 enter = "mise i -q"
@@ -70,7 +69,8 @@ run = "gh auth status || gh auth login"
 [shell_alias]
 ll = "eza -la --icons --group-directories-first"
 docker-prune = 'docker system prune --all --volumes --force'
-pi-update = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
+update-pi = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
+update-omp = "mise use -g --minimum-release-age 2h oh-my-pi@latest"
 pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_CODING_AGENT_SESSION_DIR="$HOME/.pi/profiles/fabric/sessions" pi'
 
 [bootstrap.repos]
