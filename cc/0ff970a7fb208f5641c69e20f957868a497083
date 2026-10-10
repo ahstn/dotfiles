@@ -1,0 +1,18 @@
+.omp/agent/APPEND_SYSTEM.md
+  h_2f452a9c375069 10-12
+.omp/agent/config.yml
+  h_2f452a9c375069 7-9,77-78,84-85,89,108
+.omp/agent/models.yml
+  h_2f452a9c375069 2-8,21,26,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc0ff970a7fb208f5641c69e20f957868a497083",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
