@@ -18,6 +18,7 @@
 - [Agent Skills](#agent-skills)
 - [Setup & Application Specifics](#sparkles-setup--application-specifics)
   - [ZSH](#zsh)
+- [Fonts](#fonts)
 
 ## :rocket: Usage
 
@@ -58,26 +59,6 @@ The `research-*` agents and [agent/prompts/deepresearch.md] prompt are copied fr
 
 [`.omp/agent/extensions/git-ai.ts`](.omp/agent/extensions/git-ai.ts) ports the Pi Git AI integration to OMP's TypeScript extension API. Run `mise dotfiles apply '~/.omp/agent/extensions/git-ai.ts'`, then restart OMP (or `/reload`) to load it from `~/.omp/agent/extensions/`.
 
-- Tracks `write`, multi-file hashline `edit` (including moves/deletes), apply-patch edits, and bash changes through Git AI's existing `pi` preset. Authorship is labeled `pi`; session IDs and models come from OMP.
-- Uses `git-ai` from `PATH`, falling back to `~/.git-ai/bin/git-ai`. Failed checkpoints warn without blocking tools. Failed tool results do not produce an AI checkpoint, matching the Pi extension.
-- Adds no telemetry or network client. Before **every** Git AI invocation, requires `~/.git-ai/config.json` to contain `"telemetry_oss": "off"` and no non-empty `telemetry_enterprise_dsn`. Missing, invalid, or unsafe config disables checkpoints with a warning; the extension never changes that file.
-- This telemetry guard does not disable Git AI's separate prompt-sharing or Git-note synchronization features. See [Git AI configuration](https://usegitai.com/docs/get-started/configuration).
-- Bash detection inherits Git AI's snapshot limits, including its two-second filesystem-mtime grace window. Very rapid edits around a Git AI watermark can be missed; explicit file edit/write checkpoints do not rely on that snapshot.
-
-Optional user-owned `~/.omp/agent/git-ai.override.json` uses the Pi extension's version-1 tool policy format. Policies override defaults; `bash` can also be ignored:
-
-```json
-{
-  "version": 1,
-  "tools": {
-    "custom_edit": { "kind": "mutating", "canonical": "edit", "filepath_fields": ["path", "paths"] },
-    "bash": { "kind": "ignore" }
-  }
-}
-```
-
-Canonical names: `edit`, `write`, `replace`, `rename`, `bash`. Path fields accept strings or arrays; built-in hashline/apply-patch inputs are extracted automatically. The Pi source and its override file remain unchanged.
-
 ## Agent Skills
 
 This repo uses [mise] dotfiles to link each skill into both shared and Claude-specific global skill directories:
@@ -101,63 +82,14 @@ Rather than a single `~/.zshrc` file, `~/.config/zsh/` is used to organize confi
 
 With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory via `ZDOTDIR`. See [Zsh Startup Files | Zsh](https://zsh.sourceforge.io/Doc/Release/Files.html) for more information.
 
-<details>
-<summary><strong>Legacy NeoVim TLDR</strong></summary>
+### Fonts
 
-  Requires [wbthomason/packer.nvim] for plugin management, and will install on start-up.
+JetBrains Mono [Nerd Font] is used as the monospace font, and [Geist] for UI text. The Nerd Font variant adds common programming and web icons.
 
-  Most keybinds are detailed with [folke/which-key.nvim] in [./neovim/lua/mappings.lua](./neovim/lua/mappings.lua).
+See [Programming Fonts] for help choosing a font, with some noteworthy, favourite alternatives being `Inconsolata`, `JuliaMono` and `BerkleyMono`.
 
-  Helpful keybinds for my forgetful mind:
-  - <kbd>space</kbd> : leader key (also opens [folke/which-key.nvim] menu)
-  - <kbd>space + l</kbd> : lsp actions
-  - <kbd>space + s</kbd> : search with [nvim-telescope/telescope.nvim]
-  - <kbd>'</kbd> : marks
-  - <kbd>shift + h</kbd> : lsp symbol hover
-  - <kbd>ctrl + w</kbd> : split navigation and management (also opens [folke/which-key.nvim] menu)
-  - <kbd>[</kbd> & <kbd>]</kbd> : movement actions (also opens [folke/which-key.nvim] menu)
-  - [phaazon/hop.nvim]
-    - <kbd>s</kbd> : search down
-    - <kbd>S</kbd> : search up
-  - [tpope/vim-surround]
-    - <kbd>ysiw)</kbd> : surround (inner) word with parentheses
-    - <kbd>ds)</kbd> : remove surrounding parentheses
-    - <kbd>cs)}</kbd> : change surrounding parentheses to braces
-  - [nvim-telescope/telescope.nvim]
-    - <kbd><C-x></kbd> : open file as a horizontal split
-    - <kbd><C-v></kbd> : open file as a vertical split
-    - <kbd>?</kbd> : show mappings
-    - `K`: Displays hover information about the symbol under the cursor in a floating window. See [:help vim.lsp.buf.hover()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.hover()).
-    - `gd`: Jumps to the definition of the symbol under the cursor. See [:help vim.lsp.buf.definition()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.definition()).
-    - `gD`: Jumps to the declaration of the symbol under the cursor. Some servers don't implement this feature. See [:help vim.lsp.buf.declaration()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.declaration()).
-    - `gi`: Lists all the implementations for the symbol under the cursor in the quickfix window. See [:help vim.lsp.buf.implementation()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.implementation()).
-    - `go`: Jumps to the definition of the type of the symbol under the cursor. See [:help vim.lsp.buf.type_definition()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.type_definition()).
-    - `gr`: Lists all the references to the symbol under the cursor in the quickfix window. See [:help vim.lsp.buf.references()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.references()).
-    - `gs`: Displays signature information about the symbol under the cursor in a floating window. See [:help vim.lsp.buf.signature_help()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.signature_help()). If a mapping already exists for this key this function is not bound.
-    - `<F2>`: Renames all references to the symbol under the cursor. See [:help vim.lsp.buf.rename()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.rename()).
-    - `<F3>`: Format code in current buffer. See [:help vim.lsp.buf.format()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.format()).
-    - `<F4>`: Selects a code action available at the current cursor position. See [:help vim.lsp.buf.code_action()](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.code_action()).
-    - `gl`: Show diagnostics in a floating window. See [:help vim.diagnostic.open_float()](https://neovim.io/doc/user/diagnostic.html#vim.diagnostic.open_float()).
-    - `[d`: Move to the previous diagnostic in the current buffer. See [:help vim.diagnostic.goto_prev()](https://neovim.io/doc/user/diagnostic.html#vim.diagnostic.goto_prev()).
-    - `]d`: Move to the next diagnostic. See [:help vim.diagnostic.goto_next()](https://neovim.io/doc/user/diagnostic.html#vim.diagnostic.goto_next()).
-</details>
+For macOS, both fonts are declared in `.config/mise/config.toml` and installed with `mise bootstrap packages apply`.
 
-<details>
-<summary><strong>Tmux TLDR</strong></summary>
-
-  Requires [tmux-plugins/tpm] for plugin management, and will install on start-up.
-
-  Helpful keybinds for my forgetful mind:
-  - ctrl+space : leader
-  - <leader> $ : rename session
-  - <leader> s : open sessions pane
-  - <leader> c : create tab
-  - <leader> , : rename tab
-  - <leader> % : vertical split
-  - <leader> " : horizontal split
-  - <leader> ctrl+s : save sessions (tmux-ressurect)
-  - <leader> ctrl+r : restore sessions (tmux-ressurect)
-</details>
 
 <!-- Reference Links -->
 
@@ -173,6 +105,10 @@ With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory vi
 [`.config/mise/config.toml`]: ./.config/mise/config.toml
 [`~/.zshenv`]: ./.config/.zshenv
 [mise]: https://mise.jdx.dev/
+[jetbrains mono]: https://www.jetbrains.com/lp/mono/
+[nerd font]: https://www.nerdfonts.com/
+[geist]: https://vercel.com/font
+[programming fonts]: https://www.programmingfonts.org/
 
 [wbthomason/packer.nvim]: https://github.com/wbthomason/packer.nvim
 [tmux-plugins/tpm]: https://github.com/tmux-plugins/tpm

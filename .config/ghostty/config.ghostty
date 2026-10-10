@@ -4,7 +4,7 @@
 # ghostty +list-themes
 
 theme = Catppuccin Macchiato
-font-family = "Jetbrains Mono Nerd Font"
+font-family = "JetBrainsMono Nerd Font"
 
 copy-on-select = clipboard
 

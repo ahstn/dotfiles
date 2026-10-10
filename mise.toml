@@ -17,6 +17,7 @@ enter = "mise outdated oh-my-pi pi"
 "~/.config/ghostty" = { source = ".config/ghostty" }
 "~/.config/herdr" = { source = ".config/herdr" }
 "~/.config/tmux" = { source = ".config/tmux" }
+"~/.config/tty7/config.json" = { source = ".config/tty7/config.json" }
 "~/.config/dcg" = { source = ".config/dcg" }
 "~/.config/starship.toml" = { source = ".config/starship.toml" }
 "~/Library/Application Support/Tern/settings.json" = { source = ".config/tern/settings.json"}

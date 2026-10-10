@@ -23,14 +23,16 @@ node = "26"
 uv = "latest"
 terraform = "latest"
 pitchfork = "latest"
-gcloud = "latest"
+# The install script runs Python 3.10 or later, so python must finish installing first.
+gcloud = { version = "latest", depends = ["python"] }
 github-cli = "latest"
 kubie = "latest"
 git-lfs = { version = "latest", postinstall = "git-lfs install" }
 
 # llm and ai
 codex = "latest"
-pi = { version = "latest", postinstall = "pi update --extensions" }
+# The postinstall runs npm, so node must finish installing first.
+pi = { version = "latest", depends = ["node"], postinstall = "pi update --extensions" }
 oh-my-pi = { version = "latest", rename_exe = "omp" }
 
 # containers
@@ -85,6 +87,7 @@ pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT
 "brew-cask:muesli" = "latest"
 "brew-cask:vorssaint" = "latest"
 "brew-cask:font-jetbrains-mono-nerd-font" = "latest"
+"brew-cask:font-geist" = "latest"
 
 # VMs only: env = ["vm"] in the host's ~/.config/mise/miserc.toml (written by the virtual-machine/ guest scripts)
 "brew:tailscale" = { version = "latest", os = "macos", env = "vm" }

@@ -4,7 +4,8 @@
     "workbench.iconTheme": "vikings-icon-theme",
     // Editor
     "window.zoomLevel": 1.5,
-    "editor.fontFamily": "Hack Nerd Font, Menlo, Monaco, monospace",
+    "editor.fontFamily": "'JetBrainsMono Nerd Font', monospace",
+    "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
     "editor.minimap.enabled": false,
     "explorer.openEditors.visible": 0,
     "breadcrumbs.enabled": false,
@@ -22,6 +23,8 @@
     "gitlens.codeLens.enabled": false,
     "yaml.format.enable": true,
     "editor.formatOnSave": true,
+    "customizeUI.font.regular": "Geist",
+    "customizeUI.font.monospace": "JetBrainsMono Nerd Font",
     "customizeUI.activityBar": "bottom",
     "customizeUI.titleBar": "inline",
     "customizeUI.listRowHeight": 26,
