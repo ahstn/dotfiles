@@ -1,0 +1,22 @@
+{
+  "theme": "Dark",
+  "theme_dark": "dark-catppuccin",
+  "copy_on_select": true,
+  "cursor": {
+    "trail": "warp",
+    "pulse": "ripple"
+  },
+  "link_target": "Browser",
+  "paste": {
+    "replace_dangerous_control_codes": true
+  },
+  "layout": "Float",
+  "tabs": "Vertical",
+  "system_traffic_lights": false,
+  "pane_headers": "Split",
+  "status_bar": true,
+  "surface_fold": true,
+  "surface_chat": "Spine",
+  "prefs_width": 764,
+  "sync_to_display": false
+}
