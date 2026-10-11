@@ -1,0 +1,21 @@
+virtual-machine/MACOS-MANUAL-SETUP.md
+  s_e7bc9ad884f98b::t_c73ab0b16da911 3,15,22-23,26-29,143
+virtual-machine/README.md
+  s_e7bc9ad884f98b::t_fd8de9605d45ae 5,25,28-34,62-65,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51c1474c762028d5086cfa0658c87c95402eb8cc",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
