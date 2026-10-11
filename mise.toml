@@ -10,6 +10,10 @@ dotfiles.default_mode = "symlink"
 [hooks]
 enter = "mise outdated oh-my-pi pi"
 
+[tools]
+# tailnet/ uses OpenTofu state encryption, which Terraform does not support.
+opentofu = "1.13"
+
 [dotfiles]
 # Listing only directories & files to inherit, ignoring others that shouldn't be tracked (e.g. `~/.aws`)
 "~/.config/mise/config.toml" = { source = ".config/mise/config.toml" }
@@ -105,6 +109,13 @@ set -eu
 # Leave SSH, operator access, and shields unchanged on client machines.
 tailscale set --accept-dns=true
 '''
+
+# Tailnet policy, Services, and device tags as code. Extra arguments go to tofu, e.g.
+# `mise run tailnet init`, `mise run tailnet plan`, `mise run tailnet apply`.
+[tasks.tailnet]
+description = "Run OpenTofu in tailnet/ with the Tailscale OAuth client and state passphrase from 1Password"
+dir = "{{config_root}}/tailnet"
+run = "op run --env-file=op.env -- tofu"
 
 [tasks.sshd]
 description = "Run a ephemeral foreground sshd from ~/.config/sshd"
