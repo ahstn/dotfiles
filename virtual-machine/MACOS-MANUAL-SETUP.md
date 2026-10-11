@@ -1,6 +1,6 @@
 # macOS 26 on VMPal: command runbook
 
-Distilled from the 11 October 2026 run: VMPal 0.69, macOS 26.6.2 (25G83), VMPal Tools 0.38. This is the Setup Assistant path for macOS 26, not the automatic macOS 27 setup. The latter was not exercised in this session.
+Distilled from the 11 October 2026 run: VMPal 0.69, macOS 26.6.2 (25G83), VMPal Tools 0.38. This is the Setup Assistant path for macOS 26, not the automatic macOS 27 setup. That path was not exercised in this run.
 
 Run host commands in **Bash**, from `virtual-machine/`. Example target: `macos-dev`, account `admin`, UK English, United Kingdom, Europe/London, 5 CPUs, 8 GB RAM, 100 GB disk. Locale, timezone and key paths below are template choices, not host metadata. Creation and Setup Assistant are one-time steps; provisioning can be repeated.
 
@@ -12,18 +12,21 @@ Check the downloaded macOS entry first: this flow applies when its `account` is 
 export VM_OS=macos VM_NAME=macos-dev VM_USER=admin
 export VM_CPU=5 VM_MEMORY_GB=8 VM_DISK_GB=100
 export VM_SHARE_DIR="$HOME/git" VM_SHARE_NAME=git
+export VM_NETWORK=shared VM_LOCAL_NETWORK=off   # ./vm.sh configure re-applies these in step 4
 export VM_SSH_PUBKEY="$HOME/.ssh/id_ed25519.pub"
 export VM_GITHUB_AUTH_KEY="$HOME/.ssh/github" VM_GITHUB_SIGNING_KEY=''
 
 ./vm.sh prereqs
 vmpal systems --json
 vmpal list --json
-vmpal create download:macOS --name macos-dev --cpus 5 --memory 8 --disk 100
-vmpal wait macos-dev --until installed --no-sign-in --timeout 2h
+vmpal create download:macOS --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB"
+vmpal wait "$VM_NAME" --until installed --no-sign-in --timeout 2h
 
 # Keep only the intended host share and NAT network.
-vmpal set macos-dev --unshare Downloads --share "$HOME/git:git" \
-  --local-network off --network-mode shared
+vmpal set "$VM_NAME" --share "$VM_SHARE_DIR:$VM_SHARE_NAME" \
+  --local-network "$VM_LOCAL_NETWORK" --network-mode "$VM_NETWORK"
+# Only if `vmpal info "$VM_NAME"` lists a Downloads share:
+vmpal set "$VM_NAME" --unshare Downloads
 ```
 
 Set `VM_GITHUB_AUTH_KEY` to your intended GitHub key, or empty to skip copying a private key. The `git` share is live and writable; change `VM_SHARE_DIR` before provisioning if that access is not wanted.
@@ -137,7 +140,7 @@ Reuse the repository's sudo, SSH and private-key handling rather than duplicatin
 ./vm.sh check
 ```
 
-Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the mise bootstrap on reruns unless `FORCE=1` is supplied. Ensure its dotfiles contain the session's `.zsh-plugins` Unicode-path compilation fix; if using this checkout before that fix reaches the remote:
+Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the mise bootstrap on reruns unless `FORCE=1` is supplied. The guest clones the dotfiles from GitHub, so it gets the `.zsh-plugins` Unicode-path compilation fix once that is pushed. To use this checkout's copy before then:
 
 ```bash
 vmpal cp ../.config/zsh/.zsh-plugins macos-dev:git/dotfiles/.config/zsh/.zsh-plugins

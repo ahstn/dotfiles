@@ -2,7 +2,7 @@
 
 Builds an Ubuntu (default) or macOS VM with [VMPal](https://vmpal.com), then applies
 [ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps inside it. VMPal installs the OS
-unattended (macOS 26 still needs Setup Assistant) and runs commands in the guest through its own tools
+unattended (macOS guests from macOS 27; see below) and runs commands in the guest through its own tools
 (`vmpal exec` / `vmpal cp`), so provisioning needs no SSH, no autoinstall ISO and no image password.
 
 ## Engines
@@ -22,8 +22,15 @@ wins for Linux desktops (GPU) and hands-off setup; Tart is lighter for scripted,
 cd virtual-machine
 cp config.env.example config.env   # optional
 ./vm.sh all                        # Ubuntu
-# macOS 26: follow MACOS-SETUP.md instead of all.
+VM_OS=macos ./vm.sh all            # macOS (macOS 27 hosts)
 ```
+
+> [!WARNING]
+> **macOS before 27 needs manual setup on VMPal.** VMPal sets up only macOS 27 and later unattended, and a
+> Mac can't run a newer macOS in a VM than its own. On a macOS 26 or earlier host, `vmpal systems` lists every
+> macOS as `set up in the VM`: Setup Assistant (language, account, Apple Account, Siri, location and so on) is
+> done by hand, and `vm.sh create` and `all` don't apply. Follow [MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)
+> instead; it then reuses `vm.sh` for keys, provisioning and checks.
 
 `all` runs `prereqs`, `create`, `keys`, `password` (only if `VM_PASSWORD` is set), `provision`, `snapshot`,
 then `start`. Settings come from exported env vars, then `config.env`, then defaults.
@@ -52,10 +59,10 @@ Plain `vmpal` works too (`vmpal ui <name> screenshot -o shot.png`, `vmpal info <
 
 ## The guest account
 
-For Ubuntu, VMPal creates an account named `VM_USER` (default: your Mac user; it applies only at `create`),
-with a generated password kept in this Mac's keychain (`vmpal info <name> --show-password`). For Apple's
-macOS download on VMPal 0.69, create the account and password in Setup Assistant, then register the password
-with VMPal. `vm.sh` resolves the actual guest account through `id -un`, because VMPal's recorded username
+For Ubuntu, and macOS 27 and later, VMPal creates an account named `VM_USER` (default: your Mac user; it
+applies only at `create`), with a generated password kept in this Mac's keychain
+(`vmpal info <name> --show-password`). For macOS before 27, create the account and password in Setup
+Assistant, then register the password with VMPal ([MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)). `vm.sh` resolves the actual guest account through `id -un`, because VMPal's recorded username
 can remain the host's username after Setup Assistant creates a different account.
 
 - `sudo` gives the account passwordless sudo (`/etc/sudoers.d/90-vm-nopasswd`), which provisioning and
@@ -106,7 +113,7 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 
 ## macOS
 
-For macOS 26 on VMPal 0.69, follow the [repeatable command runbook](MACOS-SETUP.md): creation, each Setup
+For macOS 26 on VMPal 0.69, follow the [manual setup runbook](MACOS-MANUAL-SETUP.md): creation, each Setup
 Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
 This image rejects `--user`, so `vm.sh create` and `all` do not apply. The automatic macOS 27 setup was
 not exercised in the recorded run.
