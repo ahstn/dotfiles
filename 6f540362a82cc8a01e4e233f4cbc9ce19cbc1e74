@@ -1,0 +1,20 @@
+.config/zsh/.zsh-plugins
+  h_2f452a9c375069 6-7
+virtual-machine/MACOS-SETUP.md
+  h_2f452a9c375069 1-205
+virtual-machine/README.md
+  h_2f452a9c375069 5-6,25,55-59,109-113,146-153,158-166
+virtual-machine/vm.sh
+  h_2f452a9c375069 67-69,74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f540362a82cc8a01e4e233f4cbc9ce19cbc1e74",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
