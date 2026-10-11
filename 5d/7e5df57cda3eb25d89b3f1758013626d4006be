@@ -1,0 +1,24 @@
+.config/zed/settings.json
+  h_2f452a9c375069 1-117,119-126,128
+.omp/agent/commands/action-pr-comments.md
+  h_2f452a9c375069 1-4
+.omp/agent/commands/rebase-main-branch.md
+  h_2f452a9c375069 1
+README.md
+  h_2f452a9c375069 60-64
+mise.toml
+  h_2f452a9c375069 49-66
+setup.sh
+  h_2f452a9c375069 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d7e5df57cda3eb25d89b3f1758013626d4006be",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
