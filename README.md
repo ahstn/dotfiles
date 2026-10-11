@@ -57,7 +57,7 @@ The `research-*` agents and [agent/prompts/deepresearch.md] prompt are copied fr
 
 ## Oh-my-pi
 
-OMP's `.omp/agent/` directory is deployed as regular files with `mise dotfiles apply '~/.omp/agent'`. The mapping excludes sessions, terminal sessions, prediction data, caches, blobs, SQLite databases and sidecars, locks, work model copies, the changelog marker, and local MCP configuration. Target-only files and extensions remain untouched. Directory copies are additive: removing a source file does not remove its deployed copy. Save local config edits back to the repo before applying, because copies do not flow back.
+OMP's `.omp/agent/` directory is deployed with `symlink-each` using `mise dotfiles apply '~/.omp/agent'`. Each managed file is linked to the repo, so edits through either path affect the same file. The mapping excludes sessions, terminal sessions, prediction data, caches, blobs, SQLite databases and sidecars, locks, work model copies, the changelog marker, and local MCP configuration. Target-only files and extensions remain untouched. Removing or excluding a source file removes its managed link on the next apply. To replace existing regular copies with links, first compare their contents, then apply with `--force`.
 
 [`.omp/agent/extensions/git-ai.ts`](.omp/agent/extensions/git-ai.ts) ports the Pi Git AI integration to OMP's TypeScript extension API. Restart OMP (or `/reload`) after applying extension changes.
 

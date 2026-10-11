@@ -48,7 +48,7 @@ enter = "mise outdated oh-my-pi pi"
 
 [dotfiles."~/.omp/agent"]
 source = ".omp/agent"
-mode = "copy"
+mode = "symlink-each"
 exclude = [
   "sessions",
   "terminal-sessions",
