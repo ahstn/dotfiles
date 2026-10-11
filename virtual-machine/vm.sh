@@ -64,12 +64,15 @@ account_password() { vmpal info "$VM_NAME" --show-password --json | python3 -c '
 
 guest_ip() {
   case "$VM_OS" in
-    ubuntu) guest -- 'ip -4 -o route get 1.1.1.1 | sed -E "s/.* src ([0-9.]+).*/\1/"' ;;
+    ubuntu) guest -- '
+      gateway="$(ip -4 -o route show default | awk "NR == 1 { print \$3 }")"
+      ip -4 -o route get "$gateway" | sed -E "s/.* src ([0-9.]+).*/\1/"' ;;
     macos)  guest -- 'ipconfig getifaddr en0' ;;
   esac
 }
 
-guest_user() { vm_field 'v["account"]["userName"]'; }
+# Setup Assistant can create a different account from the name VMPal records.
+guest_user() { guest -- 'id -un'; }
 
 # --- subcommands -------------------------------------------------------------
 

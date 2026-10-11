@@ -3,7 +3,8 @@
 
 function zcompile-many() {
   local f
-  for f; do zcompile -R -- "$f".zwc "$f"; done
+  # zcompile fails on Unicode directory paths; compile basenames without changing the caller's directory.
+  for f; do (cd "${f:h}" && zcompile -R -- "${f:t}.zwc" "${f:t}"); done
 }
 
 PLUGIN_DIR="$HOME/.config/zsh/plugins"

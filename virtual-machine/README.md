@@ -2,8 +2,8 @@
 
 Builds an Ubuntu (default) or macOS VM with [VMPal](https://vmpal.com), then applies
 [ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps inside it. VMPal installs the OS
-unattended and runs commands in the guest through its own tools (`vmpal exec` / `vmpal cp`), so provisioning
-needs no SSH, no autoinstall ISO and no image password.
+unattended (macOS 26 still needs Setup Assistant) and runs commands in the guest through its own tools
+(`vmpal exec` / `vmpal cp`), so provisioning needs no SSH, no autoinstall ISO and no image password.
 
 ## Engines
 
@@ -22,7 +22,7 @@ wins for Linux desktops (GPU) and hands-off setup; Tart is lighter for scripted,
 cd virtual-machine
 cp config.env.example config.env   # optional
 ./vm.sh all                        # Ubuntu
-VM_OS=macos ./vm.sh all            # macOS
+# macOS 26: follow MACOS-SETUP.md instead of all.
 ```
 
 `all` runs `prereqs`, `create`, `keys`, `password` (only if `VM_PASSWORD` is set), `provision`, `snapshot`,
@@ -52,9 +52,11 @@ Plain `vmpal` works too (`vmpal ui <name> screenshot -o shot.png`, `vmpal info <
 
 ## The guest account
 
-VMPal creates an account named `VM_USER` (default: your Mac user; it applies only at `create`), with a generated
-password that it keeps in this Mac's keychain (`vmpal info <name> --show-password`). The guest signs in
-automatically.
+For Ubuntu, VMPal creates an account named `VM_USER` (default: your Mac user; it applies only at `create`),
+with a generated password kept in this Mac's keychain (`vmpal info <name> --show-password`). For Apple's
+macOS download on VMPal 0.69, create the account and password in Setup Assistant, then register the password
+with VMPal. `vm.sh` resolves the actual guest account through `id -un`, because VMPal's recorded username
+can remain the host's username after Setup Assistant creates a different account.
 
 - `sudo` gives the account passwordless sudo (`/etc/sudoers.d/90-vm-nopasswd`), which provisioning and
   `mise bootstrap` need unattended. On Ubuntu this goes through `vmpal exec --admin` (root); on macOS through
@@ -104,6 +106,11 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 
 ## macOS
 
+For macOS 26 on VMPal 0.69, follow the [repeatable command runbook](MACOS-SETUP.md): creation, each Setup
+Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
+This image rejects `--user`, so `vm.sh create` and `all` do not apply. The automatic macOS 27 setup was
+not exercised in the recorded run.
+
 `guest/macos.sh` installs Homebrew if missing, then the same apps as the Tart VM (Mac builds, so no Rosetta),
 the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. After the bootstrap, the Dock is set to exactly
 Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown; the
@@ -136,9 +143,24 @@ Without a key, run `sudo tailscale up` in the guest.
 - The guest clock stops while the Mac sleeps. chrony is set to step the clock whenever it is more than a second
   off (`/etc/chrony/conf.d/vm-step.conf`), otherwise apt rejects repos as "not valid yet" for hours.
 - Ubuntu 26.04's sudo-rs ignores `sudo -E`; pass variables explicitly (`sudo VAR=value cmd`).
+- On the first macOS 26.6.2 boot with VMPal 0.69, the display stayed black until the newly installed VM
+  was reset. Reset only before guest work exists; it discards unsaved work.
+- `vmpal reinstall-tools` did not connect tools after Setup Assistant in the tested macOS VM. Launching
+  the shared `Install VMPal Tools.app` connected version 0.38.
+- If Helium remains unset after provisioning, repeat the default-browser request or select Helium in
+  System Settings → Desktop & Dock, then verify HTTP and HTTPS open with Helium.
+- zsh plugin compilation uses basenames from each source directory: `zcompile` failed with absolute
+  paths containing fast-syntax-highlighting's `→chroma` directory on both Apple's zsh 5.9 and Homebrew 5.9.2.
 
 ## Status
 
 Tested end to end on VMPal 0.60 with Ubuntu 26.04.1: a clean `./vm.sh all`, `check`, an idempotent
-re-provision, a restart, and Ghostty, tty7 and the Paseo desktop app opening. The macOS path follows the same
-steps but has not been run on VMPal yet.
+re-provision, a restart, and Ghostty, tty7 and the Paseo desktop app opening.
+
+On VMPal 0.69, macOS 26.6.2 (25G83) was created through the manual Setup Assistant path above and provisioned
+with `guest/macos.sh`. Verified admin SSH/passwordless sudo, GitHub SSH authentication, installed apps and
+mise tools, Paseo HTTP 200, the running MonoCode host, signed-out Tailscale, Helium's HTTP/HTTPS defaults,
+hidden widgets, the right-hand Dock, and an interactive Ghostty shell running Node and `omp`. The Unicode
+plugin-cache fix was also exercised against a fresh plugin clone.
+A `provisioned` snapshot was taken with the VM stopped; after starting again, admin SSH, both host daemons,
+Paseo HTTP 200, signed-out Tailscale and Helium's HTTP/HTTPS defaults were verified again.
