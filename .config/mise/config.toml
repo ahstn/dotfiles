@@ -4,7 +4,7 @@ auto_update_check_duration = "4d"
 experimental = true
 color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
-minimum_release_age = "3d"
+minimum_release_age = "2d"
 trusted_config_paths = [
   '~/git/',
   '~/.codex/worktrees/',
@@ -34,6 +34,7 @@ codex = "latest"
 # The postinstall runs npm, so node must finish installing first.
 pi = { version = "latest", depends = ["node"], postinstall = "pi update --extensions" }
 oh-my-pi = { version = "latest", rename_exe = "omp" }
+"github:ahstn/oceans-llm" = "latest"
 
 # containers
 colima = "latest"
