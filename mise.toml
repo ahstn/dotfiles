@@ -29,10 +29,6 @@ enter = "mise outdated oh-my-pi pi"
 # Pi & Oh-my-pi
 # Pi for everyday, small tasks. Oh-my-pi for more complex, multi-step tasks.
 "~/.pi/" = { source = ".pi" }
-"~/.omp/agent/config.yml" = { source = ".omp/agent/config.yml" }
-"~/.omp/agent/models.yml" = { source = ".omp/agent/models.yml" }
-"~/.omp/agent/extensions/git-ai.ts" = { source = ".omp/agent/extensions/git-ai.ts" }
-"~/.omp/agent/APPEND_SYSTEM.md" = { source = ".omp/agent/APPEND_SYSTEM.md" }
 
 # Skills - NB: Some harnesses don't resolve symlinks.
 "~/.agents/skills" = { source = "skills", mode = "copy" }
@@ -49,6 +45,24 @@ enter = "mise outdated oh-my-pi pi"
 # Ephemeral LAN-only sshd. Rendered (not linked) so the dir can also hold the host key & pid.
 # Inputs: SSHD_LISTEN, SSHD_USER, SSHD_ALLOW_FROM - see the template header.
 "~/.config/sshd/sshd_config" = { source = ".config/sshd/sshd_config.tera", mode = "template", permissions = "0600" }
+
+[dotfiles."~/.omp/agent"]
+source = ".omp/agent"
+mode = "copy"
+exclude = [
+  "sessions",
+  "terminal-sessions",
+  "predict",
+  "cache",
+  "blobs",
+  "*.db",
+  "*.db-wal",
+  "*.db-shm",
+  "*.lock",
+  "*.work.yml",
+  "last-changelog-version",
+  "mcp.json",
+]
 
 [bootstrap.secrets]
 tern_tailscale_email = "TERN_TAILSCALE_EMAIL"

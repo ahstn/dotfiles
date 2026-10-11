@@ -22,7 +22,7 @@ case "$(uname -sr)" in
         echo 'Installing macOS Packages'
         brew install rg fzf zsh gpg2 git tmux neovim stow eza
         brew install kitty
-        brew install --cask font-hack-nerd-font font-jetbrains-mono
+        brew install --cask font-jetbrains-mono-nerd-font font-geist
         brew install --cask raycast
         ;;
     Linux*)

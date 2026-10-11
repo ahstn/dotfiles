@@ -57,7 +57,11 @@ The `research-*` agents and [agent/prompts/deepresearch.md] prompt are copied fr
 
 ## Oh-my-pi
 
-[`.omp/agent/extensions/git-ai.ts`](.omp/agent/extensions/git-ai.ts) ports the Pi Git AI integration to OMP's TypeScript extension API. Run `mise dotfiles apply '~/.omp/agent/extensions/git-ai.ts'`, then restart OMP (or `/reload`) to load it from `~/.omp/agent/extensions/`.
+OMP's `.omp/agent/` directory is deployed as regular files with `mise dotfiles apply '~/.omp/agent'`. The mapping excludes sessions, terminal sessions, prediction data, caches, blobs, SQLite databases and sidecars, locks, work model copies, the changelog marker, and local MCP configuration. Target-only files and extensions remain untouched. Directory copies are additive: removing a source file does not remove its deployed copy. Save local config edits back to the repo before applying, because copies do not flow back.
+
+[`.omp/agent/extensions/git-ai.ts`](.omp/agent/extensions/git-ai.ts) ports the Pi Git AI integration to OMP's TypeScript extension API. Restart OMP (or `/reload`) after applying extension changes.
+
+The `/action-pr-comments` and `/rebase-main-branch` commands in `.omp/agent/commands/` are copies of the matching Pi prompts in `.pi/agent/prompts/`. Keep both copies aligned when editing them. Restart OMP after applying to load the commands.
 
 ## Agent Skills
 
