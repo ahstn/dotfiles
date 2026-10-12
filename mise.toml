@@ -31,8 +31,8 @@ enter = "mise outdated oh-my-pi pi"
 "~/.pi/" = { source = ".pi" }
 
 # Skills - NB: Some harnesses don't resolve symlinks.
-"~/.agents/skills" = { source = "skills", mode = "copy" }
-"~/.claude/skills" = { source = "skills", mode = "symlink-each" }
+"~/.agents/skills" = { source = "skills", mode = "copy", exclude = ["_draft"] }
+"~/.claude/skills" = { source = "skills", mode = "symlink-each", exclude = ["_draft"] }
 
 # Standalone files - sourced in ~/.config/ for organization, but symlinked to home
 "~/.bash_profile" = { source = ".config/.bash_profile" }
