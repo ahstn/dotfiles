@@ -1,6 +1,6 @@
 # Dev VMs on VMPal (Apple Silicon)
 
-Builds an Ubuntu (default) or macOS VM with [VMPal](https://vmpal.com), then applies
+Builds a macOS (default) or Ubuntu VM with [VMPal](https://vmpal.com), then applies
 [ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps inside it. VMPal installs the OS
 unattended (macOS guests from macOS 27; see below) and runs commands in the guest through its own tools
 (`vmpal exec` / `vmpal cp`), so provisioning needs no SSH, no autoinstall ISO and no image password.
@@ -9,7 +9,7 @@ unattended (macOS guests from macOS 27; see below) and runs commands in the gues
 
 | Engine | Use it for | Notes |
 |---|---|---|
-| **VMPal** (this dir) | Default: Ubuntu and macOS desktops | Apple's Virtualization.framework, plus its own GPU acceleration for Linux (OpenGL 4.1). Unattended OS installs and guest tools (`exec`/`cp`), so provisioning needs no SSH |
+| **VMPal** (this dir) | Default: macOS and Ubuntu desktops | Apple's Virtualization.framework, plus its own GPU acceleration for Linux (OpenGL 4.1). Unattended OS installs and guest tools (`exec`/`cp`), so provisioning needs no SSH. Shared, bridged or host-only networking |
 | **Tart** ([`_tart_macos`](_tart_macos/README.md)) | Headless or CI VMs, mainly macOS | Same framework. Runs macOS and Linux, in a window or `--no-graphics`, with Rosetta for Linux and prebuilt OCI images. Linux guests get no 3D acceleration |
 | **UTM** ([`_utm_ubuntu`](_utm_ubuntu/README.md)) | Fallback | QEMU (or Apple's framework). Widest guest support, including x86 emulation. QEMU's virgl GPU works but is less stable (Vulkan crashed), and setup is the most manual |
 
@@ -21,8 +21,8 @@ wins for Linux desktops (GPU) and hands-off setup; Tart is lighter for scripted,
 ```bash
 cd virtual-machine
 cp config.env.example config.env   # optional
-./vm.sh all                        # Ubuntu
-VM_OS=macos ./vm.sh all            # macOS (macOS 27 hosts)
+./vm.sh all                        # macOS (macOS 27 hosts)
+VM_OS=ubuntu ./vm.sh all           # Ubuntu
 ```
 
 > [!WARNING]
@@ -32,21 +32,30 @@ VM_OS=macos ./vm.sh all            # macOS (macOS 27 hosts)
 > done by hand, and `vm.sh create` and `all` don't apply. Follow [MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)
 > instead; it then reuses `vm.sh` for keys, provisioning and checks.
 
-`all` runs `prereqs`, `create`, `keys`, `password` (only if `VM_PASSWORD` is set), `provision`, `snapshot`,
+`all` runs `prereqs`, `create`, `keys`, `password` (unless `VM_PASSWORD` is empty), `provision`, `snapshot`,
 then `start`. Settings come from exported env vars, then `config.env`, then defaults.
+
+macOS is the default: its VMs run more smoothly than Ubuntu's, and most developer tools ship Mac builds before
+arm64 Linux ones.
 
 Defaults:
 
-| | Ubuntu | macOS |
+| | macOS | Ubuntu |
 |---|---|---|
-| VM name | `ubuntu-dev` | `macos-dev` |
-| System | `download:ubuntu` (26.04 LTS, arm64) | `download:macOS` (~27 GB download) |
-| Disk | 64 GB | 100 GB |
-| Rosetta | on | n/a |
+| VM name | `macos-dev` | `ubuntu-dev` |
+| System | `download:macOS` (the latest macOS, ~27 GB download) | `download:ubuntu` (26.04 LTS, arm64) |
+| Disk | 100 GB | 64 GB |
+| Rosetta | n/a | on |
 
-Both get half the host's cores, 8 GB RAM, and `~/git` shared live into the guest.
+Both get half the host's cores, 8 GB RAM, `~/git` shared live into the guest, and shared (NAT) networking.
+macOS gets the account `admin` / `admin`, as Tart's images. Linux reserves `admin`, so Ubuntu gets your Mac
+user name and VMPal's generated password.
 
-Other commands: `configure`, `start`, `stop`, `restart`, `sudo`, `check`, `github-keys`, `ssh [cmd]`, `exec cmd...`, `ip`.
+VMPal keeps each installer it downloads as a Base OS file (`vmpal library`), and `vmpal systems` then shows the
+system as `kept`. A new VM from it skips the download, so a macOS VM installs in a few minutes.
+
+Other commands: `configure`, `start`, `stop`, `restart`, `sudo`, `check`, `github-keys`, `sshd`, `ssh [cmd]`,
+`exec cmd...`, `ip`.
 Plain `vmpal` works too (`vmpal ui <name> screenshot -o shot.png`, `vmpal info <name>`, ...); see
 [the CLI docs](https://vmpal.com/docs/command-line).
 
@@ -59,26 +68,32 @@ Plain `vmpal` works too (`vmpal ui <name> screenshot -o shot.png`, `vmpal info <
 
 ## The guest account
 
-For Ubuntu, and macOS 27 and later, VMPal creates an account named `VM_USER` (default: your Mac user; it
-applies only at `create`), with a generated password kept in this Mac's keychain
-(`vmpal info <name> --show-password`). For macOS before 27, create the account and password in Setup
-Assistant, then register the password with VMPal ([MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)). `vm.sh` resolves the actual guest account through `id -un`, because VMPal's recorded username
-can remain the host's username after Setup Assistant creates a different account.
+VMPal creates an account named `VM_USER` (macOS: `admin`; Ubuntu: your Mac user; it applies only at `create`),
+with a generated password that it keeps in this Mac's keychain (`vmpal info <name> --show-password`). `all` then
+sets the password to `VM_PASSWORD` (macOS: `admin`; Ubuntu: empty, so the generated one stays). The guest signs
+in automatically. For macOS before 27, create the account and password in Setup Assistant instead, then register
+the password with VMPal ([MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)). `vm.sh` reads the guest account with
+`id -un`, because VMPal's recorded username can remain the host's after Setup Assistant creates a different one.
 
 - `sudo` gives the account passwordless sudo (`/etc/sudoers.d/90-vm-nopasswd`), which provisioning and
   `mise bootstrap` need unattended. On Ubuntu this goes through `vmpal exec --admin` (root); on macOS through
   `sudo -S` with VMPal's password, passed as an environment variable.
 - `keys` authorises `VM_SSH_PUBKEY` and makes SSH key-only. Ubuntu gets `openssh-server`; macOS turns on
   Remote Login.
-- `password` (or `VM_PASSWORD` with `all`) replaces the generated password in the guest and in VMPal's keychain
-  entry, so VMPal can still sign in. Passwords travel as environment variables, never on a command line.
+- `password` sets the password to `VM_PASSWORD` (empty: it asks) in the guest and in VMPal's keychain entry, so
+  VMPal can still sign in. Passwords travel as environment variables, never on a host command line.
+  - macOS: `dscl . -passwd` with the old password (root cannot change a secure-token account's password
+    without it), the login keychain, and automatic login's `/etc/kcpassword`.
+  - Ubuntu: `chpasswd` as root.
+- To keep VMPal's generated macOS password, set `VM_PASSWORD=` (empty). With `VM_NETWORK=bridged`, set your own
+  password: SSH is key-only, but `admin` / `admin` is a well-known pair for anything else that listens on the LAN.
 
 ## How it works
 
 | Step | Mechanism |
 |---|---|
 | Create | `vmpal create <system> --name --cpus --memory --disk --wait` (unattended install) |
-| Hardware | `vmpal set --cpus --memory --disk --rosetta --share`; `vmpal restart --apply-settings` when a setting needs it |
+| Hardware | `vmpal set --cpus --memory --disk --rosetta --network-mode --bridge --local-network --share`; `vmpal restart --apply-settings` when a setting needs it |
 | Shared folder | `vmpal set --share ~/git:git`, live via virtiofs at `/media/VMPal/git` (Ubuntu) or `/Volumes/My Shared Files/git` (macOS), linked as `~/host-git` |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written. Setting either variable empty removes that key (and the auth key's Host block) from the guest |
 | Provision | `guest/<os>.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, Dock pins, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` (so the next run sees `~/.config/mise/config.toml`'s packages), and `mise bootstrap --skip files,repos` |
@@ -129,11 +144,46 @@ provision.
 
 ## Networking
 
-VMPal puts the guest behind NAT on `192.168.64.x`, reachable from this Mac only. `./vm.sh ssh` and Remote SSH
-hosts in the Mac's MonoCode or Paseo use that address. `vmpal set --forward` binds ports to the Mac's loopback
-only, so they do not expose the guest to the LAN either.
+`VM_NETWORK` picks the guest's main network. `./vm.sh configure` applies it, with a restart when the mode
+changes. If a bridged VM comes up on shared instead (VMPal says why in `vmpal info`), `configure` stops and starts
+it once more, then warns.
 
-To reach the guest from other machines, use Tailscale. Export an auth key for the one provision run; it is
+| `VM_NETWORK` | Guest address | Who can reach it |
+|---|---|---|
+| `shared` (default) | `192.168.64.x`, behind NAT | this Mac only (`./vm.sh ssh`, Remote SSH hosts in the Mac's MonoCode or Paseo) |
+| `bridged` | its own DHCP address from the LAN's router, on `VM_BRIDGE` (`auto` = the Mac's main interface) | the LAN |
+| `host-only` | a network only this Mac and its host-only VMs share | this Mac, no internet |
+
+`VM_LOCAL_NETWORK=on` adds a second network card on `192.168.128.x`, shared by this Mac and its VMs, beside the
+main one. `default` follows VMPal Settings › Virtual Machines (on in a fresh install). `./vm.sh ip` prints the main
+address, as `vmpal info` reports it; `vmpal info <name>` shows both. `vmpal set --forward` works only in shared
+mode, and binds ports to the Mac's loopback.
+
+### SSH from another device
+
+```bash
+VM_NETWORK=bridged ./vm.sh configure   # the guest gets a LAN address
+./vm.sh sshd start 180                 # renders ~/.config/sshd/sshd_config in the guest, runs `mise run sshd -m 180`
+./vm.sh sshd status
+./vm.sh sshd stop
+ssh -p 48222 admin@<./vm.sh ip>        # from the LAN client
+```
+
+`sshd start` uses the dotfiles' template and task, as on the Mac:
+
+- It copies `VM_SSHD_AUTHORIZED_KEYS` (the LAN client's public key; default: this Mac's) into the guest's
+  dedicated `~/.config/sshd/authorized_keys`.
+- It listens on the guest's main address, port `VM_SSHD_PORT` (`48222`), with keys only and
+  `AllowUsers <user>@<VM_SSHD_ALLOW_FROM>` (default `192.168.1.168`).
+- Bridging keeps the client's source address, so the allowlist applies as written. Under shared networking only
+  this Mac can reach the guest, so `sshd start` warns.
+- `stop` ends open sessions as well as the listener; the task also stops itself after the given minutes.
+
+The guest's own Remote Login (port 22, from `keys`) is key-only, and is on the LAN too while bridged.
+
+### Tailscale
+
+To reach the guest from outside the LAN, use Tailscale. Export an auth key for the one provision run; it is
 passed with `vmpal exec --env` and written to no file on either side:
 
 ```bash
@@ -144,9 +194,12 @@ Without a key, run `sudo tailscale up` in the guest.
 
 ## Known issues
 
-- `vmpal restart`, or rebooting inside the guest, hangs once the guest has shut down (VMPal 0.60, Ubuntu
-  26.04). Recover with `vmpal stop <name> --force`, then start it. `./vm.sh restart` stops and starts instead,
-  which works, as does `vmpal restart --apply-settings`.
+- `vmpal restart`, or rebooting inside the guest, hung once an Ubuntu 26.04 guest had shut down (VMPal 0.60).
+  Recover with `vmpal stop <name> --force`, then start it. `./vm.sh restart` stops and starts instead, which
+  works, as does `vmpal restart --apply-settings`. On VMPal 0.66, `vmpal restart --wait` works for macOS guests.
+- Ubuntu on VMPal 0.66: the first start on a bridged network sometimes falls back to shared ("vmnet didn't start
+  the interface (status 1001)"), and `vmpal restart --apply-settings` sometimes reports the guest "didn't shut
+  down" and leaves the settings waiting. Another stop and start (`./vm.sh restart`) fixed both.
 - The guest clock stops while the Mac sleeps. chrony is set to step the clock whenever it is more than a second
   off (`/etc/chrony/conf.d/vm-step.conf`), otherwise apt rejects repos as "not valid yet" for hours.
 - Ubuntu 26.04's sudo-rs ignores `sudo -E`; pass variables explicitly (`sudo VAR=value cmd`).
@@ -163,6 +216,14 @@ Without a key, run `sudo tailscale up` in the guest.
 
 Tested end to end on VMPal 0.60 with Ubuntu 26.04.1: a clean `./vm.sh all`, `check`, an idempotent
 re-provision, a restart, and Ghostty, tty7 and the Paseo desktop app opening.
+
+Tested on VMPal 0.66 with macOS 27.0.1 from the kept installer: `./vm.sh all` through `create`, `keys`,
+`password` (`admin` / `admin`, with automatic login after a restart) and `provision` up to the `mise bootstrap`
+failures above; `restart`; `VM_NETWORK=bridged ./vm.sh configure`; and `sshd start`, a connection from the Mac's
+LAN address, a refused connection from outside `VM_SSHD_ALLOW_FROM`, `status` and `stop`.
+
+Also on VMPal 0.66 with Ubuntu 26.04.1: `create`, `keys`, `password`, `ssh`, bridged `configure`, and `sshd`
+start, connect, `status` and `stop`. `provision` was not run again.
 
 On VMPal 0.69, macOS 26.6.2 (25G83) was created through the manual Setup Assistant path above and provisioned
 with `guest/macos.sh`. Verified admin SSH/passwordless sudo, GitHub SSH authentication, installed apps and
