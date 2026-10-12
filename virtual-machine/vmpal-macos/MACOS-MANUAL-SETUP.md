@@ -2,7 +2,7 @@
 
 Distilled from the 11 October 2026 run: VMPal 0.69, macOS 26.6.2 (25G83), VMPal Tools 0.38. This is the Setup Assistant path for macOS 26, not the automatic macOS 27 setup. That path was not exercised in this run.
 
-Run host commands in **Bash**, from `virtual-machine/`. Example target: `macos-dev`, account `admin`, UK English, United Kingdom, Europe/London, 5 CPUs, 8 GB RAM, 100 GB disk. Locale, timezone and key paths below are template choices, not host metadata. Creation and Setup Assistant are one-time steps; provisioning can be repeated.
+Run host commands in **Bash**, from `virtual-machine/vmpal-macos/`. Example target: `macos-dev`, account `admin`, UK English, United Kingdom, Europe/London, 5 CPUs, 8 GB RAM, 100 GB disk. Locale, timezone and key paths below are template choices, not host metadata. Creation and Setup Assistant are one-time steps; provisioning can be repeated.
 
 ## 1. Create and isolate the VM
 
@@ -131,7 +131,7 @@ VMPal's recorded username may still be the host's. Do not edit VM metadata to fi
 
 ## 4. Provision the development environment
 
-Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` copies `guest/macos.sh` with `vmpal cp` and runs it with `vmpal exec`, including the shared-folder environment.
+Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` copies `../guest/macos.sh` and `guest/macos-engine.sh` with `vmpal cp` and runs it with `vmpal exec`, including the shared-folder environment.
 
 ```bash
 ./vm.sh configure
@@ -143,7 +143,7 @@ Reuse the repository's sudo, SSH and private-key handling rather than duplicatin
 Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the mise bootstrap on reruns unless `FORCE=1` is supplied. The guest clones the dotfiles from GitHub, so it gets the `.zsh-plugins` Unicode-path compilation fix once that is pushed. To use this checkout's copy before then:
 
 ```bash
-vmpal cp ../.config/zsh/.zsh-plugins macos-dev:git/dotfiles/.config/zsh/.zsh-plugins
+vmpal cp ../../.config/zsh/.zsh-plugins macos-dev:git/dotfiles/.config/zsh/.zsh-plugins
 ```
 
 ## 5. Confirm Helium and exercise the desktop

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Reproducible macOS or Ubuntu VM on VMPal (Apple Silicon). See README.md. Earlier engines: _tart_macos/, _utm_ubuntu/.
+# Reproducible macOS or Ubuntu VM on VMPal (Apple Silicon). See README.md, and ../README.md for both engines.
 # Everything in the guest goes through VMPal Tools (`vmpal exec` / `vmpal cp`), so provisioning needs no SSH.
 # Targets macOS's bash 3.2: no associative arrays, no mapfile.
 set -euo pipefail
@@ -107,7 +107,7 @@ cmd_prereqs() {
 
 cmd_create() {
   [ "$(vm_state)" = missing ] || die "VM '$VM_NAME' already exists (delete with: vmpal delete '$VM_NAME' --force)"
-  # guest/$VM_OS.sh provisions only its own OS; catch a mismatch before the unattended install, not after.
+  # The guest script provisions only its own OS; catch a mismatch before the unattended install, not after.
   case "$(printf '%s' "$VM_SYSTEM" | tr '[:upper:]' '[:lower:]')" in
     *"$VM_OS"*) ;;
     *) die "VM_SYSTEM '$VM_SYSTEM' is not a $VM_OS system (VM_OS=$VM_OS); see: vmpal systems" ;;
@@ -265,11 +265,15 @@ cmd_provision() {
     ubuntu) share="/media/VMPal/$VM_SHARE_NAME" ;;
     macos)  share="/Volumes/My Shared Files/$VM_SHARE_NAME" ;;
   esac
-  log "running guest/$VM_OS.sh as $(guest_user)"
-  guest -- 'mkdir -p ~/.cache/vm'
-  vmpal cp "$HERE/guest/$VM_OS.sh" "$VM_NAME:.cache/vm/provision.sh"
+  # macOS runs the provisioning shared with tart-macos, which sources this engine's hooks from beside it.
+  local script="$HERE/guest/ubuntu.sh"
+  [ "$VM_OS" != macos ] || script="$HERE/../guest/macos.sh"
+  log "running ${script#"$HERE/"} as $(guest_user)"
+  guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
+  vmpal cp "$script" "$VM_NAME:.cache/vm/provision.sh"
+  [ "$VM_OS" != macos ] || vmpal cp "$HERE/guest/macos-engine.sh" "$VM_NAME:.cache/vm/macos-engine.sh"
   # The Tailscale auth key, when set, goes as an environment variable and lands in no file on this side.
-  local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=$VM_SHARE_NAME")
+  local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}")
   [ -z "${VM_TAILSCALE_AUTHKEY:-}" ] || env+=(--env VM_TAILSCALE_AUTHKEY)
   guest "${env[@]}" -- 'bash ~/.cache/vm/provision.sh'
   [ "$VM_OS" != macos ] || confirm_default_browser
@@ -450,7 +454,7 @@ Usage: $0 <command>            (VM_OS=$VM_OS, VM_NAME=$VM_NAME)
   sudo        give the guest account passwordless sudo (also run by keys/provision)
   keys        authorise VM_SSH_PUBKEY and turn on key-only SSH in the guest
   password    set the guest password to VM_PASSWORD (macOS default admin; empty = prompt); VMPal keeps the new one
-  provision   GitHub keys + guest/$VM_OS.sh (apps, daemons, mise bootstrap)
+  provision   GitHub keys + the guest script (apps, daemons, mise bootstrap): ../guest/macos.sh or guest/ubuntu.sh
   check       print acceptance-check results
   github-keys copy GitHub auth/signing keys into the guest (also run by provision)
   snapshot    stop and take a VMPal snapshot (default name: provisioned)

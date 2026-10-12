@@ -1,5 +1,5 @@
 #!/bin/bash
-# Reproducible macOS VM on Tart (Apple Silicon). See README.md; superseded by ../vm.sh (VMPal).
+# Reproducible macOS VM on Tart (Apple Silicon). See README.md, and ../README.md for both engines.
 # Targets macOS's bash 3.2: no associative arrays, no mapfile.
 set -euo pipefail
 
@@ -224,13 +224,16 @@ cmd_provision() {
   wait_for_ssh
   cmd_github_keys
   if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-    # Over stdin into a private file, so the key is not in either side's process list; provision.sh deletes it.
+    # Over stdin into a private file, so the key is not in either side's process list; ../guest/macos.sh deletes it.
     printf '%s' "$VM_TAILSCALE_AUTHKEY" | guest_ssh 'umask 077 && cat > ~/.tailscale-authkey'
   fi
-  log "running guest/provision.sh as $VM_USER"
-  guest_ssh 'cat > /tmp/vm-provision.sh' < "$HERE/guest/provision.sh"
+  # The provisioning shared with vmpal-macos, which sources this engine's hooks from beside it.
+  log "running ../guest/macos.sh as $VM_USER"
+  guest_ssh 'rm -rf /tmp/vm-provision && mkdir -p /tmp/vm-provision'
+  guest_ssh 'cat > /tmp/vm-provision/provision.sh' < "$HERE/../guest/macos.sh"
+  guest_ssh 'cat > /tmp/vm-provision/macos-engine.sh' < "$HERE/guest/macos-engine.sh"
   ssh -t "${SSH_OPTS[@]}" "$(guest_addr)" \
-    "FORCE=${FORCE:-0} SHARE_NAME='$VM_SHARE_NAME' bash /tmp/vm-provision.sh"
+    "FORCE=${FORCE:-0} SHARE_NAME='${VM_SHARE_DIR:+$VM_SHARE_NAME}' bash /tmp/vm-provision/provision.sh"
 }
 
 cmd_check() {
@@ -362,7 +365,7 @@ Usage: $0 <command>
   stop        shut the VM down
   keys        install VM_SSH_PUBKEY with the image password, then make SSH key-only
   password    change the guest password (VM_PASSWORD or prompt); keychain and auto-login follow
-  provision   GitHub keys + guest/provision.sh (apps, mise bootstrap) over SSH
+  provision   GitHub keys + ../guest/macos.sh (apps, mise bootstrap) over SSH
   check       print acceptance-check results
   github-keys copy GitHub auth/signing keys into the guest (also run by provision)
   sshd        sshd start [minutes] | stop | status  (ephemeral LAN sshd; needs VM_NET=bridged)

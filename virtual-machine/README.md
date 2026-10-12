@@ -1,234 +1,134 @@
-# Dev VMs on VMPal (Apple Silicon)
+# Dev VMs (Apple Silicon)
 
-Builds a macOS (default) or Ubuntu VM with [VMPal](https://vmpal.com), then applies
-[ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps inside it. VMPal installs the OS
-unattended (macOS guests from macOS 27; see below) and runs commands in the guest through its own tools
-(`vmpal exec` / `vmpal cp`), so provisioning needs no SSH, no autoinstall ISO and no image password.
+Builds a macOS dev VM, then applies [ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps
+inside it. There are two engines; pick one per VM. Both use Apple's Virtualization.framework, so CPU, memory and
+disk performance are about equal, and both run the same guest script, so the VMs end up the same.
 
-## Engines
-
-| Engine | Use it for | Notes |
+| Engine | Directory | In short |
 |---|---|---|
-| **VMPal** (this dir) | Default: macOS and Ubuntu desktops | Apple's Virtualization.framework, plus its own GPU acceleration for Linux (OpenGL 4.1). Unattended OS installs and guest tools (`exec`/`cp`), so provisioning needs no SSH. Shared, bridged or host-only networking |
-| **Tart** ([`_tart_macos`](_tart_macos/README.md)) | Headless or CI VMs, mainly macOS | Same framework. Runs macOS and Linux, in a window or `--no-graphics`, with Rosetta for Linux and prebuilt OCI images. Linux guests get no 3D acceleration |
-| **UTM** ([`_utm_ubuntu`](_utm_ubuntu/README.md)) | Fallback | QEMU (or Apple's framework). Widest guest support, including x86 emulation. QEMU's virgl GPU works but is less stable (Vulkan crashed), and setup is the most manual |
-
-VMPal and Tart use the same Apple hypervisor, so CPU, memory and disk performance are about equal. VMPal
-wins for Linux desktops (GPU) and hands-off setup; Tart is lighter for scripted, headless runs.
-
-## Usage
+| [VMPal](https://vmpal.com) | [`vmpal-macos/`](vmpal-macos/README.md) | The default on macOS 27 hosts: unattended macOS install, guest tools and UI control for agents, Ubuntu desktops with GPU |
+| [Tart](https://tart.run) | [`tart-macos/`](tart-macos/README.md) | Any recent host: a prebuilt, already set-up image, headless runs, everything over SSH |
 
 ```bash
-cd virtual-machine
-cp config.env.example config.env   # optional
-./vm.sh all                        # macOS (macOS 27 hosts)
-VM_OS=ubuntu ./vm.sh all           # Ubuntu
+cd virtual-machine/vmpal-macos   # or tart-macos
+cp config.env.example config.env # optional
+./vm.sh all
 ```
 
-> [!WARNING]
-> **macOS before 27 needs manual setup on VMPal.** VMPal sets up only macOS 27 and later unattended, and a
-> Mac can't run a newer macOS in a VM than its own. On a macOS 26 or earlier host, `vmpal systems` lists every
-> macOS as `set up in the VM`: Setup Assistant (language, account, Apple Account, Siri, location and so on) is
-> done by hand, and `vm.sh create` and `all` don't apply. Follow [MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)
-> instead; it then reuses `vm.sh` for keys, provisioning and checks.
+## Choosing an engine
 
-`all` runs `prereqs`, `create`, `keys`, `password` (unless `VM_PASSWORD` is empty), `provision`, `snapshot`,
-then `start`. Settings come from exported env vars, then `config.env`, then defaults.
-
-macOS is the default: its VMs run more smoothly than Ubuntu's, and most developer tools ship Mac builds before
-arm64 Linux ones.
-
-Defaults:
-
-| | macOS | Ubuntu |
+| | VMPal | Tart |
 |---|---|---|
-| VM name | `macos-dev` | `ubuntu-dev` |
-| System | `download:macOS` (the latest macOS, ~27 GB download) | `download:ubuntu` (26.04 LTS, arm64) |
-| Disk | 100 GB | 64 GB |
-| Rosetta | n/a | on |
+| Host macOS | macOS 27 for an unattended macOS guest. A Mac can't run a newer macOS in a VM than its own, and VMPal sets up only macOS 27 and later unattended, so older hosts need [manual Setup Assistant](vmpal-macos/MACOS-MANUAL-SETUP.md) | Any host that runs the image's macOS (`macos-tahoe-base`: macOS 26 or later). Setup Assistant was done when the image was built |
+| macOS source | Apple's installer, downloaded by VMPal and kept as a Base OS file for later VMs | Cirrus Labs' OCI image from `ghcr.io` (~27 GB pull), with Homebrew, mise, passwordless sudo and auto-login preset |
+| Guests here | macOS (default) and Ubuntu 26.04 | macOS |
+| Headless / CI | Runs through the VMPal app, which must be installed and opened once | `VM_HEADLESS=1` (`--no-graphics`); a single CLI binary, built for CI |
+| GPU | Paravirtualised on macOS; OpenGL 4.1 (virgl) on Linux | Paravirtualised on macOS; none on Linux |
+| Talking to the guest | VMPal Tools: `vmpal exec` / `vmpal cp`, no SSH or password needed to provision | SSH, after `keys` uses the image password once |
+| Agent tooling | `vmpal ui` observes, screenshots and clicks the guest's screen (used to accept dialogs such as the default browser's); `vmpal exec` runs commands | SSH only |
+| Networking | `VM_NETWORK`: `shared` (NAT), `bridged` or `host-only`, plus an optional local network | `VM_NET`: `nat` or `bridged` |
+| Snapshots | `vmpal snapshot` / `vmpal revert` | `tart clone` to `<name>-<tag>` (APFS copy) |
+| Reusable base | `vmpal clone`, or `vmpal compress` / `vmpal import` (`.vmpalvm`) | push or clone OCI images |
 
-Both get half the host's cores, 8 GB RAM, `~/git` shared live into the guest, and shared (NAT) networking.
-macOS gets the account `admin` / `admin`, as Tart's images. Linux reserves `admin`, so Ubuntu gets your Mac
-user name and VMPal's generated password.
+Choose **VMPal** on a macOS 27 host, for an Ubuntu desktop, or when an agent should drive the guest's screen.
+Choose **Tart** on a macOS 26 host, for headless or scripted runs, or when nothing should be set up by hand.
 
-VMPal keeps each installer it downloads as a Base OS file (`vmpal library`), and `vmpal systems` then shows the
-system as `kept`. A new VM from it skips the download, so a macOS VM installs in a few minutes.
+## Layout
 
-Other commands: `configure`, `start`, `stop`, `restart`, `sudo`, `check`, `github-keys`, `sshd`, `ssh [cmd]`,
-`exec cmd...`, `ip`.
-Plain `vmpal` works too (`vmpal ui <name> screenshot -o shot.png`, `vmpal info <name>`, ...); see
-[the CLI docs](https://vmpal.com/docs/command-line).
+```text
+virtual-machine/
+├── README.md               # this file: what both engines share
+├── guest/macos.sh          # the macOS guest script, shared by both engines
+├── tart-macos/
+│   ├── vm.sh, config.env.example, README.md
+│   └── guest/macos-engine.sh
+└── vmpal-macos/
+    ├── vm.sh, config.env.example, README.md, MACOS-MANUAL-SETUP.md
+    └── guest/macos-engine.sh, guest/ubuntu.sh
+```
 
-## Per-Mac prerequisites
+Each engine's `vm.sh provision` copies `guest/macos.sh` into the guest beside that engine's
+`guest/macos-engine.sh`, which defines two hooks the shared script calls:
 
-1. Install VMPal and open it once. `./vm.sh prereqs` links its CLI to `~/.local/bin/vmpal`. It must be a link,
-   not a copy, because the CLI finds the app through it.
-2. Have an SSH key (`ssh-keygen -t ed25519`). `VM_SSH_PUBKEY` authorises SSH into the guest.
-3. Apple's licence allows two macOS VMs running at once per Mac.
+- `engine_prepare`, run first: Tart moves the base image's CI `~/.gitconfig` aside; VMPal has nothing to do.
+- `engine_tailscale_authkey_file`, which prints the path of a private file holding a Tailscale auth key, or
+  nothing. The shared script logs in with it and deletes it.
 
-## The guest account
+Engine-specific steps (creating the VM, the account, its password, sudo, SSH keys, networking) stay in each
+`vm.sh`. Both read settings from exported env vars, then the git-ignored `config.env` beside them, then defaults.
 
-VMPal creates an account named `VM_USER` (macOS: `admin`; Ubuntu: your Mac user; it applies only at `create`),
-with a generated password that it keeps in this Mac's keychain (`vmpal info <name> --show-password`). `all` then
-sets the password to `VM_PASSWORD` (macOS: `admin`; Ubuntu: empty, so the generated one stays). The guest signs
-in automatically. For macOS before 27, create the account and password in Setup Assistant instead, then register
-the password with VMPal ([MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)). `vm.sh` reads the guest account with
-`id -un`, because VMPal's recorded username can remain the host's after Setup Assistant creates a different one.
+## Shared prerequisites
 
-- `sudo` gives the account passwordless sudo (`/etc/sudoers.d/90-vm-nopasswd`), which provisioning and
-  `mise bootstrap` need unattended. On Ubuntu this goes through `vmpal exec --admin` (root); on macOS through
-  `sudo -S` with VMPal's password, passed as an environment variable.
-- `keys` authorises `VM_SSH_PUBKEY` and makes SSH key-only. Ubuntu gets `openssh-server`; macOS turns on
-  Remote Login.
-- `password` sets the password to `VM_PASSWORD` (empty: it asks) in the guest and in VMPal's keychain entry, so
-  VMPal can still sign in. Passwords travel as environment variables, never on a host command line.
-  - macOS: `dscl . -passwd` with the old password (root cannot change a secure-token account's password
-    without it), the login keychain, and automatic login's `/etc/kcpassword`.
-  - Ubuntu: `chpasswd` as root.
-- To keep VMPal's generated macOS password, set `VM_PASSWORD=` (empty). With `VM_NETWORK=bridged`, set your own
-  password: SSH is key-only, but `admin` / `admin` is a well-known pair for anything else that listens on the LAN.
+1. An Apple Silicon Mac.
+2. An SSH key (`ssh-keygen -t ed25519`). `VM_SSH_PUBKEY` authorises SSH into the guest.
+3. Optionally, GitHub keys for the guest: `VM_GITHUB_AUTH_KEY` (`~/.ssh/github`) and `VM_GITHUB_SIGNING_KEY`
+   (`~/.ssh/github-signing-key`). Set either empty to skip it.
+4. Apple's licence allows two macOS VMs running at once per Mac, across both engines.
+5. Optionally, a Tailscale auth key, exported as `VM_TAILSCALE_AUTHKEY` for one `./vm.sh provision` run. Never
+   put it in `config.env`.
 
-## How it works
+## What every macOS VM gets
 
-| Step | Mechanism |
+| | |
 |---|---|
-| Create | `vmpal create <system> --name --cpus --memory --disk --wait` (unattended install) |
-| Hardware | `vmpal set --cpus --memory --disk --rosetta --network-mode --bridge --local-network --share`; `vmpal restart --apply-settings` when a setting needs it |
-| Shared folder | `vmpal set --share ~/git:git`, live via virtiofs at `/media/VMPal/git` (Ubuntu) or `/Volumes/My Shared Files/git` (macOS), linked as `~/host-git` |
-| GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written. Setting either variable empty removes that key (and the auth key's Host block) from the guest |
-| Provision | `guest/<os>.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, Dock pins, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` (so the next run sees `~/.config/mise/config.toml`'s packages), and `mise bootstrap --skip files,repos` |
-| Snapshot | `vmpal stop`, then `vmpal snapshot <name> provisioned`. Restore with `vmpal revert <name> provisioned`. A Linux VM with GPU acceleration snapshots only when shut down |
+| Account | `admin` / `admin`, with passwordless sudo and automatic login. `VM_PASSWORD` replaces the password; set one before bridging onto the LAN |
+| SSH | `keys` authorises `VM_SSH_PUBKEY` and makes SSH key-only |
+| GitHub | the GitHub keys in the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, and a managed `Host github.com` block |
+| Shared folder | `~/git` shared live into the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git` (`VM_SHARE_DIR`, `VM_SHARE_NAME`) |
+| Dotfiles | on the first run (or `FORCE=1`): `~/git/dotfiles` cloned over HTTPS, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
+| mise | `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`) |
+| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
+| Checks | `./vm.sh check` prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |
 
-Re-running `./vm.sh provision` is idempotent. Apps update to their latest release; the dotfiles bootstrap runs
-again only with `FORCE=1`.
+### Apps
 
-## Ubuntu: apps and Rosetta
+`provision` installs these on every run, before the already-provisioned check, so it also adds them to existing
+VMs. Steps that are already done are skipped. Homebrew is installed first if missing.
 
-| App | Source |
-|---|---|
-| Ghostty | Ubuntu archive (`ghostty`) |
-| Helium | its apt repo, signing key pinned by fingerprint; set as the default browser (`xdg-settings`) |
-| Tailscale | its apt repo, signing key pinned by fingerprint |
-| tty7 | x86_64 Linux tarball via Rosetta, checked against `checksums.txt`, in `~/.local/opt/tty7/<ver>` |
-| MonoCode | amd64 `.deb` via Rosetta (desktop), checked against the GitHub release digest; the arm64 `monocode host` runs as a systemd user service |
-| Paseo | amd64 `.deb` via Rosetta (desktop), checked against the GitHub release digest; `paseo daemon` runs as a systemd user service (`paseo.service`, web UI on `127.0.0.1:6767`) |
+- **Ghostty, Helium, Paseo (desktop):** Homebrew casks `ghostty`, `helium-browser` and `paseo`. The cask
+  `helium` is an unrelated, disabled app. The dotfiles make Helium the default browser.
+- **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
+  release's `checksums.txt`.
+- **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release, checked against the
+  sha256 digest GitHub publishes for the asset (the DMG has no checksum file).
+- tty7 and MonoCode must pass `codesign --verify --deep --strict` and Gatekeeper. They are copied into
+  `/Applications` and replaced only when the version changes.
+- **MonoCode host:** `monocode-host-darwin-arm64.tar.gz`, checked against its `.sha256`, into
+  `~/.local/opt/monocode-host/<ver>` with a wrapper in `~/.local/bin`, and registered as the `com.monocode.host`
+  launchd agent. From the host Mac's MonoCode, add the VM under Settings → Connections → Add machine, as
+  `admin@<./vm.sh ip>`.
+- **Paseo daemon:** the `sh.paseo.daemon` launchd agent runs the cask's `paseo daemon run` on `127.0.0.1:6767`,
+  with the web UI on and the relay off, logging to `~/Library/Logs/paseo-daemon.log`. The cask's CLI runs on the
+  app's bundled runtime, so it needs no Node. The agent reloads only when its plist changes. The host Mac's Paseo
+  can add `ssh://admin@<./vm.sh ip>` as a Remote SSH host.
+- **Tailscale:** `brew:tailscale` from the bootstrap, run as a root launchd daemon
+  (`tailscaled install-system-daemon`) on every provision. The Tailscale app is not used: its network extension
+  needs approval in the GUI. Without `VM_TAILSCALE_AUTHKEY`, run `sudo tailscale up` in the guest afterwards.
 
-None of tty7, MonoCode or Paseo publish arm64 Linux desktop builds. With `VM_ROSETTA=1` (the default), VMPal
-mounts Apple's Rosetta at `/media/rosetta` and registers it with binfmt, and the script adds the `amd64` dpkg
-architecture with the libraries these apps need. Paseo's Electron window does not appear under Wayland, so its
-launcher sets `ELECTRON_OZONE_PLATFORM_HINT=x11` (XWayland). With Rosetta off, only the Paseo CLI is installed
-(`npm i -g @getpaseo/cli`).
+### Updating an existing VM
 
-The dock holds exactly Files, Ghostty, Helium, tty7, Paseo, MonoCode, Settings and Resources (the system monitor),
-those installed, on the right and always shown. Anything else pinned is removed on the next provision.
-
-Ghostty needs OpenGL 4.3, but VMPal's virgl GPU offers 4.1 (the macOS host's limit). Its launcher and D-Bus
-service are overridden under `~/.local/share` to set `LIBGL_ALWAYS_SOFTWARE=1`, so it renders with Mesa's
-llvmpipe. The screen lock is off, since the guest signs in automatically and only VMPal knows the password.
-
-## macOS
-
-For macOS 26 on VMPal 0.69, follow the [manual setup runbook](MACOS-MANUAL-SETUP.md): creation, each Setup
-Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
-This image rejects `--user`, so `vm.sh create` and `all` do not apply. The automatic macOS 27 setup was
-not exercised in the recorded run.
-
-`guest/macos.sh` installs Homebrew if missing, then the same apps as the Tart VM (Mac builds, so no Rosetta),
-the Paseo daemon as a LaunchAgent, and the dotfiles bootstrap. After the bootstrap, the Dock is set to exactly
-Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown; the
-shared mise config's Dock settings are for the host Macs. The shared mise config also makes Helium the default
-browser on every Mac where it is installed. macOS confirms that in a dialog, which `vm.sh provision` accepts
-through VMPal's UI control (`vmpal ui ... click`). The guest's `~/.config/mise/miserc.toml` selects
-the `vm` config environment, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`); `tailscaled` is set up after it, on every
-provision.
-
-## Networking
-
-`VM_NETWORK` picks the guest's main network. `./vm.sh configure` applies it, with a restart when the mode
-changes. If a bridged VM comes up on shared instead (VMPal says why in `vmpal info`), `configure` stops and starts
-it once more, then warns.
-
-| `VM_NETWORK` | Guest address | Who can reach it |
-|---|---|---|
-| `shared` (default) | `192.168.64.x`, behind NAT | this Mac only (`./vm.sh ssh`, Remote SSH hosts in the Mac's MonoCode or Paseo) |
-| `bridged` | its own DHCP address from the LAN's router, on `VM_BRIDGE` (`auto` = the Mac's main interface) | the LAN |
-| `host-only` | a network only this Mac and its host-only VMs share | this Mac, no internet |
-
-`VM_LOCAL_NETWORK=on` adds a second network card on `192.168.128.x`, shared by this Mac and its VMs, beside the
-main one. `default` follows VMPal Settings › Virtual Machines (on in a fresh install). `./vm.sh ip` prints the main
-address, as `vmpal info` reports it; `vmpal info <name>` shows both. `vmpal set --forward` works only in shared
-mode, and binds ports to the Mac's loopback.
+```bash
+git pull
+./vm.sh start
+./vm.sh provision     # apps, Dock, daemons; the dotfiles steps are skipped unless FORCE=1
+./vm.sh check
+```
 
 ### SSH from another device
 
-```bash
-VM_NETWORK=bridged ./vm.sh configure   # the guest gets a LAN address
-./vm.sh sshd start 180                 # renders ~/.config/sshd/sshd_config in the guest, runs `mise run sshd -m 180`
-./vm.sh sshd status
-./vm.sh sshd stop
-ssh -p 48222 admin@<./vm.sh ip>        # from the LAN client
-```
+Both engines can bridge the guest onto the LAN and run the dotfiles' sshd template and task in it
+(`./vm.sh sshd start [minutes]`, `status`, `stop`). It listens on port `VM_SSHD_PORT` (`48222`), with keys only
+(`VM_SSHD_AUTHORIZED_KEYS`) and `AllowUsers <user>@<VM_SSHD_ALLOW_FROM>`. See each engine's README for its
+network settings.
 
-`sshd start` uses the dotfiles' template and task, as on the Mac:
+## Known blockers in the dotfiles repo
 
-- It copies `VM_SSHD_AUTHORIZED_KEYS` (the LAN client's public key; default: this Mac's) into the guest's
-  dedicated `~/.config/sshd/authorized_keys`.
-- It listens on the guest's main address, port `VM_SSHD_PORT` (`48222`), with keys only and
-  `AllowUsers <user>@<VM_SSHD_ALLOW_FROM>` (default `192.168.1.168`).
-- Bridging keeps the client's source address, so the allowlist applies as written. Under shared networking only
-  this Mac can reach the guest, so `sshd start` warns.
-- `stop` ends open sessions as well as the listener; the task also stops itself after the given minutes.
+Not changed here; provisioning works around them:
 
-The guest's own Remote Login (port 22, from `keys`) is key-only, and is on the LAN too while bridged.
+1. The bootstrap's `files` phase needs `TERN_TAILSCALE_EMAIL` / `TERN_SSH_FINGERPRINT`, so it is skipped.
+2. `[bootstrap.repos]` uses an SSH URL, so it is skipped; `~/git/dotfiles` is cloned over HTTPS.
+3. A `~/.gitconfig` that is not the dotfiles' symlink blocks the bootstrap, so it is moved to
+   `~/.gitconfig.pre-dotfiles` (Tart's base image: `~/.gitconfig.base-image`).
+4. `[tasks.bootstrap]` installs the crontab in the VM too.
 
-### Tailscale
-
-To reach the guest from outside the LAN, use Tailscale. Export an auth key for the one provision run; it is
-passed with `vmpal exec --env` and written to no file on either side:
-
-```bash
-VM_TAILSCALE_AUTHKEY=tskey-... ./vm.sh provision
-```
-
-Without a key, run `sudo tailscale up` in the guest.
-
-## Known issues
-
-- `vmpal restart`, or rebooting inside the guest, hung once an Ubuntu 26.04 guest had shut down (VMPal 0.60).
-  Recover with `vmpal stop <name> --force`, then start it. `./vm.sh restart` stops and starts instead, which
-  works, as does `vmpal restart --apply-settings`. On VMPal 0.66, `vmpal restart --wait` works for macOS guests.
-- Ubuntu on VMPal 0.66: the first start on a bridged network sometimes falls back to shared ("vmnet didn't start
-  the interface (status 1001)"), and `vmpal restart --apply-settings` sometimes reports the guest "didn't shut
-  down" and leaves the settings waiting. Another stop and start (`./vm.sh restart`) fixed both.
-- The guest clock stops while the Mac sleeps. chrony is set to step the clock whenever it is more than a second
-  off (`/etc/chrony/conf.d/vm-step.conf`), otherwise apt rejects repos as "not valid yet" for hours.
-- Ubuntu 26.04's sudo-rs ignores `sudo -E`; pass variables explicitly (`sudo VAR=value cmd`).
-- On the first macOS 26.6.2 boot with VMPal 0.69, the display stayed black until the newly installed VM
-  was reset. Reset only before guest work exists; it discards unsaved work.
-- `vmpal reinstall-tools` did not connect tools after Setup Assistant in the tested macOS VM. Launching
-  the shared `Install VMPal Tools.app` connected version 0.38.
-- If Helium remains unset after provisioning, repeat the default-browser request or select Helium in
-  System Settings → Desktop & Dock, then verify HTTP and HTTPS open with Helium.
-- zsh plugin compilation uses basenames from each source directory: `zcompile` failed with absolute
-  paths containing fast-syntax-highlighting's `→chroma` directory on both Apple's zsh 5.9 and Homebrew 5.9.2.
-
-## Status
-
-Tested end to end on VMPal 0.60 with Ubuntu 26.04.1: a clean `./vm.sh all`, `check`, an idempotent
-re-provision, a restart, and Ghostty, tty7 and the Paseo desktop app opening.
-
-Tested on VMPal 0.66 with macOS 27.0.1 from the kept installer: `./vm.sh all` through `create`, `keys`,
-`password` (`admin` / `admin`, with automatic login after a restart) and `provision` up to the `mise bootstrap`
-failures above; `restart`; `VM_NETWORK=bridged ./vm.sh configure`; and `sshd start`, a connection from the Mac's
-LAN address, a refused connection from outside `VM_SSHD_ALLOW_FROM`, `status` and `stop`.
-
-Also on VMPal 0.66 with Ubuntu 26.04.1: `create`, `keys`, `password`, `ssh`, bridged `configure`, and `sshd`
-start, connect, `status` and `stop`. `provision` was not run again.
-
-On VMPal 0.69, macOS 26.6.2 (25G83) was created through the manual Setup Assistant path above and provisioned
-with `guest/macos.sh`. Verified admin SSH/passwordless sudo, GitHub SSH authentication, installed apps and
-mise tools, Paseo HTTP 200, the running MonoCode host, signed-out Tailscale, Helium's HTTP/HTTPS defaults,
-hidden widgets, the right-hand Dock, and an interactive Ghostty shell running Node and `omp`. The Unicode
-plugin-cache fix was also exercised against a fresh plugin clone.
-A `provisioned` snapshot was taken with the VM stopped; after starting again, admin SSH, both host daemons,
-Paseo HTTP 200, signed-out Tailscale and Helium's HTTP/HTTPS defaults were verified again.
+Rerun with `FORCE=1 ./vm.sh provision`.
