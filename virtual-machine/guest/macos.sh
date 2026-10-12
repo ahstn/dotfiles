@@ -21,7 +21,8 @@ export PATH="$HOME/.local/bin:$PATH" HOMEBREW_NO_ENV_HINTS=1
 [ -z "${SHARE_NAME:-}" ] || ln -sfn "/Volumes/My Shared Files/$SHARE_NAME" "$HOME/host-$SHARE_NAME"
 
 # Apps, before the provisioned check so `./vm.sh provision` adds them to existing VMs. Each step is a no-op once done.
-brew install --cask ghostty helium-browser paseo
+# chatgpt is Codex Desktop's replacement: Homebrew deprecated codex-app as discontinued upstream.
+brew install --cask ghostty helium-browser paseo claude chatgpt bb
 
 # app_version <bundle>: installed CFBundleShortVersionString, or empty.
 app_version() { defaults read "$1/Contents/Info" CFBundleShortVersionString 2>/dev/null || true; }
@@ -183,7 +184,8 @@ fi
 # Dock, after the bootstrap: its shared [bootstrap.macos.dock] (bottom, autohide) is for the host Macs. A VM gets
 # exactly these apps (Finder is always first), on the right and always shown. Rewritten only when it differs.
 dock_apps=(/Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app /Applications/Paseo.app
-  /Applications/MonoCode.app "/System/Applications/System Settings.app")
+  /Applications/MonoCode.app /Applications/Claude.app /Applications/ChatGPT.app /Applications/bb.app
+  "/System/Applications/System Settings.app")
 want=""
 for app in "${dock_apps[@]}"; do [ ! -d "$app" ] || want+="$app"$'\n'; done
 have="$(defaults export com.apple.dock - | python3 -c '

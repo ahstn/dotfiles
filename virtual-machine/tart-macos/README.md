@@ -141,7 +141,7 @@ Tested bridged on Wi-Fi: start, connect from the host's LAN address, status, sto
 - the macOS version and mise tools;
 - the login shell and disk size;
 - the shared folder;
-- the five apps;
+- the desktop apps;
 - Tailscale state;
 - the Paseo agent and its web UI;
 - GitHub SSH auth.

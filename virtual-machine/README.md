@@ -77,7 +77,7 @@ Engine-specific steps (creating the VM, the account, its password, sudo, SSH key
 | Shared folder | `~/git` shared live into the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git` (`VM_SHARE_DIR`, `VM_SHARE_NAME`) |
 | Dotfiles | on the first run (or `FORCE=1`): `~/git/dotfiles` cloned over HTTPS, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
 | mise | `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`) |
-| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
+| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
 | Checks | `./vm.sh check` prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |
 
 ### Apps
@@ -85,8 +85,10 @@ Engine-specific steps (creating the VM, the account, its password, sudo, SSH key
 `provision` installs these on every run, before the already-provisioned check, so it also adds them to existing
 VMs. Steps that are already done are skipped. Homebrew is installed first if missing.
 
-- **Ghostty, Helium, Paseo (desktop):** Homebrew casks `ghostty`, `helium-browser` and `paseo`. The cask
-  `helium` is an unrelated, disabled app. The dotfiles make Helium the default browser.
+- **Ghostty, Helium, Paseo (desktop), Claude, ChatGPT, bb:** Homebrew casks `ghostty`, `helium-browser`,
+  `paseo`, `claude`, `chatgpt` and `bb` ([get-bb/bb](https://github.com/get-bb/bb)). The cask `helium` is an
+  unrelated, disabled app. The dotfiles make Helium the default browser. ChatGPT stands in for Codex Desktop,
+  whose `codex-app` cask Homebrew deprecated as discontinued upstream.
 - **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
   release's `checksums.txt`.
 - **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release, checked against the
