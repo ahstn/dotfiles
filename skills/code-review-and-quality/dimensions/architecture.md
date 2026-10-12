@@ -1,6 +1,6 @@
-# Design & Architecture Axis
+# Design & Architecture Dimension
 
-Focus on system fit. This axis owns placement, canonical ownership, dependency direction, encapsulation, public contract shape, data ownership, and cross-layer coupling.
+Focus on system fit. This dimension owns placement, canonical ownership, dependency direction, encapsulation, public contract shape, data ownership, and cross-layer coupling.
 
 ## Core standard
 

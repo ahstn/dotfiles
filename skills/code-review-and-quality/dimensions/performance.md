@@ -1,6 +1,6 @@
-# Performance & Scalability Axis
+# Performance & Scalability Dimension
 
-Focus on avoidable cost under a credible workload. This axis owns time complexity, I/O count, allocation and copy cost, contention, concurrency bounds, backpressure, and evidence from benchmarks or profiles.
+Focus on avoidable cost under a credible workload. This dimension owns time complexity, I/O count, allocation and copy cost, contention, concurrency bounds, backpressure, and evidence from benchmarks or profiles.
 
 ## Core standard
 

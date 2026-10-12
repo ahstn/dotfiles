@@ -1,6 +1,6 @@
-# Maintainability & Readability Axis
+# Maintainability & Readability Dimension
 
-Focus on future change cost and local cognitive load. This axis owns names, local control and data flow, comments, error context, and the readability of tests and retained implementation.
+Focus on future change cost and local cognitive load. This dimension owns names, local control and data flow, comments, error context, and the readability of tests and retained implementation.
 
 ## Core standard
 
@@ -65,7 +65,7 @@ Prefer explicit inputs and outputs over hidden ambient state. Do not require dep
 - Does the function preserve project conventions for return values, errors, and ownership?
 - Do failures identify the action, relevant object, expected state, and observed state without exposing secrets?
 
-Architecture owns public boundary shape and dependency direction. This axis owns whether the local interface is understandable where it is used.
+Architecture owns public boundary shape and dependency direction. This dimension owns whether the local interface is understandable where it is used.
 
 ### 5. Comments and documentation
 
@@ -94,4 +94,4 @@ Treat a false comment as a defect. Do not request comments for code that can sta
 
 A maintainability finding must identify the reader burden and its likely change cost. Point to the confusing name, hidden dependency, control-flow jump, state mutation, or misleading comment, then give a local correction direction.
 
-Do not turn this axis into formatting review. Do not report dead code, obsolete paths, unearned abstractions, broad structural simplifications, or file decomposition. Those belong to dead code and simplification.
+Do not turn this dimension into formatting review. Do not report dead code, obsolete paths, unearned abstractions, broad structural simplifications, or file decomposition. Those belong to dead code and simplification.

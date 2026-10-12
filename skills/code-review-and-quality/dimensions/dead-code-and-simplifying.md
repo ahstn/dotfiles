@@ -1,6 +1,6 @@
-# Dead Code & Simplification Axis
+# Dead Code & Simplification Dimension
 
-Focus on code and concepts the patch can remove or avoid. This axis owns dead code, obsolete paths, unnecessary abstractions, state-space growth, avoidable branching, and concrete structural simplifications across every changed file.
+Focus on code and concepts the patch can remove or avoid. This dimension owns dead code, obsolete paths, unnecessary abstractions, state-space growth, avoidable branching, and concrete structural simplifications across every changed file.
 
 ## Core standard
 
@@ -10,7 +10,7 @@ Look for a concrete "code judo" move: a reframe that uses the existing architect
 
 ## Ownership boundary
 
-This axis decides whether code or a concept should exist and gives the simpler design direction. Other axes own the behavior and placement of code that remains:
+This dimension decides whether code or a concept should exist and gives the simpler design direction. Other dimensions own the behavior and placement of code that remains:
 
 - correctness owns behavior, invariants, failure paths, ordering, and atomicity
 - maintainability owns local clarity, naming, comments, and scan cost
@@ -18,7 +18,7 @@ This axis decides whether code or a concept should exist and gives the simpler d
 - security owns trust boundaries and exploit paths
 - performance owns measured or plausible runtime cost
 
-When one hunk raises several concerns, report it here only when the primary remedy deletes or collapses code, concepts, states, or paths. Otherwise leave the finding to the owning axis. The main reviewer deduplicates overlap.
+When one hunk raises several concerns, report it here only when the primary remedy deletes or collapses code, concepts, states, or paths. Otherwise leave the finding to the owning dimension. The main reviewer deduplicates overlap.
 
 ## Required checks
 

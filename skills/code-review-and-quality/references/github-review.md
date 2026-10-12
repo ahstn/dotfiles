@@ -92,7 +92,7 @@ If these checks fail, refresh the review context before posting.
 
 ## Formatting
 
-Use the canonical P1, P2, or P3 severity and the primary axis. A plain-text label is sufficient. An optional badge can display the same severity:
+Use the canonical P1, P2, or P3 severity and the primary dimension. A plain-text label is sufficient. An optional badge can display the same severity:
 
 ```md
 ![P2](https://img.shields.io/badge/severity-P2-orange)

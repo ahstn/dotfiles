@@ -1,6 +1,6 @@
-# Correctness & Robustness Axis
+# Correctness & Robustness Dimension
 
-Focus on observable behavior. This axis owns contracts, invariants, state transitions, failure semantics, ordering, atomicity, and concurrency. It also checks whether tests can detect regressions in changed behavior.
+Focus on observable behavior. This dimension owns contracts, invariants, state transitions, failure semantics, ordering, atomicity, and concurrency. It also checks whether tests can detect regressions in changed behavior.
 
 ## Core standard
 

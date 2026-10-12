@@ -1,6 +1,6 @@
-# Security & Trust Boundaries Axis
+# Security & Trust Boundaries Dimension
 
-Focus on untrusted data, identity, authority, sensitive assets, and externally reachable resource use. This axis owns concrete attack and leakage paths introduced or worsened by the change.
+Focus on untrusted data, identity, authority, sensitive assets, and externally reachable resource use. This dimension owns concrete attack and leakage paths introduced or worsened by the change.
 
 ## Core standard
 

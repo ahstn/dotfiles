@@ -2,7 +2,7 @@
 name: code-review-and-quality
 description: >-
   Reviews local diffs and GitHub pull requests for defects and material code-health costs.
-  Use only when explicitly invoked. Supports review comment triage and parallel axis passes.
+  Use only when explicitly invoked. Supports review comment triage and parallel dimension passes.
 disable-model-invocation: true
 argument-hint: "[target=...] [execution=auto|single-agent|parallel] [delivery=thread-only|github-inline]"
 ---
@@ -11,7 +11,7 @@ argument-hint: "[target=...] [execution=auto|single-agent|parallel] [delivery=th
 
 ## Purpose and review boundary
 
-Review the agreed change for concrete defects and material code-health costs. The caller's explicit instructions take precedence over skill defaults. Cover every changed file and all axes by default; honor a requested subset of files or axes and state that scope.
+Review the agreed change for concrete defects and material code-health costs. The caller's explicit instructions take precedence over skill defaults. Cover every changed file and all dimensions by default; honor a requested subset of files or dimensions and state that scope.
 
 Review without editing the patch or the rubric unless the caller requests those changes.
 
@@ -36,7 +36,7 @@ Local targets select the corresponding git diff. A PR URL selects GitHub as auth
 ### Execution
 
 - **single-agent**: review in the main agent. This explicit override prohibits delegation.
-- **parallel**: run separate axis passes within the client's available concurrency. If delegation is unavailable, perform the passes directly and disclose the fallback.
+- **parallel**: run separate dimension passes within the client's available concurrency. If delegation is unavailable, perform the passes directly and disclose the fallback.
 
 For **auto**, count added plus deleted lines across the selected diff, including tests. A replacement counts as one addition and one deletion; do not use net line growth.
 
@@ -58,18 +58,18 @@ $code-review-and-quality target=branch:main execution=auto delivery=thread-only
 /code-review-and-quality target=https://github.com/owner/repo/pull/123 delivery=github-inline
 ```
 
-## Axis reference map
+## Dimension reference map
 
-The guides own the detailed checks and axis-specific evidence requirements. Ownership determines where to report an issue; evidence can cross axis boundaries.
+The guides own the detailed checks and dimension-specific evidence requirements. Ownership determines where to report an issue; evidence can cross dimension boundaries.
 
-| Axis and guide | Owned concern |
+| Dimension and guide | Owned concern |
 | --- | --- |
-| [Correctness & robustness](references/axes/correctness.md) | Behavior, contracts, invariants, failure paths, ordering, atomicity, concurrency, and regression coverage. |
-| [Maintainability & readability](references/axes/maintainability.md) | Local clarity: naming, control and data flow, comments, error context, and readable tests. |
-| [Design & architecture](references/axes/architecture.md) | Placement, ownership, dependency direction, encapsulation, public contracts, and cross-layer coupling. |
-| [Security & trust boundaries](references/axes/security.md) | Untrusted input, identity, authority, sensitive data, and attacker-controlled resource use. |
-| [Performance & scalability](references/axes/performance.md) | Normal-workload cost: complexity, I/O, allocations, contention, concurrency bounds, and backpressure. |
-| [Dead code & simplification](references/axes/dead-code-and-simplifying.md) | Removable code, concepts, decision points, wrappers, modes, and reachable states. |
+| [Correctness & robustness](dimensions/correctness.md) | Behavior, contracts, invariants, failure paths, ordering, atomicity, concurrency, and regression coverage. |
+| [Maintainability & readability](dimensions/maintainability.md) | Local clarity: naming, control and data flow, comments, error context, and readable tests. |
+| [Design & architecture](dimensions/architecture.md) | Placement, ownership, dependency direction, encapsulation, public contracts, and cross-layer coupling. |
+| [Security & trust boundaries](dimensions/security.md) | Untrusted input, identity, authority, sensitive data, and attacker-controlled resource use. |
+| [Performance & scalability](dimensions/performance.md) | Normal-workload cost: complexity, I/O, allocations, contention, concurrency bounds, and backpressure. |
+| [Dead code & simplification](dimensions/dead-code-and-simplifying.md) | Removable code, concepts, decision points, wrappers, modes, and reachable states. |
 
 ## Workflow
 
@@ -87,19 +87,19 @@ For a PR target, read [GitHub review](references/github-review.md) before retrie
 
 ### 2. Inspect and delegate
 
-In single-agent mode, read each guide when starting its axis pass. Complete every axis in the agreed scope; reading in stages does not make its checks optional.
+In single-agent mode, read each guide when starting its dimension pass. Complete every dimension in the agreed scope; reading in stages does not make its checks optional.
 
-In parallel mode, assign one read-only pass per selected axis and schedule passes within available capacity. Give each child the same fixed scope, its axis guide, the [Finding requirements](#finding-requirements), and the [Reporting contract](#reporting-contract). Children return concise findings without editing files, staging changes, or posting comments.
+In parallel mode, assign one read-only pass per selected dimension and schedule passes within available capacity. Give each child the same fixed scope, its dimension guide, the [Finding requirements](#finding-requirements), and the [Reporting contract](#reporting-contract). Children return concise findings without editing files, staging changes, or posting comments.
 
 The main agent reads the relevant guide when validating a delegated finding. It remains responsible for complete scope coverage and the final review.
 
 ### 3. Validate and report
 
-Validate candidate findings against the source and axis guide. Deduplicate underlying issues and select one primary axis per finding. Sort by severity; within a severity, prioritize material structural costs over local legibility notes.
+Validate candidate findings against the source and dimension guide. Deduplicate underlying issues and select one primary dimension per finding. Sort by severity; within a severity, prioritize material structural costs over local legibility notes.
 
 Use existing verification evidence and focused checks to resolve material uncertainty. Complete project-required checks that apply to the review. Broaden or repeat checks only when new changes, failures, or unresolved concerns justify them. Do not require tests that merely mirror implementation details.
 
-Before finalizing, confirm coverage of the agreed files and axes, the evidence for each finding, and the requested delivery. For publication, follow the current-head and inline-anchor checks in the GitHub reference.
+Before finalizing, confirm coverage of the agreed files and dimensions, the evidence for each finding, and the requested delivery. For publication, follow the current-head and inline-anchor checks in the GitHub reference.
 
 ## Finding requirements
 
@@ -119,6 +119,6 @@ Approve when the change improves overall code health and no blocking findings re
 
 ## Reporting contract
 
-Return a verdict (`approve`, `request changes`, `comment only`, or `[blocked]`), findings, and material verification gaps. Each finding includes severity, primary axis, location, issue, why it matters, and suggested direction. State which checks ran and distinguish observed results from code-based inference.
+Return a verdict (`approve`, `request changes`, `comment only`, or `[blocked]`), findings, and material verification gaps. Each finding includes severity, primary dimension, location, issue, why it matters, and suggested direction. State which checks ran and distinguish observed results from code-based inference.
 
 Keep the report concise and omit empty optional sections. Include cosmetic nits only when requested. Read [Communication guidance](references/behaviour-communication.md) when drafting review comments or handling disagreements.
