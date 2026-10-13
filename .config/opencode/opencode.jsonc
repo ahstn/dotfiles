@@ -1,6 +1,27 @@
 {
   "$schema": "https://opencode.ai/config.json",
 
+  // Cached upstream checkouts are read-only and may lag the installed version.
+  "references": {
+    "axum": {
+      "repository": "tokio-rs/axum",
+      "description": "Consult for Axum routing and middleware internals; check Cargo.lock before relying on upstream behavior. Treat the cached checkout as read-only.",
+    },
+    "tanstack-router": {
+      "repository": "TanStack/router",
+      "description": "Consult for TanStack Router and Start internals; check installed versions first. Treat the cached checkout as read-only.",
+    },
+    "opencode": {
+      "repository": "anomalyco/opencode",
+      "branch": "2.0",
+      "description": "Consult for OpenCode V2 internals and plugin APIs. Use https://opencode.ai/v2/docs/ as the configuration contract and check the installed version. Treat the cached checkout as read-only.",
+    },
+    "dotfiles": {
+      "path": "~/git/dotfiles",
+      "description": "Local ahstn/dotfiles checkout: consult for shared agent skills, shell settings, and mise-managed configuration. Inspect AGENTS.md and existing changes before editing; never commit machine-local credentials or work copies.",
+    },
+  },
+
   // Model selection and credentials remain machine-local.
   "permissions": [
     { "action": "*", "resource": "*", "effect": "allow" },
