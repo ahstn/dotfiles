@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Model selection and credentials remain machine-local.
+  "permissions": [
+    { "action": "*", "resource": "*", "effect": "allow" },
+  ],
+
+  // Preserve the existing formatter preference; do not add idle model usage.
+  "formatter": {
+    "prettier": { "disabled": true },
+  },
+  "warming": false,
+}
