@@ -19,6 +19,7 @@ enter = "mise outdated oh-my-pi pi"
 "~/.config/tmux" = { source = ".config/tmux" }
 "~/.config/tty7/config.json" = { source = ".config/tty7/config.json" }
 "~/.config/dcg" = { source = ".config/dcg" }
+"~/.config/opencode/plugins" = { source = ".config/opencode/plugins" }
 "~/.config/starship.toml" = { source = ".config/starship.toml" }
 "~/Library/Application Support/Tern/settings.json" = { source = ".config/tern/settings.json"}
 
@@ -29,6 +30,10 @@ enter = "mise outdated oh-my-pi pi"
 # Pi & Oh-my-pi
 # Pi for everyday, small tasks. Oh-my-pi for more complex, multi-step tasks.
 "~/.pi/" = { source = ".pi" }
+
+# Paseo bots (paseo-bots plugin) - settings only. The directory is linked as a whole so the plugin's writes
+# land in the repo. Where the rest lives, and why it is not tracked: .paseo/README.md
+"~/.paseo/plugin-settings/paseo-bots" = { source = ".paseo/plugin-settings/paseo-bots" }
 
 # Skills - NB: Some harnesses don't resolve symlinks.
 "~/.agents/skills" = { source = "skills", mode = "copy", exclude = ["_draft"] }

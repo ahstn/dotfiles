@@ -35,6 +35,7 @@ codex = "latest"
 pi = { version = "latest", depends = ["node"], postinstall = "pi update --extensions" }
 oh-my-pi = { version = "latest", rename_exe = "omp" }
 "github:ahstn/oceans-llm" = "latest"
+"npm:@opencode/cli" = { version = "latest", allow_builds = true }
 
 # containers
 colima = "latest"
@@ -58,6 +59,7 @@ fzf = "latest"
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
 vale = "latest"
 1password = "latest"
+neovim = "latest"
 
 [hooks]
 enter = "mise i -q"
