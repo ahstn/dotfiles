@@ -94,7 +94,7 @@ Prefer local transactions for local invariants. Use durable events, an outbox, s
 - Does configuration select policy cleanly, or leak feature knowledge through unrelated layers?
 - Do new providers, modes, or record versions extend one canonical policy, or copy conditionals and mappings into each integration?
 
-Dead code and simplification owns whether an abstraction, mode, wrapper, branch, or module should exist at all. Architecture owns where necessary code belongs and how its boundaries point.
+Simplification owns whether an abstraction, mode, wrapper, branch, or module should exist at all. Architecture owns where necessary code belongs and how its boundaries point.
 
 ## Useful patterns, applied conditionally
 

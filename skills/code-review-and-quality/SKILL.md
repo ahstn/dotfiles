@@ -1,8 +1,8 @@
 ---
 name: code-review-and-quality
 description: >-
-  Reviews local diffs and GitHub pull requests for defects and material code-health costs.
-  Use only when explicitly invoked. Supports review comment triage and parallel dimension passes.
+  Reviews staged or unstaged diffs, branches, and GitHub pull requests for defects and material
+  code-health costs. Supports review-comment triage, inline PR comments, and parallel dimension passes.
 disable-model-invocation: true
 argument-hint: "[target=...] [execution=auto|single-agent|parallel] [delivery=thread-only|github-inline]"
 ---
@@ -11,15 +11,15 @@ argument-hint: "[target=...] [execution=auto|single-agent|parallel] [delivery=th
 
 ## Purpose and review boundary
 
-Review the agreed change for concrete defects and material code-health costs. The caller's explicit instructions take precedence over skill defaults. Cover every changed file and all dimensions by default; honor a requested subset of files or dimensions and state that scope.
+Review the agreed change for concrete defects and material code-health costs. The requester's explicit instructions take precedence over skill defaults. Cover every changed file and all dimensions by default; honor a requested subset of files or dimensions and state that scope.
 
-Review without editing the patch or the rubric unless the caller requests those changes.
+Review without editing the patch or the rubric unless the requester asks for those changes.
 
 ## Invocation options
 
-Caller options: $ARGUMENTS
+Requester options: $ARGUMENTS
 
-Read named options from the invocation text or the caller's prompt, in any order. Accept equivalent plain-language requests and apply defaults only to omitted settings. If the client leaves placeholders unchanged, ignore them and use the caller's prompt.
+Read named options from the invocation text or the requester's prompt, in any order. Accept equivalent plain-language requests and apply defaults only to omitted settings. If the harness leaves placeholders unchanged, ignore them and use the requester's prompt.
 
 | Option | Values | Default |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Read named options from the invocation text or the caller's prompt, in any order
 | `execution` | `auto`, `single-agent`, `parallel` | `auto` |
 | `delivery` | `thread-only`, `github-inline` | `thread-only` |
 
-Resolve invalid or conflicting options before the affected action. Continue independent review work while clarification is pending. If delivery is unresolved, draft findings without posting. Use the [Reporting contract](#reporting-contract) unless the caller requests another format.
+Resolve invalid or conflicting options before the affected action. Continue independent review work while clarification is pending. If delivery is unresolved, draft findings without posting. Use the [Reporting contract](#reporting-contract) unless the requester asks for another format.
 
 ### Target and source
 
@@ -36,19 +36,21 @@ Local targets select the corresponding git diff. A PR URL selects GitHub as auth
 ### Execution
 
 - **single-agent**: review in the main agent. This explicit override prohibits delegation.
-- **parallel**: run separate dimension passes within the client's available concurrency. If delegation is unavailable, perform the passes directly and disclose the fallback.
+- **parallel**: run separate dimension passes within the harness's available concurrency. If delegation is unavailable, perform the passes directly and disclose the fallback.
 
 For **auto**, count added plus deleted lines across the selected diff, including tests. A replacement counts as one addition and one deletion; do not use net line growth.
 
-- **Fewer than 80 changed lines:** use one agent. Delegate only a bounded question whose answer could materially change the review.
-- **80 changed lines or more:** use parallel mode when scope, complexity, or risk benefits from separate passes. Straightforward changes can stay in single-agent mode.
+The threshold is approximately 80 changed lines, not an exact cutoff. Below it, one agent can hold the whole change in view, and separate passes cost more to coordinate than they add.
+
+- **Under ~80 changed lines:** use one agent. Delegate only a bounded question whose answer could materially change the review.
+- **~80 changed lines or more:** use parallel mode when scope, complexity, or risk benefits from separate passes. Straightforward changes can stay in single-agent mode.
 
 After collecting the scope, state the target, execution choice and brief reason, and delivery mode.
 
 ### Delivery
 
 - **thread-only**: return findings in the current conversation.
-- **github-inline**: publish inline comments on the selected GitHub PR after verification. An explicit caller option or equivalent request authorizes publication. This mode requires a GitHub PR target.
+- **github-inline**: publish inline comments on the selected GitHub PR after verification. An explicit requester option or equivalent request authorizes publication. This mode requires a GitHub PR target.
 
 ### Examples
 
@@ -58,7 +60,7 @@ $code-review-and-quality target=branch:main execution=auto delivery=thread-only
 /code-review-and-quality target=https://github.com/owner/repo/pull/123 delivery=github-inline
 ```
 
-## Dimension reference map
+## Dimension guide map
 
 The guides own the detailed checks and dimension-specific evidence requirements. Ownership determines where to report an issue; evidence can cross dimension boundaries.
 
@@ -69,7 +71,7 @@ The guides own the detailed checks and dimension-specific evidence requirements.
 | [Design & architecture](dimensions/architecture.md) | Placement, ownership, dependency direction, encapsulation, public contracts, and cross-layer coupling. |
 | [Security & trust boundaries](dimensions/security.md) | Untrusted input, identity, authority, sensitive data, and attacker-controlled resource use. |
 | [Performance & scalability](dimensions/performance.md) | Normal-workload cost: complexity, I/O, allocations, contention, concurrency bounds, and backpressure. |
-| [Dead code & simplification](dimensions/dead-code-and-simplifying.md) | Removable code, concepts, decision points, wrappers, modes, and reachable states. |
+| [Simplification & dead code](dimensions/simplification.md) | Removable code, concepts, decision points, wrappers, modes, and reachable states. |
 
 ## Workflow
 
@@ -89,7 +91,7 @@ For a PR target, read [GitHub review](references/github-review.md) before retrie
 
 In single-agent mode, read each guide when starting its dimension pass. Complete every dimension in the agreed scope; reading in stages does not make its checks optional.
 
-In parallel mode, assign one read-only pass per selected dimension and schedule passes within available capacity. Give each child the same fixed scope, its dimension guide, the [Finding requirements](#finding-requirements), and the [Reporting contract](#reporting-contract). Children return concise findings without editing files, staging changes, or posting comments.
+In parallel mode, assign one read-only pass per selected dimension and schedule passes within available capacity. Give each subagent the same fixed scope, its dimension guide, the [Finding requirements](#finding-requirements), and the [Reporting contract](#reporting-contract). Subagents return concise findings without editing files, staging changes, or posting comments.
 
 The main agent reads the relevant guide when validating a delegated finding. It remains responsible for complete scope coverage and the final review.
 
@@ -121,4 +123,4 @@ Approve when the change improves overall code health and no blocking findings re
 
 Return a verdict (`approve`, `request changes`, `comment only`, or `[blocked]`), findings, and material verification gaps. Each finding includes severity, primary dimension, location, issue, why it matters, and suggested direction. State which checks ran and distinguish observed results from code-based inference.
 
-Keep the report concise and omit empty optional sections. Include cosmetic nits only when requested. Read [Communication guidance](references/behaviour-communication.md) when drafting review comments or handling disagreements.
+Keep the report concise and omit empty optional sections. Include cosmetic nits only when requested. Read [Communication guidance](references/communication.md) when drafting review comments or handling disagreements.

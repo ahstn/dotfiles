@@ -115,4 +115,4 @@ A correctness finding must include:
 - the violated contract or invariant
 - the smallest safe correction direction
 
-Do not spend time on style unless it hides a behavior defect. Placement and dependency direction belong to architecture. Removable complexity belongs to dead code and simplification.
+Do not spend time on style unless it hides a behavior defect. Placement and dependency direction belong to architecture. Removable complexity belongs to simplification.

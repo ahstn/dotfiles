@@ -1,4 +1,4 @@
-# Dead Code & Simplification Dimension
+# Simplification & Dead Code Dimension
 
 Focus on code and concepts the patch can remove or avoid. This dimension owns dead code, obsolete paths, unnecessary abstractions, state-space growth, avoidable branching, and concrete structural simplifications across every changed file.
 
@@ -18,7 +18,7 @@ This dimension decides whether code or a concept should exist and gives the simp
 - security owns trust boundaries and exploit paths
 - performance owns measured or plausible runtime cost
 
-When one hunk raises several concerns, report it here only when the primary remedy deletes or collapses code, concepts, states, or paths. Otherwise leave the finding to the owning dimension. The main reviewer deduplicates overlap.
+When one hunk raises several concerns, report it here only when the primary remedy deletes or collapses code, concepts, states, or paths. Otherwise leave the finding to the owning dimension. The main agent deduplicates overlap.
 
 ## Required checks
 
@@ -104,7 +104,7 @@ Prefer, in order:
 
 A remedy must fit the patch and surrounding architecture. Do not prescribe a broad rewrite when a smaller change removes the regression.
 
-## Finding and approval bar
+## Finding bar
 
 Prioritize by severity. Within the same severity, prefer:
 

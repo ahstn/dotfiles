@@ -94,4 +94,4 @@ Treat a false comment as a defect. Do not request comments for code that can sta
 
 A maintainability finding must identify the reader burden and its likely change cost. Point to the confusing name, hidden dependency, control-flow jump, state mutation, or misleading comment, then give a local correction direction.
 
-Do not turn this dimension into formatting review. Do not report dead code, obsolete paths, unearned abstractions, broad structural simplifications, or file decomposition. Those belong to dead code and simplification.
+Do not turn this dimension into formatting review. Do not report dead code, obsolete paths, unearned abstractions, broad structural simplifications, or file decomposition. Those belong to simplification.

@@ -74,7 +74,7 @@ Do not infer that no findings exist from an empty review body, one recent bot ru
 
 ## Commenting
 
-Use the caller's delivery mode from [Invocation options](../SKILL.md#invocation-options). Apply [Finding requirements](../SKILL.md#finding-requirements) before publication.
+Use the requester's delivery mode from [Invocation options](../SKILL.md#invocation-options). Apply [Finding requirements](../SKILL.md#finding-requirements) before publication.
 
 Post inline findings on the changed line or smallest valid diff range. Do not post top-level `LGTM` or `no issues` comments unless requested.
 
