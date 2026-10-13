@@ -314,7 +314,7 @@ cmd_check() {
     macos) guest -- 'set -x; eval "$(/opt/homebrew/bin/brew shellenv)"; export PATH=$HOME/.local/bin:$PATH
       sw_vers; uname -m; mise ls 2>&1 | head -20; dscl . -read ~ UserShell; df -h / | tail -1
       ls "/Volumes/My Shared Files" || echo "no shared folder"
-      ls -d /Applications/{Ghostty,Helium,Paseo,MonoCode,tty7,Claude,ChatGPT,bb}.app
+      for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
       sudo -n tailscale status | head -3 || true
       launchctl print gui/$(id -u)/sh.paseo.daemon 2>/dev/null | grep -E "state|pid" | head -2
       curl -fsS --retry 15 --retry-connrefused --retry-delay 2 -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true

@@ -88,7 +88,8 @@ VMs. Steps that are already done are skipped. Homebrew is installed first if mis
 - **Ghostty, Helium, Paseo (desktop), Claude, ChatGPT, bb:** Homebrew casks `ghostty`, `helium-browser`,
   `paseo`, `claude`, `chatgpt` and `bb` ([get-bb/bb](https://github.com/get-bb/bb)). The cask `helium` is an
   unrelated, disabled app. The dotfiles make Helium the default browser. ChatGPT stands in for Codex Desktop,
-  whose `codex-app` cask Homebrew deprecated as discontinued upstream.
+  whose `codex-app` cask Homebrew deprecated as discontinued upstream. Casks go to `~/Applications` once the
+  dotfiles set `HOMEBREW_CASK_OPTS`; the Dock and `check` look in both.
 - **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
   release's `checksums.txt`.
 - **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release, checked against the

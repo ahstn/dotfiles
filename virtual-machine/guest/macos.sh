@@ -183,11 +183,14 @@ fi
 
 # Dock, after the bootstrap: its shared [bootstrap.macos.dock] (bottom, autohide) is for the host Macs. A VM gets
 # exactly these apps (Finder is always first), on the right and always shown. Rewritten only when it differs.
-dock_apps=(/Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app /Applications/Paseo.app
-  /Applications/MonoCode.app /Applications/Claude.app /Applications/ChatGPT.app /Applications/bb.app
-  "/System/Applications/System Settings.app")
+# Casks land in ~/Applications once the dotfiles' .zshenv sets HOMEBREW_CASK_OPTS, and in /Applications before.
+dock_apps=(Ghostty Helium tty7 Paseo MonoCode Claude ChatGPT bb "System Settings")
 want=""
-for app in "${dock_apps[@]}"; do [ ! -d "$app" ] || want+="$app"$'\n'; done
+for name in "${dock_apps[@]}"; do
+  for dir in /Applications "$HOME/Applications" /System/Applications; do
+    [ ! -d "$dir/$name.app" ] || { want+="$dir/$name.app"$'\n'; break; }
+  done
+done
 have="$(defaults export com.apple.dock - | python3 -c '
 import plistlib, sys, urllib.parse
 for t in plistlib.loads(sys.stdin.buffer.read()).get("persistent-apps", []):
