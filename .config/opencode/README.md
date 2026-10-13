@@ -5,6 +5,11 @@ only that file into `~/.config/opencode/`; credentials, databases, provider
 connections, and terminal settings remain machine-local. Warming stays disabled
 and the existing disabled Prettier preference is preserved.
 
+Web search explicitly selects `exa`. Use the existing OpenCode connection, or
+connect Exa through `/connect` / `EXA_API_KEY` on each machine. No search credential
+belongs in this repository. Search queries leave the machine; do not include
+private source, credentials, or sensitive incident details.
+
 ## References
 
 - `axum`: upstream Axum source; compare with the consuming project's lockfile.

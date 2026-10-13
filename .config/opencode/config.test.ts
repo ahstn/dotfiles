@@ -62,6 +62,10 @@ describe("configuration structure", () => {
     }
   })
 
+  test("explicitly selects Exa without embedding a search credential", () => {
+    expect(config.websearch).toEqual({ provider: "exa" })
+  })
+
   test("mise deploys only the config file, not the entire runtime directory", () => {
     const mise = Bun.TOML.parse(readFileSync(new URL("../../mise.toml", import.meta.url), "utf8")) as {
       dotfiles: Record<string, { source: string }>
