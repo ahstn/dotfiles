@@ -1,0 +1,16 @@
+.config/opencode/opencode.jsonc
+  h_2f452a9c375069 1-14
+mise.toml
+  h_2f452a9c375069 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57111afa3aac0014ec3accac3b406938b8adaa03",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
