@@ -85,14 +85,19 @@ apt_repo tailscale https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg
   'Types: deb' 'URIs: https://pkgs.tailscale.com/stable/ubuntu' 'Suites: resolute' 'Components: main'
 apt_install tailscale
 # Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
-# on no command line. --operator lets $USER run `tailscale` without sudo.
+# on no command line. The trace is off while the key is expanded. --operator lets $USER run `tailscale` without sudo.
+{ set +x; } 2>/dev/null
+key='' has_key=''
 if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-  if ! tailscale status >/dev/null 2>&1; then
-    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
-    sudo tailscale up --operator="$USER" --auth-key="file:$key"
-    rm -f "$key" && trap - EXIT
-  fi
-elif ! tailscale status >/dev/null 2>&1; then
+  has_key=1
+  tailscale status >/dev/null 2>&1 || { key="$(mktemp)" && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"; }
+fi
+set -x
+if [ -n "$key" ]; then
+  trap 'rm -f "$key"' EXIT
+  sudo tailscale up --operator="$USER" --auth-key="file:$key"
+  rm -f "$key" && trap - EXIT
+elif [ -z "$has_key" ] && ! tailscale status >/dev/null 2>&1; then
   echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up --operator=\$USER"
 fi
 

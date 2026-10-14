@@ -1,5 +1,5 @@
 #!/bin/bash
-# Reproducible Ubuntu or macOS VM on VMPal (Apple Silicon). See README.md. Earlier engines: _tart_macos/, _utm_ubuntu/.
+# Reproducible macOS or Ubuntu VM on VMPal (Apple Silicon). See README.md, and ../README.md for both engines.
 # Everything in the guest goes through VMPal Tools (`vmpal exec` / `vmpal cp`), so provisioning needs no SSH.
 # Targets macOS's bash 3.2: no associative arrays, no mapfile.
 set -euo pipefail
@@ -13,18 +13,28 @@ _env_overrides="$(export -p | grep -E '^declare -x (VM_|VMPAL=)' || true)"
 eval "$_env_overrides"
 unset _env_overrides
 
-: "${VM_OS:=ubuntu}"                       # ubuntu | macos
+: "${VM_OS:=macos}"                        # macos | ubuntu
+# macOS matches Tart's images (admin/admin). Linux reserves "admin", so Ubuntu uses this Mac's user name and
+# keeps the password VMPal makes.
 case "$VM_OS" in
-  ubuntu) : "${VM_NAME:=ubuntu-dev}" "${VM_SYSTEM:=download:ubuntu}" "${VM_DISK_GB:=64}" "${VM_ROSETTA:=1}" ;;
-  macos)  : "${VM_NAME:=macos-dev}"  "${VM_SYSTEM:=download:macOS}"  "${VM_DISK_GB:=100}" "${VM_ROSETTA:=0}" ;;
-  *) echo "VM_OS must be ubuntu or macos" >&2; exit 1 ;;
+  macos)  : "${VM_NAME:=macos-dev}"  "${VM_SYSTEM:=download:macOS}"  "${VM_DISK_GB:=100}" "${VM_ROSETTA:=0}" \
+              "${VM_USER:=admin}" "${VM_PASSWORD=admin}" ;;
+  ubuntu) : "${VM_NAME:=ubuntu-dev}" "${VM_SYSTEM:=download:ubuntu}" "${VM_DISK_GB:=64}" "${VM_ROSETTA:=1}" \
+              "${VM_USER:=$(id -un)}" "${VM_PASSWORD=}" ;;
+  *) echo "VM_OS must be macos or ubuntu" >&2; exit 1 ;;
 esac
 : "${VM_CPU:=$(( $(sysctl -n hw.ncpu) / 2 ))}"
 : "${VM_MEMORY_GB:=8}"
 : "${VM_SHARE_DIR=$HOME/git}"              # shared live into the guest; empty = none
 : "${VM_SHARE_NAME:=git}"
-: "${VM_USER:=$(id -un)}"                 # guest account, set at create only (VMPal's default is this Mac's user)
+# VM_USER: the guest account, set at create only. VM_PASSWORD: set by `all`; empty = keep VMPal's generated one.
+: "${VM_NETWORK:=shared}"                  # shared (NAT, this Mac only) | bridged (own LAN address) | host-only
+: "${VM_BRIDGE:=auto}"                     # bridged only: a Mac interface such as en0, or auto for the main one
+: "${VM_LOCAL_NETWORK:=default}"           # on | off | default: a 2nd NIC on 192.168.128.x with this Mac and its VMs
 : "${VM_SSH_PUBKEY:=$HOME/.ssh/id_ed25519.pub}"
+: "${VM_SSHD_PORT:=48222}"
+: "${VM_SSHD_ALLOW_FROM:=192.168.1.168}"   # LAN clients allowed into the ephemeral sshd (bridged only)
+: "${VM_SSHD_AUTHORIZED_KEYS:=$VM_SSH_PUBKEY}"
 : "${VM_GITHUB_AUTH_KEY=$HOME/.ssh/github}"                 # private key for git@github.com; empty = skip
 : "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
 
@@ -62,14 +72,24 @@ guest() {
 # The account password VMPal made and keeps in this Mac's keychain. macOS guests need it once for sudo.
 account_password() { vmpal info "$VM_NAME" --show-password --json | python3 -c 'import json, sys; print(json.load(sys.stdin)["account"]["password"])'; }
 
+# The guest's address on its main network, as VMPal reports it: 192.168.64.x when shared, a LAN address when
+# bridged. VMPal learns it some seconds after the guest can run commands.
 guest_ip() {
-  case "$VM_OS" in
-    ubuntu) guest -- 'ip -4 -o route get 1.1.1.1 | sed -E "s/.* src ([0-9.]+).*/\1/"' ;;
-    macos)  guest -- 'ipconfig getifaddr en0' ;;
-  esac
+  local ip i
+  for i in $(seq 30); do
+    ip="$(vm_field 'v.get("internetAddress") or ""')"
+    [ -z "$ip" ] || { echo "$ip"; return; }
+    sleep 1
+  done
+  die "VMPal reports no address for '$VM_NAME'"
 }
 
-guest_user() { vm_field 'v["account"]["userName"]'; }
+# The network mode the running VM is on. VMPal falls back to shared when a bridged network does not start
+# (seen with Ubuntu on VMPal 0.66: "vmnet didn't start the interface (status 1001)"); a later start usually works.
+network_in_use() { vm_field 'v["sessionHardware"]["networkMode"] if v["state"] == "running" else ""'; }
+
+# Setup Assistant can create a different account from the name VMPal records.
+guest_user() { guest -- 'id -un'; }
 
 # --- subcommands -------------------------------------------------------------
 
@@ -87,7 +107,7 @@ cmd_prereqs() {
 
 cmd_create() {
   [ "$(vm_state)" = missing ] || die "VM '$VM_NAME' already exists (delete with: vmpal delete '$VM_NAME' --force)"
-  # guest/$VM_OS.sh provisions only its own OS; catch a mismatch before the unattended install, not after.
+  # The guest script provisions only its own OS; catch a mismatch before the unattended install, not after.
   case "$(printf '%s' "$VM_SYSTEM" | tr '[:upper:]' '[:lower:]')" in
     *"$VM_OS"*) ;;
     *) die "VM_SYSTEM '$VM_SYSTEM' is not a $VM_OS system (VM_OS=$VM_OS); see: vmpal systems" ;;
@@ -99,9 +119,10 @@ cmd_create() {
   cmd_configure
 }
 
-# Apply CPU, memory, disk, Rosetta and the shared folder. Settings that need a restart are applied by one.
+# Apply CPU, memory, disk, Rosetta, networks and the shared folder. Settings that need a restart are applied by one.
 cmd_configure() {
-  local args=(--cpus "$VM_CPU" --memory "$VM_MEMORY_GB") cur
+  local args=(--cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --network-mode "$VM_NETWORK" --local-network "$VM_LOCAL_NETWORK") cur
+  [ "$VM_NETWORK" != bridged ] || args+=(--bridge "$VM_BRIDGE")
   cur="$(vm_field 'v["diskLimitGB"]')"
   [ "$VM_DISK_GB" -le "${cur%.*}" ] || args+=(--disk "$VM_DISK_GB")   # grow only
   [ "$VM_OS" = macos ] || { [ "$VM_ROSETTA" = 1 ] && args+=(--rosetta on) || args+=(--rosetta off); }
@@ -123,6 +144,11 @@ cmd_configure() {
   if [ "$(vm_field 'len(v["pendingSettings"])')" != 0 ] && running; then
     log "restarting to apply $(vm_field '", ".join(v["pendingSettings"])')"
     vmpal restart "$VM_NAME" --apply-settings --wait
+  fi
+  if [ "$VM_NETWORK" = bridged ] && running && [ "$(network_in_use)" != bridged ]; then
+    warn "'$VM_NAME' is on $(network_in_use), not bridged: $(vm_field 'v.get("problem") or "no reason given"'); starting it again"
+    cmd_restart
+    [ "$(network_in_use)" = bridged ] || warn "'$VM_NAME' is still on $(network_in_use); try: $0 restart"
   fi
 }
 
@@ -187,9 +213,10 @@ cmd_keys() {
   log "ssh $(guest_user)@$(guest_ip)  (or: $0 ssh)"
 }
 
-# Replace the password VMPal made with VM_PASSWORD, in the guest and in VMPal's keychain entry, so VMPal can
+# Replace the password VMPal keeps with VM_PASSWORD, in the guest and in VMPal's keychain entry, so VMPal can
 # still sign in. The passwords reach the guest as environment variables, on no host command line. In a macOS
 # guest, dscl and security take them as arguments, visible to the guest's other processes while they run.
+# macOS needs the old password: root's `dscl -passwd` without it fails (eDSAuthFailed) for a secure-token account.
 cmd_password() {
   local pw="${VM_PASSWORD:-}" again
   if [ -z "$pw" ]; then
@@ -208,10 +235,22 @@ cmd_password() {
         'printf "%s:%s\n" "$VM_GUEST_USER" "$VM_NEW_PW" | chpasswd' ;;
     macos)
       cmd_sudo
-      VM_OLD_PW="$(account_password)" VM_NEW_PW="$pw" guest --env VM_OLD_PW --env VM_NEW_PW -- '
-        sudo dscl . -passwd "/Users/$USER" "$VM_NEW_PW"
+      # Automatic login reads /etc/kcpassword: the password XORed with a fixed, published key, NUL-padded to
+      # 12-byte blocks. sysadminctl -autologin set fails in VMs (SACSetAutoLoginPassword error 22) yet exits 0.
+      # Encoded here, since a fresh guest's python3 is only the Command Line Tools installer stub.
+      VM_OLD_PW="$(account_password)" VM_NEW_PW="$pw" VM_KCPASSWORD="$(printf '%s' "$pw" | python3 -c "import base64, sys
+k = [0x7D, 0x89, 0x52, 0x23, 0xD2, 0xBC, 0xDD, 0xEA, 0xA3, 0xB9, 0x1F]
+p = sys.stdin.buffer.read(); p += bytes(12 - len(p) % 12)
+print(base64.b64encode(bytes(b ^ k[i % len(k)] for i, b in enumerate(p))).decode())")" \
+        guest --env VM_OLD_PW --env VM_NEW_PW --env VM_KCPASSWORD -- '
+        set -e
+        dscl . -passwd "/Users/$USER" "$VM_OLD_PW" "$VM_NEW_PW" || { echo "the guest password is not the one VMPal keeps" >&2; exit 1; }
         security set-keychain-password -o "$VM_OLD_PW" -p "$VM_NEW_PW" ~/Library/Keychains/login.keychain-db \
-          || echo "warn: login keychain password unchanged" >&2' ;;
+          || echo "warn: login keychain password unchanged" >&2
+        if [ "$(sudo defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null)" = "$USER" ]; then
+          printf "%s" "$VM_KCPASSWORD" | base64 -D | sudo tee /etc/kcpassword >/dev/null
+          sudo chmod 600 /etc/kcpassword
+        fi' ;;
   esac
   printf '%s' "$pw" | vmpal set "$VM_NAME" --account-password-file - >/dev/null
   log "password changed for $(guest_user), and VMPal keeps the new one"
@@ -226,11 +265,15 @@ cmd_provision() {
     ubuntu) share="/media/VMPal/$VM_SHARE_NAME" ;;
     macos)  share="/Volumes/My Shared Files/$VM_SHARE_NAME" ;;
   esac
-  log "running guest/$VM_OS.sh as $(guest_user)"
-  guest -- 'mkdir -p ~/.cache/vm'
-  vmpal cp "$HERE/guest/$VM_OS.sh" "$VM_NAME:.cache/vm/provision.sh"
+  # macOS runs the provisioning shared with tart-macos, which sources this engine's hooks from beside it.
+  local script="$HERE/guest/ubuntu.sh"
+  [ "$VM_OS" != macos ] || script="$HERE/../guest/macos.sh"
+  log "running ${script#"$HERE/"} as $(guest_user)"
+  guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
+  vmpal cp "$script" "$VM_NAME:.cache/vm/provision.sh"
+  [ "$VM_OS" != macos ] || vmpal cp "$HERE/guest/macos-engine.sh" "$VM_NAME:.cache/vm/macos-engine.sh"
   # The Tailscale auth key, when set, goes as an environment variable and lands in no file on this side.
-  local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=$VM_SHARE_NAME")
+  local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}")
   [ -z "${VM_TAILSCALE_AUTHKEY:-}" ] || env+=(--env VM_TAILSCALE_AUTHKEY)
   guest "${env[@]}" -- 'bash ~/.cache/vm/provision.sh'
   [ "$VM_OS" != macos ] || confirm_default_browser
@@ -271,7 +314,7 @@ cmd_check() {
     macos) guest -- 'set -x; eval "$(/opt/homebrew/bin/brew shellenv)"; export PATH=$HOME/.local/bin:$PATH
       sw_vers; uname -m; mise ls 2>&1 | head -20; dscl . -read ~ UserShell; df -h / | tail -1
       ls "/Volumes/My Shared Files" || echo "no shared folder"
-      ls -d /Applications/{Ghostty,Helium,Paseo,MonoCode,tty7}.app
+      for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
       sudo -n tailscale status | head -3 || true
       launchctl print gui/$(id -u)/sh.paseo.daemon 2>/dev/null | grep -E "state|pid" | head -2
       curl -fsS --retry 15 --retry-connrefused --retry-delay 2 -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true
@@ -343,6 +386,49 @@ cmd_ssh() {
   [ -f "${VM_SSH_PUBKEY%.pub}" ] && opts+=(-i "${VM_SSH_PUBKEY%.pub}" -o IdentitiesOnly=yes)
   exec ssh "${opts[@]}" "$(guest_user)@$(guest_ip)" "$@"
 }
+
+# Ephemeral sshd for another device on the LAN, from the dotfiles' `mise run sshd` task and template: key-only,
+# with its own authorized_keys (VM_SSHD_AUTHORIZED_KEYS) and AllowUsers <user>@VM_SSHD_ALLOW_FROM. Bridged
+# networking keeps the client's source address, so the allowlist applies as written. The daemon is tracked
+# through the template's PidFile; stopping it ends open sessions, its children, first.
+SSHD_PID_FN='pidf=$HOME/.config/sshd/sshd.pid
+sshd_pid() { p=$(cat "$pidf" 2>/dev/null) && ps -p "$p" -o command= 2>/dev/null | grep -q "sshd.* -D" && echo "$p"; }
+sshd_stop() { pkill -TERM -P "$1" 2>/dev/null; kill "$1"; }'
+
+cmd_sshd() {
+  local action="${1:-start}" minutes="${2:-180}" ip
+  need_running
+  case "$action" in
+    start)
+      [ -f "$VM_SSHD_AUTHORIZED_KEYS" ] || die "no client public key at $VM_SSHD_AUTHORIZED_KEYS (set VM_SSHD_AUTHORIZED_KEYS)"
+      [ "$(network_in_use)" = bridged ] \
+        || warn "'$VM_NAME' is not bridged, so only this Mac can reach the sshd (VM_NETWORK=bridged $0 configure)"
+      ip="$(guest_ip)"
+      VM_KEYS="$(cat "$VM_SSHD_AUTHORIZED_KEYS")" guest --env VM_KEYS -- \
+        'mkdir -p ~/.config/sshd && umask 077 && printf "%s\n" "$VM_KEYS" > ~/.config/sshd/authorized_keys'
+      # setsid (Linux) or nohup alone (macOS) keeps the task running once `vmpal exec` returns.
+      guest --env "SSHD_LISTEN=$ip:$VM_SSHD_PORT" --env "SSHD_ALLOW_FROM=$VM_SSHD_ALLOW_FROM" -- "$SSHD_PID_FN
+        [ ! -x /opt/homebrew/bin/brew ] || eval \"\$(/opt/homebrew/bin/brew shellenv)\"
+        export PATH=\$HOME/.local/bin:\$PATH MISE_YES=1 SSHD_USER=\$(id -un)
+        [ -d /run/sshd ] || [ \"\$(uname -s)\" = Darwin ] || sudo -n mkdir -p /run/sshd
+        cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
+        if p=\$(sshd_pid); then sshd_stop \$p; sleep 1; fi
+        # The task needs no tools; without this, mise first installs every tool in mise.toml.
+        detach=\$(command -v setsid || true)
+        MISE_TASK_RUN_AUTO_INSTALL=false \$detach nohup mise run sshd -m $minutes > ~/.config/sshd/sshd.log 2>&1 < /dev/null &
+        for _ in \$(seq 60); do sshd_pid >/dev/null && break; sleep 1; done
+        tail -20 ~/.config/sshd/sshd.log
+        sshd_pid >/dev/null || { echo 'sshd did not start within 60s (log above)' >&2; exit 1; }"
+      log "ephemeral sshd up for ${minutes}m: ssh -p $VM_SSHD_PORT $(guest_user)@$ip (from $VM_SSHD_ALLOW_FROM)" ;;
+    stop)
+      guest -- "$SSHD_PID_FN
+        if p=\$(sshd_pid); then sshd_stop \$p && echo stopped; else echo 'not running'; fi" ;;
+    status)
+      guest -- "$SSHD_PID_FN
+        if p=\$(sshd_pid); then echo \"running (pid \$p)\"; else echo stopped; fi" ;;
+    *) die "usage: $0 sshd [start [minutes]|stop|status]" ;;
+  esac
+}
 cmd_ip()   { need_running; guest_ip; }
 cmd_exec() { need_running; vmpal exec "$VM_NAME" -- "$@"; }
 
@@ -350,7 +436,7 @@ cmd_all() {
   [ -f "$VM_SSH_PUBKEY" ] || die "no SSH public key at $VM_SSH_PUBKEY (ssh-keygen -t ed25519)"
   cmd_prereqs; cmd_create; cmd_keys
   if [ -n "${VM_PASSWORD:-}" ]; then cmd_password
-  else log "keeping the password VMPal made (vmpal info '$VM_NAME' --show-password); change it with: $0 password"
+  else log "keeping the password VMPal made (vmpal info '$VM_NAME' --show-password)"
   fi
   cmd_provision; cmd_snapshot
   cmd_start
@@ -361,27 +447,29 @@ usage() {
 Usage: $0 <command>            (VM_OS=$VM_OS, VM_NAME=$VM_NAME)
   prereqs     check the host and VMPal; link the vmpal CLI into ~/.local/bin
   create      create VM_NAME from VM_SYSTEM (unattended install), then configure
-  configure   apply CPUs/memory/disk/Rosetta/shared folder, restarting when needed
+  configure   apply CPUs/memory/disk/Rosetta/networks/shared folder, restarting when needed
   start       start the VM and wait until it runs commands
   stop        shut the VM down
   restart     stop, then start (not \`vmpal restart\`, which hangs)
   sudo        give the guest account passwordless sudo (also run by keys/provision)
   keys        authorise VM_SSH_PUBKEY and turn on key-only SSH in the guest
-  password    change the guest password (VM_PASSWORD or prompt); VMPal keeps the new one
-  provision   GitHub keys + guest/$VM_OS.sh (apps, daemons, mise bootstrap)
+  password    set the guest password to VM_PASSWORD (macOS default admin; empty = prompt); VMPal keeps the new one
+  provision   GitHub keys + the guest script (apps, daemons, mise bootstrap): ../guest/macos.sh or guest/ubuntu.sh
   check       print acceptance-check results
   github-keys copy GitHub auth/signing keys into the guest (also run by provision)
   snapshot    stop and take a VMPal snapshot (default name: provisioned)
+  sshd [start [min]|stop|status]
+              ephemeral key-only sshd on port VM_SSHD_PORT for LAN clients (VM_NETWORK=bridged)
   ssh [cmd]   ssh into the guest
   exec cmd... run a command in the guest through VMPal Tools
   ip          print the guest's IP
-  all         prereqs -> create -> keys -> [password] -> provision -> snapshot -> start
+  all         prereqs -> create -> keys -> password -> provision -> snapshot -> start
 Config: env vars or config.env (see config.env.example).
 EOF
 }
 
 case "${1:-}" in
-  prereqs|create|configure|start|stop|restart|sudo|keys|password|provision|check|snapshot|ssh|exec|ip|all) c="$1"; shift; "cmd_$c" "$@" ;;
+  prereqs|create|configure|start|stop|restart|sudo|keys|password|provision|check|snapshot|sshd|ssh|exec|ip|all) c="$1"; shift; "cmd_$c" "$@" ;;
   github-keys) shift; cmd_github_keys "$@" ;;
   *) usage; exit 1 ;;
 esac

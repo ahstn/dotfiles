@@ -1,16 +1,16 @@
 # macOS VM on Tart (Apple Silicon)
 
 Builds a macOS Tahoe VM with [Tart](https://tart.run) from Cirrus Labs' `macos-tahoe-base` image, then applies
-[ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the same apps as the Ubuntu VM inside it. A macOS guest
-runs on Apple's Virtualization.framework with paravirtualised graphics, so it is faster than the Ubuntu/UTM
-VM. It also runs the Mac builds of tty7, MonoCode and Paseo, with no FEX-Emu or llvmpipe workarounds.
+[ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps inside it. The image comes already set up
+(account, Setup Assistant, Homebrew, auto-login), so the whole run is unattended on any host that can run
+macOS 26, and `vm.sh` drives the guest over SSH.
 
-Superseded by the VMPal VMs in [`..`](../README.md). Kept for reference.
+For how this compares with VMPal, and what every macOS VM gets, see [the overview](../README.md).
 
 ## Usage
 
 ```bash
-cd virtual-machine/_tart_macos
+cd virtual-machine/tart-macos
 cp config.env.example config.env   # optional
 export VM_PASSWORD=...             # optional: replaces the image's admin/admin
 ./vm.sh all
@@ -38,9 +38,8 @@ Other commands: `configure`, `stop`, `check`, `github-keys`, `sshd`, `ssh [cmd]`
    - otherwise from the GitHub release `tart.tar.gz` (pinned `TART_VERSION`). It is checked against the release's
      checksum list, its code signature (team `9M2P8L4D89`, Cirrus Labs) and Gatekeeper. It is installed into
      `~/.local/opt/tart/<ver>`, with a `~/.local/bin/tart` wrapper.
-2. Have an SSH key (`ssh-keygen -t ed25519`). `VM_SSH_PUBKEY` authorises SSH into the guest. Its private half
-   is passed to `ssh -i` with `IdentitiesOnly=yes`, so an agent with many keys cannot exhaust `MaxAuthTries` first.
-3. Apple's licence allows two macOS VMs running at once per Mac.
+2. The [shared prerequisites](../README.md#shared-prerequisites). The private half of `VM_SSH_PUBKEY` is
+   passed to `ssh -i` with `IdentitiesOnly=yes`, so an agent with many keys cannot exhaust `MaxAuthTries` first.
 
 ## The guest account
 
@@ -76,66 +75,34 @@ The base image has one account, `admin` / `admin`:
 | Address | `tart ip --wait` (DHCP leases under NAT, the ARP table when bridged) |
 | SSH | known hosts in `build/known_hosts`; key installed with an `SSH_ASKPASS` helper, then password SSH turned off |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written |
-| Provision | `guest/provision.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
+| Provision | `../guest/macos.sh` and `guest/macos-engine.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
 | Snapshot | `tart stop`, then `tart clone <name> <name>-<tag>` (cheap APFS copy). To restore: `tart delete <name> && tart clone <name>-<tag> <name>` |
 
 The shared folder appears in the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git`.
 
-## Updating an existing VM
+## Provisioning
 
-```bash
-git pull
-./vm.sh start
-./vm.sh provision     # apps, Dock pins, daemons; the dotfiles steps are skipped unless FORCE=1
-./vm.sh check
-```
+`provision` runs the shared [`../guest/macos.sh`](../guest/macos.sh): apps, daemons, the dotfiles bootstrap and
+the Dock, as listed in [the overview](../README.md#what-every-macos-vm-gets). This engine's
+`guest/macos-engine.sh` first moves the base image's CI `~/.gitconfig` (git-credential-manager, LFS), which blocks
+the dotfiles' symlink, to `~/.gitconfig.base-image`.
 
-## Apps
+To log in to Tailscale unattended, export `VM_TAILSCALE_AUTHKEY` for `./vm.sh provision`. The key goes over SSH's
+stdin into a private `~/.tailscale-authkey`, which `tailscale up --auth-key=file:...` reads and provisioning
+deletes.
 
-`provision` installs these on every run, before the already-provisioned check. Steps that are already done
-are skipped.
+Unlike VMPal, nothing here clicks through macOS dialogs. If the default-browser confirmation appears, click
+`Use “Helium”` in the VM window.
 
-- **Ghostty, Helium, Paseo (desktop):** Homebrew casks `ghostty`, `helium-browser` and `paseo`. Note that the
-  cask `helium` is an unrelated, disabled app.
-- **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
-  release's `checksums.txt`.
-- **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release. The DMG has no checksum
-  file, so it is checked against the sha256 digest GitHub publishes for the release asset.
-- The tty7 and MonoCode apps must pass `codesign --verify --deep --strict`, and Gatekeeper is asked about them.
-  All five apps report "Notarized Developer ID". They are copied into `/Applications` and replaced only when
-  the version changes.
-- **MonoCode host:**
-  - `monocode-host-darwin-arm64.tar.gz`, checked against its `.sha256`, into `~/.local/opt/monocode-host/<ver>`,
-    with a wrapper in `~/.local/bin`.
-  - `monocode-host service install` registers it as the `com.monocode.host` launchd agent.
-  - From the host Mac's MonoCode, add the VM under Settings → Connections → Add machine, as `admin@<./vm.sh ip>`.
-- **Paseo daemon:**
-  - The `sh.paseo.daemon` launchd agent runs the cask's `paseo daemon run` on `127.0.0.1:6767`, with the web UI
-    enabled and the relay off. It is up without the desktop app open, and the log is
-    `~/Library/Logs/paseo-daemon.log`.
-  - The cask's CLI runs on the app's bundled runtime, so it needs no Node and upgrades with the app.
-  - The agent is reloaded only when its plist changes.
-  - The host Mac's Paseo can add `ssh://admin@<./vm.sh ip>` as a Remote SSH host.
-- **Tailscale:**
-  - Formula `brew:tailscale` from `~/.config/mise/config.toml`, installed by the bootstrap (the guest's
-    `~/.config/mise/miserc.toml` selects the `vm` environment) and run as a root launchd daemon (`tailscaled install-system-daemon`).
-  - The Tailscale app is not used: its network system extension has to be approved in the GUI, so it cannot be
-    installed unattended.
-  - Provisioning does not log in by default. Run `sudo tailscale up` in the guest afterwards.
-  - To log in unattended, export `VM_TAILSCALE_AUTHKEY` for `./vm.sh provision`. The key goes over SSH stdin
-    into a private file that `tailscale up --auth-key=file:...` reads and provisioning deletes. Do not put it in
-    `config.env`.
-- **Dock:** set after the bootstrap to exactly Ghostty, Helium, tty7, Paseo, MonoCode and System Settings (after
-  Finder), on the right and always shown. Other pins are removed.
-
-Tested in a VM (macOS 26.6.2 guest on a macOS 27 host):
+Tested in a VM (macOS 26.6.2 guest on a macOS 27 host), with the Tart-only guest script that preceded the
+shared one:
 
 - all five apps installed and accepted by Gatekeeper;
 - the Paseo daemon (web UI returns 200) and the MonoCode host running as launchd agents, including after a reboot;
 - `tailscaled` up and awaiting login;
 - auto-login working after a password change.
 
-The Tailscale auth-key login was not exercised.
+The Tailscale auth-key login was not exercised, and the shared script has not been run on Tart yet.
 
 ## Networking and the LAN sshd
 
@@ -174,7 +141,7 @@ Tested bridged on Wi-Fi: start, connect from the host's LAN address, status, sto
 - the macOS version and mise tools;
 - the login shell and disk size;
 - the shared folder;
-- the five apps;
+- the desktop apps;
 - Tailscale state;
 - the Paseo agent and its web UI;
 - GitHub SSH auth.
@@ -182,12 +149,7 @@ Tested bridged on Wi-Fi: start, connect from the host's LAN address, status, sto
 By hand: open the apps in the VM window, and check that clipboard sharing works both ways (it needs the
 guest agent, which the image runs).
 
-## Known blockers in the dotfiles repo (not changed here)
+## Known blockers
 
-1. The `files` phase needs `TERN_TAILSCALE_EMAIL` / `TERN_SSH_FINGERPRINT`, so it is skipped.
-2. `[bootstrap.repos]` uses an SSH URL, so it is skipped; `~/git/dotfiles` is cloned over HTTPS.
-3. The base image ships a CI `~/.gitconfig` (git-credential-manager, LFS) that blocks the dotfiles' symlink.
-   Provisioning moves it to `~/.gitconfig.base-image`.
-4. `[tasks.bootstrap]` installs the crontab in the VM too.
-
-Rerun with `FORCE=1 ./vm.sh provision`.
+See [the overview](../README.md#known-blockers-in-the-dotfiles-repo) for the dotfiles' blockers that provisioning
+works around. Rerun with `FORCE=1 ./vm.sh provision`.
