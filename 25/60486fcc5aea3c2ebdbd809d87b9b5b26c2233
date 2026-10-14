@@ -1,0 +1,18 @@
+.config/opencode/README.md
+  h_2f452a9c375069 13-16
+.config/opencode/config.test.ts
+  h_2f452a9c375069 74-77
+.config/opencode/opencode.jsonc
+  h_2f452a9c375069 7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2560486fcc5aea3c2ebdbd809d87b9b5b26c2233",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
