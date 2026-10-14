@@ -1,0 +1,42 @@
+.config/opencode/README.md
+  h_2f452a9c375069 84-92
+.config/opencode/plugins/agent-urls/README.md
+  h_2f452a9c375069 1-116
+.config/opencode/plugins/agent-urls/agent-urls.test.ts
+  h_2f452a9c375069 1-346
+.config/opencode/plugins/agent-urls/bun.lock
+  h_2f452a9c375069 1-648
+.config/opencode/plugins/agent-urls/coordinator.ts
+  h_2f452a9c375069 1-322
+.config/opencode/plugins/agent-urls/index.ts
+  h_2f452a9c375069 1-143
+.config/opencode/plugins/agent-urls/package.json
+  h_2f452a9c375069 1-20
+.config/opencode/plugins/agent-urls/state.ts
+  h_2f452a9c375069 1-85
+.config/opencode/plugins/agent-urls/test/fixture/index.ts
+  h_2f452a9c375069 1-76
+.config/opencode/plugins/agent-urls/test/fixture/package.json
+  h_2f452a9c375069 1-6
+.config/opencode/plugins/agent-urls/test/smoke.ts
+  h_2f452a9c375069 1-97
+.config/opencode/plugins/agent-urls/tsconfig.json
+  h_2f452a9c375069 1-13
+.config/opencode/plugins/skill-urls/README.md
+  h_2f452a9c375069 4-5
+.config/opencode/plugins/skill-urls/bun.lock
+  h_2f452a9c375069 13
+.config/opencode/plugins/skill-urls/package.json
+  h_2f452a9c375069 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0cc5fa00d5f317476dc3f15058a7398369ad903",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
