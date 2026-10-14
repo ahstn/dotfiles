@@ -24,8 +24,11 @@ them as read-only. See the [V2 reference contract](https://opencode.ai/v2/docs/r
 
 ## Permission policy
 
-The first rule allows all actions, including external reads and `.env` reads.
-Later exceptions are adaptations of the Oceans packs in
+The first rule allows all actions, including `.env` reads. Native V2
+`external_directory` rules then ask before external access except within
+`~/git/dotfiles/*` and `~/.cache/github/*`. The underlying read/edit permissions
+still apply; the GitHub cache should be treated as reference material.
+Other exceptions are adaptations of the Oceans packs in
 `crates/gateway-guardrails/src/packs/`, not a port of their evaluator.
 
 | Pack | Local policy |

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
+import { homedir } from "node:os"
 
 type Effect = "allow" | "ask" | "deny"
 type Rule = { action: string; resource: string; effect: Effect }
@@ -24,7 +25,11 @@ function matches(pattern: string, value: string, shell = false): boolean {
 function effect(action: string, resource: string): Effect {
   let result: Effect = "ask"
   for (const rule of config.permissions as Rule[]) {
-    if (matches(rule.action, action) && matches(rule.resource, resource, action === "shell")) {
+    // Config loading expands leading ~ for path permissions, but not shell text.
+    const pattern = ["external_directory", "read", "edit"].includes(action)
+      ? rule.resource.replace(/^~(?=\/|$)/, () => homedir())
+      : rule.resource
+    if (matches(rule.action, action) && matches(pattern, resource, action === "shell")) {
       result = rule.effect
     }
   }
@@ -64,6 +69,15 @@ describe("configuration structure", () => {
 
   test("explicitly selects Exa without embedding a search credential", () => {
     expect(config.websearch).toEqual({ provider: "exa" })
+  })
+
+  test("uses the native V2 external_directory action and trusted path exceptions", () => {
+    expect(config.permissions.filter((rule: Rule) => rule.action === "external_directory")).toEqual([
+      { action: "external_directory", resource: "*", effect: "ask" },
+      { action: "external_directory", resource: "~/git/dotfiles/*", effect: "allow" },
+      { action: "external_directory", resource: "~/.cache/github/*", effect: "allow" },
+    ])
+    expect(config.permissions.some((rule: Rule) => rule.action === "external-directory")).toBe(false)
   })
 
   test("mise deploys only the config file, not the entire runtime directory", () => {
@@ -185,9 +199,21 @@ describe("permission resource examples (never executed)", () => {
   })
 
   test("non-shell operations retain the requested default allow", () => {
-    for (const action of ["read", "edit", "grep", "external_directory", "execute", "websearch", "skill"]) {
+    for (const action of ["read", "edit", "grep", "execute", "websearch", "skill"]) {
       expect(effect(action, "*")).toBe("allow")
     }
     expect(effect("read", "/outside/project/.env")).toBe("allow")
+  })
+
+  test("allows the two trusted external boundaries, including nested paths", () => {
+    for (const suffix of ["git/dotfiles/*", "git/dotfiles/skills/github-yeet/*", ".cache/github/*", ".cache/github/anomalyco/opencode/*"]) {
+      expect(effect("external_directory", `${homedir()}/${suffix}`)).toBe("allow")
+    }
+  })
+
+  test("asks for other external directories and similarly named siblings", () => {
+    for (const resource of ["*", "/outside/project/*", `${homedir()}/git/dotfiles-private/*`, `${homedir()}/.cache/github-private/*`]) {
+      expect(effect("external_directory", resource)).toBe("ask")
+    }
   })
 })

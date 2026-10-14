@@ -29,6 +29,11 @@
   "permissions": [
     { "action": "*", "resource": "*", "effect": "allow" },
 
+    // V2 external-directory access: ask outside the two trusted boundaries.
+    { "action": "external_directory", "resource": "*", "effect": "ask" },
+    { "action": "external_directory", "resource": "~/git/dotfiles/*", "effect": "allow" },
+    { "action": "external_directory", "resource": "~/.cache/github/*", "effect": "allow" },
+
     // Adapted from oceans-llm/crates/gateway-guardrails/src/packs/.
     // These are command-text wildcards, NOT the packs' semantic evaluator.
     // Leading * covers common wrappers/global options, but can also match data.
