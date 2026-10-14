@@ -86,12 +86,22 @@ Message admission uses stable IDs and fingerprints for safe replay of the same
 tool call; reusing it with changed content fails. A broadcast can still be
 partially delivered if a later recipient fails.
 
+Delivery intent is reserved before counters change. Each counter and its
+operation marker are saved in the same worker record, so restart/replay repairs
+partial updates without counting them twice. Pending intents reserve sender
+quota even if the counter save did not finish. Native admission failures leave
+the reserved turn pending for retry or explicit cancellation; acknowledgement
+storage failures do not undo an already admitted native message.
+
 Live completion events append a **status-only** parent notification and wake
 the parent. Output remains behind read permission checks rather than being
 quoted into the notification. Superseded runs do not report a terminal result;
 shutdown does not wake models. Event-stream interruptions can lose a live
 notification. After restart, explicit read/status/capacity checks reconcile
 native outcomes without automatically waking or restarting agents.
+Failed-outcome reconciliation preserves the newest native idle/assistant error
+for that request, rather than replacing provider/tool details with a generic
+failure. Errors older than the current request are not reused.
 
 This uses real provider requests outside tests: spawning, messaging an idle
 worker, and waking a parent can all incur costs. Native spend controls and

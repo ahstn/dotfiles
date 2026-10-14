@@ -78,7 +78,7 @@ export function skillMentions(text: string, skills: readonly SkillSource[]): Men
       const line = text.slice(index, lineEnd === -1 ? text.length : lineEnd)
       const delimiter = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line)
       if (fence) {
-        if (delimiter?.[1][0] === fence.character && delimiter[1].length >= fence.length && !delimiter[2].trim()) fence = undefined
+        fence = delimiter?.[1][0] === fence.character && delimiter[1].length >= fence.length && !delimiter[2].trim() ? undefined : fence
         index = lineEnd === -1 ? text.length : lineEnd + 1
         continue
       }

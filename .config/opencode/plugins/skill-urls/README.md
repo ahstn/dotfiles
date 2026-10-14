@@ -46,6 +46,12 @@ selectors are unsupported; use native `offset`/`limit` options instead. A skill
 directory itself may be a registered symlink, but its descendants must resolve
 inside that directory's canonical root.
 
+Glob filters for aliased roots must also be relative, including ordinary
+`pattern` values supplied beside an aliased `path`. Rooted POSIX/Windows/home
+patterns, traversal, and escaping brace alternatives are rejected before any
+native executor runs. The tested native executors use root-confined ripgrep;
+this validation makes the alias contract independent of that implementation.
+
 Aliases are read-only: `write`, `edit`, and patch operations naming them fail.
 To intentionally edit a skill, use its explicit source path with ordinary edit
 permissions. No shell interpreter or external command gains URI support.

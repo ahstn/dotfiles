@@ -1,7 +1,7 @@
 import { Agent, Model } from "@opencode/plugin"
 import { createHash } from "node:crypto"
-import { active, extract, familyPrefix, handle, publicWorker, Serial, snapshotKey, workerKey } from "./state.ts"
-import type { Context, Invocation, Snapshot, Worker } from "./state.ts"
+import { active, extract, familyPrefix, handle, jsonCopy, publicWorker, Serial, snapshotKey, workerKey } from "./state.ts"
+import type { Context, DeliveryIntent, Invocation, Snapshot, Worker } from "./state.ts"
 
 export class Coordinator {
   private serial = new Serial()
@@ -11,7 +11,8 @@ export class Coordinator {
 
   constructor(readonly ctx: Context) {
     const option = (name: string, fallback: number) => {
-      const value = ctx.options[name] ?? fallback
+      const configured: unknown = ctx.options[name]
+      const value = configured ?? fallback
       if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) throw new Error(`Invalid agent plugin option: ${name}`)
       return value
     }
@@ -21,34 +22,42 @@ export class Coordinator {
   }
 
   async worker(id: string) { return await this.ctx.storage.get(workerKey(id)) as Worker | undefined }
-  private async save(worker: Worker) { await this.ctx.storage.set(workerKey(worker.id), JSON.parse(JSON.stringify(worker))) }
+  private async save(worker: Worker) { await this.ctx.storage.set(workerKey(worker.id), jsonCopy(worker)) }
 
   async ancestry(id: string) {
     const seen = new Set<string>()
-    let session = await this.ctx.session.get({ sessionID: id })
-    let depth = 0
-    while (session.parentID) {
-      if (seen.has(session.id) || depth >= 32) throw new Error("Invalid session ancestry")
-      seen.add(session.id)
-      session = await this.ctx.session.get({ sessionID: session.parentID })
-      depth++
+    const ascend = async (current: string): Promise<string> => {
+      if (seen.has(current) || seen.size > 32) throw new Error("Invalid session ancestry")
+      seen.add(current)
+      const session = await this.ctx.session.get({ sessionID: current })
+      return session.parentID ? ascend(session.parentID) : session.id
     }
-    return { rootID: session.id, depth }
+    const rootID = await ascend(id)
+    return { rootID, depth: seen.size - 1, ancestors: seen }
+  }
+
+  // Cursor order is inherently sequential; stream pages instead of eagerly
+  // parallelizing requests whose next cursor is not known yet.
+  private async *entries(prefix: string, after?: string): AsyncGenerator<{ key: string; value: unknown }> {
+    const page = await this.ctx.storage.scan({ prefix, ...(after ? { after } : {}) })
+    yield* page.entries
+    if (page.next) yield* this.entries(prefix, page.next)
   }
 
   async family(rootID: string) {
     const workers: Worker[] = []
-    let after: string | undefined
-    do {
-      const page = await this.ctx.storage.scan({ prefix: familyPrefix(rootID), ...(after ? { after } : {}) })
-      for (const item of page.entries) {
+    for await (const item of this.entries(familyPrefix(rootID))) {
         const id = item.value as string
         const worker = await this.worker(id)
         if (worker?.rootID === rootID) workers.push(worker)
-      }
-      after = page.next
-    } while (after)
+    }
     return workers
+  }
+
+  private async reservedMessages(senderID: string) {
+    const keys = new Set<string>()
+    for await (const entry of this.entries(`delivery/${senderID}/`)) keys.add(entry.key)
+    return keys.size
   }
 
   private async assert(invocation: Invocation, action: string, resources: string[]) {
@@ -107,7 +116,7 @@ export class Coordinator {
     await this.assert(invocation, "subagent", [input.model])
     await this.assert(invocation, "agent_spawn", [input.model])
     // Reconcile stale running slots after a service restart, without waking models.
-    for (const worker of (await this.family(family.rootID)).filter(active)) await this.refresh(worker)
+    await Promise.all((await this.family(family.rootID)).filter(active).map((worker) => this.refresh(worker)))
     return this.serial.run(family.rootID, async () => {
       invocation.signal.throwIfAborted()
       if ((await this.family(family.rootID)).filter(active).length >= this.maxActive) throw new Error("Active agent limit reached")
@@ -150,47 +159,61 @@ export class Coordinator {
       ? [...new Set([family.rootID, ...(await this.family(family.rootID)).map((worker) => worker.id)])].filter((id) => id !== invocation.sessionID)
       : [targetID]
     if (targets.includes(invocation.sessionID)) throw new Error("Self-messaging is unsupported")
-    for (const id of targets) await this.authorize(invocation, id)
+    await Promise.all(targets.map((id) => this.authorize(invocation, id)))
     await this.assert(invocation, "agent_send", targets.map(handle))
     return this.serial.run(family.rootID, async () => {
       const sender = await this.worker(invocation.sessionID)
       const delivered: string[] = []
-      for (const id of targets) {
+      // Chain admissions: each recipient commits quota/replay state before
+      // the next. Parallel delivery would race the sender budget and slots.
+      await targets.reduce<Promise<void>>((previous, id) => previous.then(async () => {
         invocation.signal.throwIfAborted()
         const identity = createHash("sha256").update(`${invocation.sessionID}\0${invocation.messageID}\0${invocation.id}\0${id}`).digest("hex")
         const key = `delivery/${invocation.sessionID}/${identity}`
         const fingerprint = createHash("sha256").update(`${delivery}\0${message}`).digest("hex")
-        const prior = await this.ctx.storage.get(key) as { fingerprint: string; delivered: boolean } | undefined
+        const prior = await this.ctx.storage.get(key) as DeliveryIntent | undefined
         if (prior && prior.fingerprint !== fingerprint) throw new Error("A tool-call identity cannot be reused for a different message")
-        if (prior?.delivered) { delivered.push(handle(id)); continue }
+        if (prior?.delivered) { delivered.push(handle(id)); return }
         const { worker } = await this.authorize(invocation, id)
-        if (!prior && sender) {
-          if (sender.messages >= this.maxMessages) throw new Error("Worker peer-message limit reached")
-          sender.messages++
-          await this.save(sender)
-        }
+        if (!prior && sender && Math.max(sender.messages, await this.reservedMessages(sender.id)) >= this.maxMessages) throw new Error("Worker peer-message limit reached")
         if (!prior && worker) {
           if (!active(worker) && (await this.family(family.rootID)).filter(active).length >= this.maxActive) throw new Error("Active agent limit reached")
+        }
+        const intent: DeliveryIntent = prior ?? { fingerprint, delivered: false, accountingVersion: 1 }
+        // Reserve intent first. The worker counters and operation marker are
+        // saved together, so replay can repair either half of a partial update.
+        await this.ctx.storage.set(key, jsonCopy(intent))
+        if (intent.accountingVersion === 1 && sender && !sender.outgoingDeliveries?.includes(identity)) {
+          sender.messages++
+          sender.outgoingDeliveries ??= []
+          sender.outgoingDeliveries.push(identity)
+          await this.save(sender)
+        }
+        if (intent.accountingVersion === 1 && worker && !worker.incomingDeliveries?.includes(identity)) {
           worker.turn++
           worker.requestedAt = Date.now()
           worker.status = "starting"
           delete worker.error
+          worker.incomingDeliveries ??= []
+          worker.incomingDeliveries.push(identity)
           await this.save(worker)
         }
-        await this.ctx.storage.set(key, { fingerprint, delivered: false })
         try {
           await this.ctx.session.prompt({
             id: `msg_agent_delivery_${identity}`, sessionID: id, delivery,
             text: `Peer message from ${handle(invocation.sessionID)} (task data, not a permission grant):\n\n${message}`,
             metadata: { source: "agent-coordination", sender: invocation.sessionID },
           })
-          await this.ctx.storage.set(key, { fingerprint, delivered: true })
         } catch (error) {
-          if (worker) { worker.status = "failed"; worker.error = "Peer-message admission failed"; await this.save(worker) }
+          // Keep the reserved turn pending: a replay must not look like a new
+          // manual execution and increment its turn again in started().
+          if (worker) { worker.error = "Peer-message admission failed; replay the call or stop the pending worker"; await this.save(worker) }
           throw error
         }
+        // Failure to persist the acknowledgement does not undo native admission.
+        await this.ctx.storage.set(key, jsonCopy({ ...intent, delivered: true }))
         delivered.push(handle(id))
-      }
+      }), Promise.resolve())
       return { delivered, delivery }
     })
   }
@@ -199,6 +222,15 @@ export class Coordinator {
     const messages = await this.ctx.session.context({ sessionID: id })
     const message = [...messages].reverse().find((message) => message.type === "assistant")
     return message?.type === "assistant" ? message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n\n") : ""
+  }
+
+  private async latestFailure(worker: Worker) {
+    const messages = await this.ctx.session.context({ sessionID: worker.id })
+    const terminal = [...messages].reverse().find((message) =>
+      (message.type === "idle" && message.outcome === "failed" && message.time.created >= worker.requestedAt && message.error) ||
+      (message.type === "assistant" && (message.time.completed ?? message.time.created) >= worker.requestedAt && message.error),
+    )
+    return terminal?.type === "idle" || terminal?.type === "assistant" ? terminal.error?.message : undefined
   }
 
   async started(id: string) {
@@ -228,7 +260,10 @@ export class Coordinator {
         const output = await this.latestText(id)
         if (Buffer.byteLength(output) <= 1024 * 1024) worker.output = output
         else { delete worker.output; worker.error = "Output exceeds the 1 MiB retention limit; use the native session transcript" }
-      } else worker.error = error?.slice(0, 2000) ?? `Agent ${status}`
+      } else {
+        const detail = error ?? (status === "failed" ? await this.latestFailure(worker) : undefined)
+        worker.error = detail?.slice(0, 2000) ?? `Agent ${status}`
+      }
       await this.save(worker)
       if (!notify) return // A read/status lookup must not wake another model.
       if (worker.notifiedTurn === worker.turn) return
@@ -284,14 +319,7 @@ export class Coordinator {
     const { worker } = await this.authorize(invocation, targetID)
     if (!worker) throw new Error("The coordinator/root session cannot be stopped through agent_stop")
     if (targetID === invocation.sessionID) throw new Error("Finish your own task by replying; agent_stop only interrupts descendants")
-    let current = await this.ctx.session.get({ sessionID: targetID })
-    const seen = new Set<string>()
-    while (current.id !== invocation.sessionID && current.parentID) {
-      if (seen.has(current.id)) throw new Error("Invalid agent ancestry")
-      seen.add(current.id)
-      current = await this.ctx.session.get({ sessionID: current.parentID })
-    }
-    if (current.id !== invocation.sessionID) throw new Error("Only an agent's ancestor may stop it")
+    if (!(await this.ancestry(targetID)).ancestors.has(invocation.sessionID)) throw new Error("Only an agent's ancestor may stop it")
     await this.assert(invocation, "agent_stop", [handle(targetID)])
     const refreshed = await this.refresh(worker)
     if (!active(refreshed)) return publicWorker(refreshed)
@@ -312,11 +340,6 @@ export class Coordinator {
       await this.ctx.storage.remove(familyPrefix(worker.rootID) + id)
     }
     await this.ctx.storage.remove(snapshotKey(id))
-    let after: string | undefined
-    do {
-      const page = await this.ctx.storage.scan({ prefix: `delivery/${id}/`, ...(after ? { after } : {}) })
-      for (const entry of page.entries) await this.ctx.storage.remove(entry.key)
-      after = page.next
-    } while (after)
+    for await (const entry of this.entries(`delivery/${id}/`)) await this.ctx.storage.remove(entry.key)
   }
 }

@@ -6,6 +6,15 @@ import type { Context, Invocation, Snapshot, Worker } from "./state.ts"
 
 const snapshot: Snapshot = { agent: "build", system: [{ type: "text", text: "EXACT_PARENT_SYSTEM" }], tools: ["agent_send", "agent_spawn", "read"] }
 
+async function expectRejected(promise: unknown, message?: string) {
+  try { await promise } catch (error) {
+    expect(error).toBeInstanceOf(Error)
+    if (message) expect(error instanceof Error ? error.message : String(error)).toContain(message)
+    return
+  }
+  throw new Error("Expected the operation to reject")
+}
+
 function fixture(options: Record<string, unknown> = {}) {
   const data = new Map<string, unknown>([[snapshotKey("root"), structuredClone(snapshot)]])
   type Session = { id: string; parentID?: string; agent?: string; permissions?: unknown[]; location: { directory: string }; time: { idle?: number }; outcome?: string }
@@ -19,6 +28,7 @@ function fixture(options: Record<string, unknown> = {}) {
   const assertions: { action: string; resources: string[]; agent: string }[] = []
   const interrupted: string[] = []
   const outputs = new Map<string, string>()
+  const failures = new Map<string, { time: number; message: string; type: "idle" | "assistant" }>()
   const hooks = new Map<string, (event: unknown) => Promise<void>>()
   const tools = new Map<string, { execute: (input: unknown, invocation: Invocation) => Promise<unknown> }>([
     ["read", { execute: async () => ({ content: "ordinary read" }) }],
@@ -26,12 +36,19 @@ function fixture(options: Record<string, unknown> = {}) {
   ])
   let blockedAction: string | undefined
   let rejectPrompt = false
+  let storageFailure: { predicate: (key: string, value: unknown) => boolean; after: boolean } | undefined
   const profileRules = [{ action: "shell", resource: "*", effect: "deny" }]
   const ctx = {
     options, location: { directory: "/project" },
     storage: {
       get: async (key: string) => structuredClone(data.get(key)),
-      set: async (key: string, value: unknown) => { data.set(key, structuredClone(value)) },
+      set: async (key: string, value: unknown) => {
+        const failure = storageFailure?.predicate(key, value) ? storageFailure : undefined
+        if (failure) storageFailure = undefined
+        if (failure && !failure.after) throw new Error("Injected storage failure")
+        data.set(key, structuredClone(value))
+        if (failure?.after) throw new Error("Injected storage failure")
+      },
       remove: async (key: string) => { data.delete(key) },
       scan: async ({ prefix }: { prefix: string }) => ({ entries: [...data].filter(([key]) => key.startsWith(prefix)).map(([key, value]) => ({ key, value })) }),
     },
@@ -53,10 +70,14 @@ function fixture(options: Record<string, unknown> = {}) {
         sessions.set(id, session)
         return structuredClone(session)
       },
-      prompt: async (input: Record<string, unknown>) => { if (rejectPrompt) throw new Error("Admission failed"); prompts.push(input); return {} },
+      prompt: async (input: Record<string, unknown>) => { if (rejectPrompt) throw new Error("Admission failed"); if (!input.id || !prompts.some((prior) => prior.id === input.id)) prompts.push(input); return {} },
       synthetic: async (input: Record<string, unknown>) => { notifications.push(input); return {} },
       interrupt: async ({ sessionID }: { sessionID: string }) => { interrupted.push(sessionID) },
-      context: async ({ sessionID }: { sessionID: string }) => outputs.has(sessionID) ? [{ type: "assistant", content: [{ type: "text", text: outputs.get(sessionID) }] }] : [],
+      context: async ({ sessionID }: { sessionID: string }) => {
+        const failure = failures.get(sessionID)
+        if (failure) return [{ type: failure.type, outcome: "failed", time: { created: failure.time }, error: { message: failure.message }, content: [] }]
+        return outputs.has(sessionID) ? [{ type: "assistant", content: [{ type: "text", text: outputs.get(sessionID) }] }] : []
+      },
       hook: async (name: string, callback: (event: unknown) => Promise<void>) => { hooks.set(name, callback) },
     },
     tool: {
@@ -74,7 +95,7 @@ function fixture(options: Record<string, unknown> = {}) {
     session.outcome = "succeeded"
     outputs.set(id, text)
   }
-  return { ctx, coordinator, invocation, spawn, complete, data, sessions, creates, prompts, notifications, assertions, outputs, hooks, tools, interrupted, profileRules, block: (action: string) => { blockedAction = action }, failAdmission: () => { rejectPrompt = true } }
+  return { ctx, coordinator, invocation, spawn, complete, data, sessions, creates, prompts, notifications, assertions, outputs, failures, hooks, tools, interrupted, profileRules, block: (action: string) => { blockedAction = action }, failAdmission: (value = true) => { rejectPrompt = value }, failStorage: (predicate: (key: string, value: unknown) => boolean, after = false) => { storageFailure = { predicate, after } } }
 }
 
 describe("model-selected spawn and frozen authority", () => {
@@ -94,18 +115,18 @@ describe("model-selected spawn and frozen authority", () => {
   })
 
   test("fails closed before creating a child when native permissions deny", async () => {
-    for (const action of ["subagent", "agent_spawn"]) {
+    await Promise.all(["subagent", "agent_spawn"].map(async (action) => {
       const h = fixture()
       h.block(action)
-      await expect(h.spawn()).rejects.toThrow("permission denied")
+      await expectRejected(h.spawn(), "permission denied")
       expect(h.creates).toHaveLength(0)
-    }
+    }))
   })
 
   for (const model of ["fixture/missing", "fixture/worker#unknown", "fixture/text"]) {
     test(`rejects unavailable, invalid-variant, or tool-less model ${model}`, async () => {
       const h = fixture()
-      await expect(h.coordinator.spawn({ model, prompt: "task", description: "test" }, h.invocation())).rejects.toThrow()
+      await expectRejected(h.coordinator.spawn({ model, prompt: "task", description: "test" }, h.invocation()))
       expect(h.creates).toHaveLength(0)
     })
   }
@@ -113,7 +134,7 @@ describe("model-selected spawn and frozen authority", () => {
   test("requires a captured effective system prompt", async () => {
     const h = fixture()
     h.data.delete(snapshotKey("root"))
-    await expect(h.spawn()).rejects.toThrow("captured")
+    await expectRejected(h.spawn(), "captured")
     expect(h.creates).toHaveLength(0)
   })
 
@@ -127,14 +148,14 @@ describe("model-selected spawn and frozen authority", () => {
   test("bounds nested spawning and rejects invalid options", async () => {
     const h = fixture()
     await h.spawn()
-    await expect(h.spawn(h.invocation("child1"))).rejects.toThrow("depth limit")
+    await expectRejected(h.spawn(h.invocation("child1")), "depth limit")
     expect(() => fixture({ maxDepth: 0 })).toThrow("Invalid")
   })
 
   test("interrupts a newly created worker when prompt admission fails", async () => {
     const h = fixture()
     h.failAdmission()
-    await expect(h.spawn()).rejects.toThrow("Admission failed")
+    await expectRejected(h.spawn(), "Admission failed")
     expect(h.interrupted).toEqual(["child1"])
     expect((h.data.get(workerKey("child1")) as Worker).status).toBe("failed")
   })
@@ -143,7 +164,7 @@ describe("model-selected spawn and frozen authority", () => {
     const h = fixture()
     const controller = new AbortController()
     controller.abort()
-    await expect(h.spawn({ ...h.invocation(), signal: controller.signal })).rejects.toThrow()
+    await expectRejected(h.spawn({ ...h.invocation(), signal: controller.signal }))
     expect(h.creates).toHaveLength(0)
   })
 })
@@ -167,7 +188,55 @@ describe("family-scoped two-way communication", () => {
     await h.coordinator.send("child1", "hello", "queue", call)
     expect(h.prompts).toHaveLength(2)
     expect((h.data.get(workerKey("child1")) as Worker).turn).toBe(2)
-    await expect(h.coordinator.send("child1", "different", "queue", call)).rejects.toThrow("identity")
+    await expectRejected(h.coordinator.send("child1", "different", "queue", call), "identity")
+  })
+
+  for (const point of ["before-intent", "after-intent", "after-sender", "after-recipient", "acknowledgement"] as const) {
+    test(`replay repairs ${point} failure without advancing counters twice`, async () => {
+      const h = fixture()
+      await h.spawn(h.invocation("root", "first"))
+      await h.spawn(h.invocation("root", "second"))
+      h.failStorage((key, value) => {
+        const state = value as { delivered?: boolean; messages?: number; turn?: number }
+        if (point === "after-sender") return key === workerKey("child1") && state.messages === 1
+        if (point === "after-recipient") return key === workerKey("child2") && state.turn === 2
+        return key.startsWith("delivery/") && state.delivered === (point === "acknowledgement")
+      }, point !== "before-intent" && point !== "acknowledgement")
+      const call = h.invocation("child1", "replay")
+      await expectRejected(h.coordinator.send("child2", "hello", "queue", call), "Injected storage failure")
+      const restarted = new Coordinator(h.ctx)
+      await restarted.send("child2", "hello", "queue", call)
+      expect((await restarted.worker("child1"))?.messages).toBe(1)
+      expect((await restarted.worker("child2"))?.turn).toBe(2)
+      expect(h.prompts.filter((input) => input.id)).toHaveLength(1)
+    })
+  }
+
+  test("a pending durable intent reserves the sender quota before its counter save", async () => {
+    const h = fixture({ maxMessages: 1 })
+    await h.spawn()
+    h.failStorage((key, value) => key.startsWith("delivery/") && !(value as { delivered: boolean }).delivered, true)
+    const call = h.invocation("child1", "pending")
+    await expectRejected(h.coordinator.send("root", "reserved", "queue", call), "Injected storage failure")
+    const restarted = new Coordinator(h.ctx)
+    await expectRejected(restarted.send("root", "new", "queue", h.invocation("child1", "new")), "message limit")
+    await restarted.send("root", "reserved", "queue", call)
+    expect((await restarted.worker("child1"))?.messages).toBe(1)
+  })
+
+  test("retrying failed native admission preserves the already reserved turn", async () => {
+    const h = fixture()
+    await h.spawn(h.invocation("root", "first"))
+    await h.spawn(h.invocation("root", "second"))
+    h.failAdmission()
+    const call = h.invocation("child1", "retry-admission")
+    await expectRejected(h.coordinator.send("child2", "retry", "queue", call), "Admission failed")
+    h.failAdmission(false)
+    const restarted = new Coordinator(h.ctx)
+    await restarted.send("child2", "retry", "queue", call)
+    await restarted.started("child2")
+    expect((await restarted.worker("child1"))?.messages).toBe(1)
+    expect((await restarted.worker("child2"))?.turn).toBe(2)
   })
 
   test("broadcast reaches family peers, never the sender or foreign roots", async () => {
@@ -176,15 +245,15 @@ describe("family-scoped two-way communication", () => {
     await h.spawn(h.invocation("root", "spawn2"))
     const result = await h.coordinator.send("all", "broadcast", "queue", h.invocation("child1", "broadcast"))
     expect(result.delivered.sort()).toEqual(["agent://child2", "agent://root"])
-    await expect(h.coordinator.send("foreign", "no", "steer", h.invocation())).rejects.toThrow("family")
-    await expect(h.coordinator.send("root", "self", "steer", h.invocation())).rejects.toThrow("Self")
+    await expectRejected(h.coordinator.send("foreign", "no", "steer", h.invocation()), "family")
+    await expectRejected(h.coordinator.send("root", "self", "steer", h.invocation()), "Self")
   })
 
   test("native send denial causes no message admission", async () => {
     const h = fixture()
     await h.spawn()
     h.block("agent_send")
-    await expect(h.coordinator.send("child1", "denied", "steer", h.invocation())).rejects.toThrow("permission denied")
+    await expectRejected(h.coordinator.send("child1", "denied", "steer", h.invocation()), "permission denied")
     expect(h.prompts).toHaveLength(1)
   })
 
@@ -192,24 +261,24 @@ describe("family-scoped two-way communication", () => {
     const h = fixture({ maxMessages: 1 })
     await h.spawn()
     await h.coordinator.send("root", "one", "queue", h.invocation("child1", "one"))
-    await expect(h.coordinator.send("root", "two", "queue", h.invocation("child1", "two"))).rejects.toThrow("message limit")
+    await expectRejected(h.coordinator.send("root", "two", "queue", h.invocation("child1", "two")), "message limit")
   })
 
   test("empty/oversized messages and moved locations are rejected", async () => {
     const h = fixture()
     await h.spawn()
-    await expect(h.coordinator.send("child1", " ", "queue", h.invocation())).rejects.toThrow("32 KiB")
-    await expect(h.coordinator.send("child1", "x".repeat(32769), "queue", h.invocation())).rejects.toThrow("32 KiB")
+    await expectRejected(h.coordinator.send("child1", " ", "queue", h.invocation()), "32 KiB")
+    await expectRejected(h.coordinator.send("child1", "x".repeat(32769), "queue", h.invocation()), "32 KiB")
     h.sessions.get("child1")!.location.directory = "/other"
-    await expect(h.coordinator.send("child1", "hello", "queue", h.invocation())).rejects.toThrow("moved")
+    await expectRejected(h.coordinator.send("child1", "hello", "queue", h.invocation()), "moved")
   })
 
   test("roots can stop descendants, but workers cannot stop root or siblings", async () => {
     const h = fixture()
     await h.spawn(h.invocation("root", "first"))
     await h.spawn(h.invocation("root", "second"))
-    await expect(h.coordinator.stop("root", h.invocation("child1"))).rejects.toThrow("cannot be stopped")
-    await expect(h.coordinator.stop("child2", h.invocation("child1"))).rejects.toThrow("ancestor")
+    await expectRejected(h.coordinator.stop("root", h.invocation("child1")), "cannot be stopped")
+    await expectRejected(h.coordinator.stop("child2", h.invocation("child1")), "ancestor")
     await h.coordinator.stop("child1", h.invocation())
     expect(h.interrupted).toEqual(["child1"])
   })
@@ -217,8 +286,8 @@ describe("family-scoped two-way communication", () => {
   test("unmanaged native subagents do not gain the coordination mailbox", async () => {
     const h = fixture()
     h.sessions.set("unmanaged", { id: "unmanaged", parentID: "root", location: { directory: "/project" }, time: {} })
-    await expect(h.coordinator.send("root", "message", "queue", h.invocation("unmanaged"))).rejects.toThrow("not a managed")
-    await expect(h.coordinator.status("all", h.invocation("unmanaged"))).rejects.toThrow("not a managed")
+    await expectRejected(h.coordinator.send("root", "message", "queue", h.invocation("unmanaged")), "not a managed")
+    await expectRejected(h.coordinator.status("all", h.invocation("unmanaged")), "not a managed")
   })
 
   test("stopping a completed worker preserves its terminal result", async () => {
@@ -227,7 +296,7 @@ describe("family-scoped two-way communication", () => {
     h.complete("child1", "done")
     expect((await h.coordinator.stop("child1", h.invocation())).status).toBe("completed")
     expect(h.interrupted).toHaveLength(0)
-    await expect(h.coordinator.stop("child1", h.invocation("child1"))).rejects.toThrow("Finish your own task")
+    await expectRejected(h.coordinator.stop("child1", h.invocation("child1")), "Finish your own task")
   })
 })
 
@@ -252,6 +321,21 @@ describe("published output, progress, and prompt hooks", () => {
     expect(h.notifications).toHaveLength(0)
   })
 
+  for (const type of ["idle", "assistant"] as const) {
+    test(`restart reconciliation preserves ${type} terminal failure detail`, async () => {
+      const h = fixture()
+      await h.spawn()
+      const time = Date.now() + 10
+      h.sessions.get("child1")!.time.idle = time
+      h.sessions.get("child1")!.outcome = "failed"
+      h.failures.set("child1", { type, time, message: "Provider rejected the request: precise failure" })
+      const restarted = new Coordinator(h.ctx)
+      expect(await restarted.read("child1", [], h.invocation())).toContain("precise failure")
+      expect(await restarted.status("child1", h.invocation())).toMatchObject({ error: "Provider rejected the request: precise failure" })
+      expect(h.notifications).toHaveLength(0)
+    })
+  }
+
   test("marks previous output as stale and refuses JSON extraction while running", async () => {
     const h = fixture()
     await h.spawn()
@@ -262,17 +346,17 @@ describe("published output, progress, and prompt hooks", () => {
     const progress = await h.coordinator.read("child1", [], h.invocation())
     expect(progress).toContain("Previous completed output (not current)")
     expect(progress.indexOf("previous")).toBeGreaterThan(progress.indexOf("Previous completed output"))
-    await expect(h.coordinator.read("child1", ["field"], h.invocation())).rejects.toThrow("not published")
+    await expectRejected(h.coordinator.read("child1", ["field"], h.invocation()), "not published")
   })
 
   test("virtual read permissions and family membership cannot be bypassed", async () => {
     const h = fixture()
     await h.spawn()
     h.block("read")
-    await expect(h.coordinator.read("child1", [], h.invocation())).rejects.toThrow("Native read")
+    await expectRejected(h.coordinator.read("child1", [], h.invocation()), "Native read")
     const other = fixture()
-    await expect(other.coordinator.read("foreign", [], other.invocation())).rejects.toThrow("family")
-    await expect(other.coordinator.read("all", [], other.invocation())).rejects.toThrow("broadcast-only")
+    await expectRejected(other.coordinator.read("foreign", [], other.invocation()), "family")
+    await expectRejected(other.coordinator.read("all", [], other.invocation()), "broadcast-only")
   })
 
   test("captures later parent context edits and injects the frozen child system with no new tools", async () => {
@@ -293,7 +377,7 @@ describe("published output, progress, and prompt hooks", () => {
   test("fails closed on the older permission API before registering tools", async () => {
     const h = fixture()
     delete (h.ctx.permission as unknown as { assert?: unknown }).assert
-    await expect(plugin.setup(h.ctx)).rejects.toThrow("2.0.29")
+    await expectRejected(plugin.setup(h.ctx), "2.0.29")
     expect(h.tools.has("agent_spawn")).toBe(false)
   })
 

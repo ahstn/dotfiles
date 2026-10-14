@@ -11,7 +11,7 @@ export default Plugin.define({
   async setup(ctx) {
     const providerID = Provider.ID.make("agent-fixture")
     await ctx.provider.transform((editor) => editor.add({
-      info: { ...Provider.Info.empty(providerID), activation: "enabled", package: "@opencode/ai/providers/openai-compatible", settings: { baseURL: process.env.AGENT_SMOKE_PROVIDER_URL!, apiKey: "isolated-test-only" } },
+      info: Object.assign(Provider.Info.empty(providerID), { activation: "enabled" as const, package: "@opencode/ai/providers/openai-compatible", settings: { baseURL: process.env.AGENT_SMOKE_PROVIDER_URL!, apiKey: "isolated-test-only" } }),
       models: ["parent", "worker"].map((id) => {
         const model = Model.Info.default(providerID, Model.ID.make(id))
         return { ...model, capabilities: { ...model.capabilities, tools: true }, limit: { ...model.limit, context: 128000, output: 4096 } }
@@ -61,7 +61,8 @@ export default Plugin.define({
           let permissionBlocked = false
           try { await execute("agent_send", { target: `agent://${denied.id}`, message: "MUST_NOT_BE_ADMITTED" }, deniedWorker.uri.slice(8)) } catch (error) { permissionBlocked = error instanceof Error && /permission|denied/i.test(error.message) }
           const skill = await execute("read", { path: "skill://agent-smoke-skill" })
-          return { rootID: root.id, childID, field: field.content, status: status.output, reply: reply.content, parentMessages, foreignBlocked, permissionBlocked, skill: skill.content }
+          const statusOutput: unknown = status.output
+          return { rootID: root.id, childID, field: field.content, status: statusOutput, reply: reply.content, parentMessages, foreignBlocked, permissionBlocked, skill: skill.content }
         } catch (error) {
           return { stage, error: error instanceof Error ? error.message : String(error) }
         } finally {

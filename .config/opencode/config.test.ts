@@ -1,11 +1,20 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
+import source from "./opencode.jsonc"
 
 type Effect = "allow" | "ask" | "deny"
 type Rule = { action: string; resource: string; effect: Effect }
 
-const config = Bun.JSONC.parse(readFileSync(new URL("./opencode.jsonc", import.meta.url), "utf8"))
+type Reference = { repository?: string; branch?: string; path?: string; description: string }
+type Config = {
+  $schema: string; permissions: Rule[]; references: Record<string, Reference>;
+  formatter: { prettier: { disabled: boolean } }; warming: boolean;
+  websearch: { provider: string }; skills: string[];
+  permission?: unknown; server?: unknown; providers?: unknown;
+}
+// Bun's .jsonc module loader predates Bun.JSONC.parse (added in 1.3.6).
+const config = source as Config
 
 // Model only the documented whole-value wildcard matching and shell's trailing
 // ` *` shorthand. No shell, SQL, or MCP arguments are executed or parsed here.
@@ -96,12 +105,13 @@ describe("configuration structure", () => {
 const allowed = [
   "git status", "git diff --cached", "git add -- config.jsonc", "git commit -m 'chore: config'",
   "git push origin feature", "git reset --soft HEAD~1", "git checkout -b feature main",
-  "git checkout feature/login", "git branch --list", "git worktree list", "git stash list",
+  "git switch feature/login", "git branch --list", "git worktree list", "git stash list",
   "mise run lint", "mise exec -- bun test", "kubectl get pods", "kubectl describe deploy api",
   "helm status api", "helm template api ./chart", "aws --profile personal secretsmanager describe-secret --secret-id api",
   "aws ssm get-parameter --name /app/name", "op vault list", "op run -- node server.js",
   "infisical run -- npm start", "doppler run -- node server.js", "snow object list database",
   "gh pr view 1", "gh issue list", "systemctl status api", "kill -1 1234", "kill 10 -9",
+  "git tag --list", "gh release view v1", "gh release list", "aws secretsmanager list-secrets",
 ]
 
 const approval = [
@@ -155,6 +165,22 @@ const approval = [
   // GitHub CLI equivalents and API bypass prevention through conservative approval.
   "gh pr merge 7", "gh pr close 7", "gh issue close 7", "gh run cancel 7", "gh run delete 7",
   "gh project delete 7", "gh label delete obsolete", "gh api repos/acme/api -X DELETE", "gh api user",
+  // Verified PR-review gaps: ambiguous path restoration, direct refs, remote
+  // mutators, rollback aliases, and access grants must all request approval.
+  "git checkout .", "git checkout src/file.ts", "git checkout HEAD src/file.ts", "git checkout feature/login",
+  "git checkout -b feature main --force", "git tag -d v1", "git tag --delete v1", "git update-ref -d refs/heads/main",
+  "git update-ref --stdin", "git symbolic-ref --delete refs/heads/old",
+  "aws secretsmanager create-secret --name /app/api", "aws secretsmanager put-resource-policy --secret-id api",
+  "aws secretsmanager replicate-secret-to-regions --secret-id api", "aws secretsmanager restore-secret --secret-id api",
+  "aws secretsmanager tag-resource --secret-id api", "aws secretsmanager untag-resource --secret-id api",
+  "aws ssm put-parameter --name /app/api --type SecureString --value example",
+  "kubectl rollout undo deployment/api", "kubectl --context prod rollout undo statefulset/db",
+  "helm upgrade api ./chart --atomic", "helm --namespace prod install api ./chart --atomic",
+  "op vault user grant --vault Production --user alice --permissions view_items",
+  "op vault group grant --vault Production --group dev --permissions export_items",
+  "gh release delete v1 --yes", "gh release delete-asset v1 archive.zip --yes", "gh release edit v1 --draft",
+  "gh repo archive acme/api --yes", "gh repo rename renamed --repo acme/api", "gh issue delete 7 --yes",
+  "gh project item-delete 7 --id item", "gh gist delete gist-id", "gh codespace delete --codespace demo",
 ]
 
 const blocked = [
@@ -172,6 +198,11 @@ const blocked = [
   "aws secretsmanager get-secret-value --secret-id api", "aws secretsmanager batch-get-secret-value --secret-id-list api",
   "aws secretsmanager get-random-password", "aws ssm get-parameter --name /app/api --with-decryption",
   "aws ssm --with-decryption get-parameters --names /app/api",
+  "aws configure export-credentials --profile prod", "aws --profile prod configure export-credentials --format env",
+  "systemctl suspend", "systemctl hibernate", "systemctl hybrid-sleep", "systemctl suspend-then-hibernate",
+  "systemctl start suspend.target", "systemctl start hibernate.target", "systemctl start hybrid-sleep.target",
+  "systemctl start suspend-then-hibernate.target", "systemctl start sleep.target",
+  "diskutil zeroDisk /dev/disk4", "diskutil randomDisk 2 /dev/disk4", "diskutil secureErase 0 /dev/disk4", "diskutil reformat disk4",
 ]
 
 describe("permission resource examples (never executed)", () => {
@@ -194,10 +225,12 @@ describe("permission resource examples (never executed)", () => {
   test("GitHub MCP names include server variants and conservatively gate grouped writers", () => {
     for (const server of ["github", "github_mcp_server", "personal_github"]) {
       expect(effect(`${server}_delete_repository`, "*")).toBe("deny")
-      for (const tool of ["delete_file", "merge_pull_request", "issue_write", "projects_write", "label_write"]) {
+      for (const tool of ["delete_file", "merge_pull_request", "issue_write", "projects_write", "label_write", "push_files", "create_branch", "create_repository", "create_pull_request", "fork_repository", "create_gist", "future_writer", "get_future_unknown_tool"]) {
         expect(effect(`${server}_${tool}`, "*")).toBe("ask")
       }
       expect(effect(`${server}_list_issues`, "*")).toBe("allow")
+      expect(effect(`${server}_get_file_contents`, "*")).toBe("allow")
+      expect(effect(`${server}_search_code`, "*")).toBe("allow")
     }
     expect(effect("unrelated_delete_repository", "*")).toBe("allow")
   })
@@ -219,5 +252,13 @@ describe("permission resource examples (never executed)", () => {
     for (const resource of ["*", "/outside/project/*", `${homedir()}/git/dotfiles-private/*`, `${homedir()}/.cache/github-private/*`]) {
       expect(effect("external_directory", resource)).toBe("ask")
     }
+  })
+
+  test("GitHub reference cache is readable but file edits are denied", () => {
+    const target = `${homedir()}/.cache/github/anomalyco/opencode/README.md`
+    expect(effect("external_directory", `${homedir()}/.cache/github/anomalyco/opencode/*`)).toBe("allow")
+    expect(effect("read", target)).toBe("allow")
+    expect(effect("edit", target)).toBe("deny")
+    expect(effect("edit", `${homedir()}/.cache/github-private/README.md`)).toBe("allow")
   })
 })

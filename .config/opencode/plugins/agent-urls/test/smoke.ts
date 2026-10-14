@@ -20,6 +20,7 @@ writeFileSync(path.join(skilldir, "SKILL.md"), "---\nname: Agent smoke skill\nde
 
 type Message = { role: string; content?: string | { type: string; text?: string }[]; tool_calls?: { function: { name: string } }[] }
 type RequestBody = { model: string; stream?: boolean; messages: Message[] }
+type SmokeResult = { error?: string; stage?: string; rootID: string; field: string; reply: string; skill: string; parentMessages: unknown; foreignBlocked: boolean; permissionBlocked: boolean }
 const traces: { model: string; system: Message[]; messages: Message[] }[] = []
 const text = (message: Message) => typeof message.content === "string" ? message.content : message.content?.map((part) => part.text ?? "").join("\n") ?? ""
 let calls = 0
@@ -56,7 +57,7 @@ delete env.OPENCODE_CONFIG_DIR
 delete env.OPENCODE_CONFIG_CONTENT
 const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("reserved") })
 const servicePort = reservation.port
-reservation.stop(true)
+await reservation.stop(true)
 
 async function cli(args: string[]) {
   const subprocess = Bun.spawn([binary, ...args], { cwd: workdir, env, stdout: "pipe", stderr: "pipe" })
@@ -73,7 +74,8 @@ function check(condition: unknown, label: string) { if (!condition) throw new Er
 try {
   check((await cli(["--version"])).includes("2.0.29"), "isolated 2.0.29 runtime")
   await cli(["service", "set", "port", String(servicePort)])
-  const result = JSON.parse(await cli(["api", "post", "/api/rpc/agent_urls_smoke/scenario", "--data", '{"input":{}}'])).output
+  const response = JSON.parse(await cli(["api", "post", "/api/rpc/agent_urls_smoke/scenario", "--data", '{"input":{}}'])) as { output: SmokeResult }
+  const result = response.output
   if (result.error) throw new Error(`${result.stage}: ${result.error}`)
   check(result.field.includes("src/demo.ts"), "spawned worker publishes JSON fields through agent://")
   check(result.reply.includes("FOLLOWUP_DONE"), "parent-to-child message wakes the selected model")
@@ -88,10 +90,10 @@ try {
   check(traces.every((trace) => trace.model === "parent" || trace.model === "worker"), "all model calls used the local deterministic provider")
   console.log("Agent coordination smoke passed without live provider credentials or a global CLI upgrade.")
 } catch (error) {
-  const plugins = JSON.parse(await cli(["api", "get", "/api/plugin"]))
+  const plugins = JSON.parse(await cli(["api", "get", "/api/plugin"])) as { data: { id: string }[] }
   console.error(plugins.data.filter((plugin: { id: string }) => plugin.id.startsWith("dotfiles.")))
   console.error("Model request counts:", traces.map((trace) => trace.model))
   throw error
 } finally {
-  try { await cli(["service", "stop"]) } finally { provider.stop(true); rmSync(root, { recursive: true, force: true }) }
+  try { await cli(["service", "stop"]) } finally { await provider.stop(true); rmSync(root, { recursive: true, force: true }) }
 }

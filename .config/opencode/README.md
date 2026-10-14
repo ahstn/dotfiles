@@ -32,17 +32,20 @@ The first rule allows all actions, including `.env` reads. Native V2
 `external_directory` rules then ask before external access except within
 `~/git/dotfiles/*` and `~/.cache/github/*`. The underlying read/edit permissions
 still apply; the GitHub cache should be treated as reference material.
+File edits under `~/.cache/github/*` are explicitly denied while reads stay
+allowed. This is not a shell sandbox: external commands remain subject to the
+separate shell rules and best-effort path inference.
 Other exceptions are adaptations of the Oceans packs in
 `crates/gateway-guardrails/src/packs/`, not a port of their evaluator.
 
 | Pack | Local policy |
 | --- | --- |
 | `core.filesystem` | Ask for removal, truncation, imaging, and find deletion; block shredding, device overwrite, and filesystem/disk erasure. |
-| `core.git` | Ask for discarding work, deleting references, force pushes, and pruning recovery history. Normal status/diff/add/commit/push remain allowed. |
+| `core.git` | Ask for discarding work, deleting references, force pushes, and pruning recovery history. Ambiguous checkout forms ask; explicit `checkout -b` and ordinary `switch` remain allowed. Normal status/diff/add/commit/push remain allowed. |
 | `kubernetes.kubectl` / `kubernetes.helm` | Ask for deletion, disruption, pruning, forced replacement, rollback, and failure cleanup. |
 | `secrets.aws_secrets` / `secrets.onepassword` | Ask for secret mutations and access revocation. |
 | `database.snowflake` | Ask for every SQL invocation, destructive object operations, and remote code execution. |
-| `saas.github` | Ask for impactful CLI/MCP writes and every `gh api` call; block repository deletion. Grouped MCP write tools ask regardless of method. |
+| `saas.github` | Ask for impactful CLI writes and every `gh api` call; block repository deletion. GitHub MCP actions ask by default, with named read-only inventory exceptions; new/unknown tools require approval. |
 | `core.shell` | Block host power changes, formatting, and selected init/broadcast signals. |
 | `secret_disclosure` | Block secret-value output, export, and credential-generating commands; prefer process-only injection through `op run`, `infisical run`, or `doppler run`. |
 
@@ -74,6 +77,21 @@ contract; they do not claim to test OpenCode's shell scanner.
 Do not run a blanket `mise dotfiles apply` to deploy one change. Inspect the
 specific mapping and preserve an existing global config before replacing it.
 See [V2 permissions](https://opencode.ai/v2/docs/permissions/) for rule order.
+
+## Reproducible linting
+
+The checks package pins Oxlint and its type-aware backend. From this directory:
+
+```sh
+mise exec -- bun install --frozen-lockfile
+mise exec -- bun run typecheck
+mise exec -- bun run lint
+```
+
+Lint uses the unmodified `../oxlint/.oxlint.jsonc` against the config tests and
+both plugins, including smoke fixtures. Each TS project includes its own files;
+no type-aware rules are dropped. The config test imports JSONC through Bun's
+older-supported module loader rather than requiring `Bun.JSONC.parse`.
 
 ## Skill URL plugin
 

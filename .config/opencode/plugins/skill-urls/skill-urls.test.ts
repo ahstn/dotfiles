@@ -6,6 +6,15 @@ import type { ToolContext } from "@opencode/plugin/promise/tool"
 import plugin from "./index.ts"
 import { parseReference, resolveReference, skillMentions } from "./references.ts"
 
+async function expectRejected(promise: Promise<unknown>, message?: string) {
+  try { await promise } catch (error) {
+    expect(error).toBeInstanceOf(Error)
+    if (message) expect(error instanceof Error ? error.message : String(error)).toContain(message)
+    return
+  }
+  throw new Error("Expected the operation to reject")
+}
+
 const temporary = path.join(tmpdir(), "opencode")
 mkdirSync(temporary, { recursive: true })
 const root = realpathSync(mkdtempSync(path.join(temporary, "skill-urls-unit-")))
@@ -45,7 +54,7 @@ describe("skill reference resolution", () => {
   }
 
   test("rejects symlinks out of the skill directory", async () => {
-    await expect(resolveReference(parseReference("skill://review/escape.md", skills)!)).rejects.toThrow("symlink escapes")
+    await expectRejected(resolveReference(parseReference("skill://review/escape.md", skills)!), "symlink escapes")
   })
 
   test("accepts a registered symlinked skill directory", async () => {
@@ -169,26 +178,26 @@ describe("plugin hooks and original executor delegation", () => {
     const h = await harness()
     await h.tools.get("read")!.execute({ path: skills[0].path }, h.invocation)
     expect(h.calls.map((call) => call.tool)).toEqual(["read"])
-    await expect(h.tools.get("read")!.execute({ path: "$HOME" }, h.invocation)).rejects.toThrow()
+    await expectRejected(h.tools.get("read")!.execute({ path: "$HOME" }, h.invocation))
     expect(h.calls.map((call) => call.tool)).toEqual(["read", "read"])
   })
 
   test("a denied native skill permission stops before any filesystem executor", async () => {
     const h = await harness()
     h.denySkill()
-    await expect(h.tools.get("read")!.execute({ path: "skill://review" }, h.invocation)).rejects.toThrow("Native skill permission denied")
+    await expectRejected(h.tools.get("read")!.execute({ path: "skill://review" }, h.invocation), "Native skill permission denied")
     expect(h.calls.map((call) => call.tool)).toEqual(["skill"])
   })
 
   test("native read/external-directory refusal is not bypassed", async () => {
     const h = await harness()
     h.denyRead()
-    await expect(h.tools.get("read")!.execute({ path: "skill://review" }, h.invocation)).rejects.toThrow("Native filesystem permission denied")
+    await expectRejected(h.tools.get("read")!.execute({ path: "skill://review" }, h.invocation), "Native filesystem permission denied")
   })
 
   test("symlink escapes never reach the filesystem executor", async () => {
     const h = await harness()
-    await expect(h.tools.get("read")!.execute({ path: "skill://review/escape.md" }, h.invocation)).rejects.toThrow("symlink escapes")
+    await expectRejected(h.tools.get("read")!.execute({ path: "skill://review/escape.md" }, h.invocation), "symlink escapes")
     expect(h.calls.map((call) => call.tool)).toEqual(["skill"])
   })
 
@@ -206,8 +215,8 @@ describe("plugin hooks and original executor delegation", () => {
     const h = await harness()
     await h.tools.get("glob")!.execute({ pattern: "skill://review/references/**/*.md" }, h.invocation)
     expect(h.calls[1].input).toEqual({ path: skillDirectory, pattern: "references/**/*.md" })
-    await expect(h.tools.get("glob")!.execute({ pattern: "$review/../*.md" }, h.invocation)).rejects.toThrow("must stay inside")
-    await expect(h.tools.get("glob")!.execute({ path: root, pattern: "skill://review/**/*.md" }, h.invocation)).rejects.toThrow("either")
+    await expectRejected(h.tools.get("glob")!.execute({ pattern: "$review/../*.md" }, h.invocation), "must stay inside")
+    await expectRejected(h.tools.get("glob")!.execute({ path: root, pattern: "skill://review/**/*.md" }, h.invocation), "either")
   })
 
   test("unknown $ glob patterns retain their original path and filter", async () => {
@@ -215,6 +224,21 @@ describe("plugin hooks and original executor delegation", () => {
     await h.tools.get("glob")!.execute({ path: skillDirectory, pattern: "$ordinary/**/*.md" }, h.invocation)
     expect(h.calls).toEqual([{ tool: "glob", input: { path: skillDirectory, pattern: "$ordinary/**/*.md" } }])
   })
+
+  test("unknown dollar filters do not prevent a valid URI root from routing", async () => {
+    const h = await harness()
+    await h.tools.get("glob")!.execute({ path: "skill://review", pattern: "$generated/**/*.md" }, h.invocation)
+    expect(h.calls.map((call) => call.tool)).toEqual(["skill", "glob"])
+    expect(h.calls[1].input).toEqual({ path: skillDirectory, pattern: "$generated/**/*.md" })
+  })
+
+  for (const pattern of ["/etc/*", "C:/Windows/*", "../*.md", "%2fetc/*", "%2e%2e/*.md", "{/etc/*,*.md}", "references/{../../*,*.md}"]) {
+    test(`rejects rooted/traversing glob ${pattern} for an aliased path`, async () => {
+      const h = await harness()
+      await expectRejected(h.tools.get("glob")!.execute({ path: "skill://review", pattern }, h.invocation), "must stay inside")
+      expect(h.calls).toHaveLength(0)
+    })
+  }
 
   test("uses the caller session's current location after moves", async () => {
     const h = await harness()
@@ -227,7 +251,7 @@ describe("plugin hooks and original executor delegation", () => {
     const h = await harness()
     const controller = new AbortController()
     controller.abort()
-    await expect(h.tools.get("read")!.execute({ path: "skill://review" }, { ...h.invocation, signal: controller.signal })).rejects.toThrow()
+    await expectRejected(h.tools.get("read")!.execute({ path: "skill://review" }, { ...h.invocation, signal: controller.signal }))
     expect(h.calls).toHaveLength(0)
   })
 
@@ -260,7 +284,7 @@ describe("plugin hooks and original executor delegation", () => {
   ] as const) {
     test(`rejects read-only skill mutations through ${tool}`, async () => {
       const h = await harness()
-      await expect(h.mutate(tool, input)).rejects.toThrow("read-only")
+      await expectRejected(h.mutate(tool, input), "read-only")
     })
   }
 

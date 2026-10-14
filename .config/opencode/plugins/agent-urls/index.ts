@@ -2,7 +2,7 @@ import { Plugin } from "@opencode/plugin"
 import type { Info } from "@opencode/plugin/promise/tool"
 import type { SessionContext } from "@opencode/plugin/promise/session"
 import { Coordinator } from "./coordinator.ts"
-import { parseTarget, snapshotKey, textPage } from "./state.ts"
+import { jsonCopy, parseTarget, snapshotKey, textPage } from "./state.ts"
 import type { Context, Invocation, Snapshot } from "./state.ts"
 
 const targetInput = { type: "string", description: "agent://<session-id>; agent://all is broadcast-only" }
@@ -109,7 +109,7 @@ async function configureSnapshots(ctx: Context, coordinator: Coordinator) {
     if (!draft) return
     drafts.delete(event.sessionID)
     const snapshot: Snapshot = { system: structuredClone(draft.system), agent: draft.agent, tools: Object.keys(draft.tools) }
-    await ctx.storage.set(snapshotKey(event.sessionID), JSON.parse(JSON.stringify(snapshot)))
+    await ctx.storage.set(snapshotKey(event.sessionID), jsonCopy(snapshot))
   })
   return (id: string) => drafts.delete(id)
 }
@@ -137,7 +137,7 @@ export default Plugin.define({
           if (!controller.signal.aborted) console.error("agent-urls completion delivery failed", error instanceof Error ? error.message : "unknown error")
         }
       }
-    })().catch((error) => { if (!controller.signal.aborted) console.error("agent-urls event subscription failed", error instanceof Error ? error.message : "unknown error") })
+    })().catch((error: unknown) => { if (!controller.signal.aborted) console.error("agent-urls event subscription failed", error instanceof Error ? error.message : "unknown error") })
     return async () => { controller.abort(); await events }
   },
 })

@@ -1,6 +1,7 @@
 import { Plugin, Skill } from "@opencode/plugin"
 import type { Result, ToolContext } from "@opencode/plugin/promise/tool"
 import { pathToFileURL } from "node:url"
+import path from "node:path"
 import { isReference, parseReference, resolveReference, skillMentions, virtualPath } from "./references.ts"
 import type { ResolvedReference, SkillSource } from "./references.ts"
 
@@ -14,19 +15,29 @@ async function sessionSkills(ctx: Context, sessionID: ToolContext["sessionID"]) 
 
 function relabelResult(result: Result, target: ResolvedReference, directory: string, tool: string): Result {
   const translate = (value: string) => virtualPath(value, target, directory)
-  const output = Array.isArray(result.output) ? result.output.map((value: unknown) => {
+  const rawOutput: unknown = result.output
+  const output: unknown = Array.isArray(rawOutput) ? rawOutput.map((value: unknown) => {
     if (!value || typeof value !== "object") return value
     const entry = value as { path?: string; entry?: { path?: string } }
     if (typeof entry.path === "string") return { ...entry, path: translate(entry.path) }
     if (typeof entry.entry?.path === "string") return { ...entry, entry: { ...entry.entry, path: translate(entry.entry.path) } }
     return value
-  }) : result.output
+  }) : rawOutput
   const content = typeof result.content === "string" ? result.content.split("\n").map((line, index) => {
     if (tool === "read") return index === 0 ? line.replace(target.path, target.uri) : line
     if (tool === "grep") return line.endsWith(":") ? translate(line.slice(0, -1)) + ":" : line
     return translate(line)
   }).join("\n") : result.content?.map((item) => item.type === "file" && item.name === target.path ? { ...item, name: target.uri } : item)
   return { ...result, output, content }
+}
+
+function validateGlob(pattern: unknown) {
+  if (typeof pattern !== "string") throw new Error("Skill glob patterns must be strings")
+  const decoded = decodeURIComponent(pattern)
+  const branches = decoded.split(/[{},|()]/)
+  if (/[\\\0]/.test(decoded) || branches.some((branch) => path.posix.isAbsolute(branch) || path.win32.isAbsolute(branch) || /^~(?:\/|$)/.test(branch)) || decoded.split(/[/{},|()]/).includes("..")) {
+    throw new Error("Glob patterns must stay inside the skill directory")
+  }
 }
 
 function routedInput(input: unknown, name: string, skills: readonly SkillSource[]) {
@@ -38,16 +49,16 @@ function routedInput(input: unknown, name: string, skills: readonly SkillSource[
   if (name === "glob" && isReference(pattern)) {
     const slash = pattern.indexOf("/", pattern.startsWith("skill://") ? 8 : 1)
     const root = slash === -1 ? pattern : pattern.slice(0, slash)
-    if (!parseReference(root, skills)) return
-    if (path !== undefined) throw new Error("Use a skill reference in either glob.path or glob.pattern, not both")
-    path = root
-    const glob = slash === -1 ? "**/*" : decodeURIComponent(pattern.slice(slash + 1))
-    if (/[\\\0]/.test(glob) || glob.split("/").includes("..")) throw new Error("Glob patterns must stay inside the skill directory")
-    pattern = glob
+    if (parseReference(root, skills)) {
+      if (path !== undefined) throw new Error("Use a skill reference in either glob.path or glob.pattern, not both")
+      path = root
+      pattern = slash === -1 ? "**/*" : decodeURIComponent(pattern.slice(slash + 1))
+    }
   }
   if (!isReference(path)) return
   const reference = parseReference(path, skills)
   if (!reference) return
+  if (name === "glob") validateGlob(pattern)
   return { reference, args: { ...args, ...(name === "glob" ? { pattern } : {}) } }
 }
 
@@ -107,14 +118,14 @@ export default Plugin.define({
         event.prompt.skills ??= []
         event.prompt.skills.push({ id, mention: mention.mention })
       }
-      for (const file of event.prompt.files ?? []) {
-        if (!isReference(file.uri)) continue
+      await Promise.all((event.prompt.files ?? []).map(async (file) => {
+        if (!isReference(file.uri)) return
         const reference = parseReference(file.uri, skills)
-        if (!reference) continue
+        if (!reference) return
         const target = await resolveReference(reference)
         file.uri = pathToFileURL(target.path).href
         file.name ??= target.uri
-      }
+      }))
     })
   },
 })

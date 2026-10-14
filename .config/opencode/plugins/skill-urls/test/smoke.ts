@@ -18,6 +18,8 @@ symlinkSync(packageRoot, path.join(configdir, "plugins", "skill-urls"), "dir")
 mkdirSync(path.join(skilldir, "references"), { recursive: true })
 writeFileSync(path.join(skilldir, "SKILL.md"), "---\nname: Probe Skill\ndescription: Isolated skill URL verification\n---\nFollow the smoke-test instructions.\n")
 writeFileSync(path.join(skilldir, "references", "notes.md"), "smoke-note-one\nsmoke-note-two\n")
+mkdirSync(path.join(skilldir, "$generated"), { recursive: true })
+writeFileSync(path.join(skilldir, "$generated", "literal.md"), "literal dollar filename")
 writeFileSync(path.join(root, "outside.md"), "OUTSIDE_CONTENT_MUST_NOT_BE_READ")
 symlinkSync(path.join(root, "outside.md"), path.join(skilldir, "escape.md"))
 writeFileSync(path.join(configdir, "opencode.jsonc"), JSON.stringify({
@@ -37,13 +39,14 @@ delete env.OPENCODE_CONFIG_CONTENT
 
 const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("reserved") })
 const port = reservation.port
-reservation.stop(true)
+await reservation.stop(true)
 
 function probe(input: Record<string, string>) {
   const text = execFileSync("opencode", [
     "api", "post", "/api/rpc/dotfiles_skill_urls_smoke/run", "--data", JSON.stringify({ input }),
   ], { cwd: workdir, env, encoding: "utf8", timeout: 30_000 })
-  return JSON.parse(text).output as { ok: boolean; result?: { content?: string }; error?: string; inbox?: unknown }
+  const response = JSON.parse(text) as { output: { ok: boolean; result?: { content?: string }; error?: string; inbox?: unknown } }
+  return response.output
 }
 
 function check(label: string, input: Record<string, string>, accepted: boolean, includes?: string) {
@@ -57,6 +60,11 @@ try {
   check("read skill:// instructions", { operation: "read", path: "skill://probe-skill" }, true, "Follow the smoke-test instructions")
   check("read $ alias supporting file", { operation: "read", path: "$probe-skill/references/notes.md" }, true, "smoke-note-two")
   check("glob URI root", { operation: "glob", path: "skill://probe-skill", pattern: "**/*.md" }, true, "skill://probe-skill/references/notes.md")
+  check("literal dollar filter with URI root", { operation: "glob", path: "skill://probe-skill", pattern: "$generated/**/*.md" }, true, "skill://probe-skill/%24generated/literal.md")
+  // Investigate the review's executor claim independently of URI validation.
+  check("native absolute glob does not enumerate an outside file", { operation: "glob", path: skilldir, pattern: path.join(root, "outside.md") }, true, "No files found")
+  check("absolute glob rejected for URI root", { operation: "glob", path: "skill://probe-skill", pattern: "/etc/*" }, false, "must stay inside")
+  check("traversing glob rejected for URI root", { operation: "glob", path: "skill://probe-skill", pattern: "../*" }, false, "must stay inside")
   check("grep URI root", { operation: "grep", path: "skill://probe-skill", pattern: "smoke-note-two" }, true, "skill://probe-skill/references/notes.md")
   check("native $ skill attachment admission", { operation: "prompt", text: "Use $probe-skill" }, true, "<skill_content")
   check("native skill:// attachment admission", { operation: "prompt", text: "Use skill://probe-skill" }, true, "<skill_content")
@@ -66,9 +74,9 @@ try {
   check("symlink escape refusal", { operation: "read", path: "skill://probe-skill/escape.md" }, false)
   console.log("Runtime smoke checks passed without model calls or live provider credentials.")
 } catch (error) {
-  const documents = JSON.parse(execFileSync("opencode", ["api", "get", "/api/config"], { cwd: workdir, env, encoding: "utf8" }))
+  const documents = JSON.parse(execFileSync("opencode", ["api", "get", "/api/config"], { cwd: workdir, env, encoding: "utf8" })) as { path: string; info?: { plugins?: unknown } }[]
   console.error("Configuration sources:", documents.map((entry: { path: string; info?: { plugins?: unknown } }) => ({ path: entry.path, plugins: entry.info?.plugins })))
-  const plugins = JSON.parse(execFileSync("opencode", ["api", "get", "/api/plugin"], { cwd: workdir, env, encoding: "utf8" }))
+  const plugins = JSON.parse(execFileSync("opencode", ["api", "get", "/api/plugin"], { cwd: workdir, env, encoding: "utf8" })) as { data: { id: string }[] }
   console.error("Plugin status:", plugins.data.filter((plugin: { id: string }) => plugin.id.startsWith("dotfiles.")))
   for (const log of new Bun.Glob("**/*.log").scanSync({ cwd: root, absolute: true })) {
     console.error(readFileSync(log, "utf8").split("\n").filter((line) => /plugin|error/i.test(line)).slice(-15).join("\n"))

@@ -1,6 +1,7 @@
 import type { Plugin } from "@opencode/plugin"
 import type { SessionContext } from "@opencode/plugin/promise/session"
 import type { ToolContext } from "@opencode/plugin/promise/tool"
+import type { Schema } from "effect"
 
 export type Context = Parameters<Parameters<typeof Plugin.define>[0]["setup"]>[0]
 export type Invocation = Pick<ToolContext, "sessionID" | "agent" | "messageID" | "id" | "signal">
@@ -10,13 +11,21 @@ export type Worker = {
   id: string; rootID: string; parentID: string; directory: string; model: string; description: string;
   snapshot: Snapshot; status: Status; requestedAt: number; turn: number; messages: number;
   output?: string; error?: string; notifiedTurn?: number;
+  outgoingDeliveries?: string[]; incomingDeliveries?: string[];
 }
+export type DeliveryIntent = { fingerprint: string; delivered: boolean; accountingVersion?: 1 }
 
 export const handle = (id: string) => `agent://${id}`
 export const workerKey = (id: string) => `worker/${id}`
 export const snapshotKey = (id: string) => `snapshot/${id}`
 export const familyPrefix = (rootID: string) => `family/${rootID}/`
 export const active = (worker: Worker) => worker.status === "starting" || worker.status === "running"
+
+// A JSON round trip produces transport-safe data, including for SDK objects.
+export function jsonCopy(value: unknown): Schema.Json {
+  const parsed: unknown = JSON.parse(JSON.stringify(value))
+  return parsed as Schema.Json
+}
 
 export function parseTarget(input: string) {
   if (!input.startsWith("agent://") || /[?#\\\0]/.test(input)) throw new Error("Expected agent://<session-id>[/JSON/path]")
