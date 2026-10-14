@@ -60,7 +60,7 @@ describe("configuration structure", () => {
     expect(config.references.axum.repository).toBe("tokio-rs/axum")
     expect(config.references["tanstack-router"].repository).toBe("TanStack/router")
     expect(config.references.opencode.repository).toBe("anomalyco/opencode")
-    expect(config.references.opencode.branch).toBe("2.0")
+    expect(config.references.opencode.branch).toBeUndefined()
     expect(config.references.dotfiles.path).toBe("~/git/dotfiles")
     for (const reference of Object.values(config.references) as { description: string }[]) {
       expect(reference.description.length).toBeGreaterThan(0)

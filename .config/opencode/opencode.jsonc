@@ -19,7 +19,6 @@
     },
     "opencode": {
       "repository": "anomalyco/opencode",
-      "branch": "2.0",
       "description": "Consult for OpenCode V2 internals and plugin APIs. Use https://opencode.ai/v2/docs/ as the configuration contract and check the installed version. Treat the cached checkout as read-only.",
     },
     "dotfiles": {

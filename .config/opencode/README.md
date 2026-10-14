@@ -18,8 +18,8 @@ with the same skill ID, so edits to the source are used directly.
 
 - `axum`: upstream Axum source; compare with the consuming project's lockfile.
 - `tanstack-router`: upstream Router/Start source; compare installed versions.
-- `opencode`: `anomalyco/opencode`, explicitly on the `2.0` branch rather than
-  the repository's default V1 `dev` branch.
+- `opencode`: `anomalyco/opencode`, following the default branch (`dev`), which
+  contains the current V2 source. The branch named `2.0` is an old V1 snapshot.
 - `dotfiles`: the local `~/git/dotfiles` checkout of `ahstn/dotfiles`, including
   current uncommitted work; consult its `AGENTS.md` before editing.
 
@@ -74,3 +74,10 @@ contract; they do not claim to test OpenCode's shell scanner.
 Do not run a blanket `mise dotfiles apply` to deploy one change. Inspect the
 specific mapping and preserve an existing global config before replacing it.
 See [V2 permissions](https://opencode.ai/v2/docs/permissions/) for rule order.
+
+## Skill URL plugin
+
+`plugins/skill-urls/` is an immediate plugin package in the already mise-managed
+global `~/.config/opencode/plugins/` directory, so OpenCode discovers it without
+an additional `plugins` config entry. See its [README](plugins/skill-urls/README.md)
+for supported aliases, read-only behavior, permission checks, and verification.
