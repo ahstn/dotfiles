@@ -1,0 +1,50 @@
+.config/opencode/README.md
+  h_2f452a9c375069 35-37,44,48,81-95
+.config/opencode/bun.lock
+  h_2f452a9c375069 1-122
+.config/opencode/config.test.ts
+  h_2f452a9c375069 4,9-17,108,114,168-183,201-205,228,232-233,256-263
+.config/opencode/jsonc.d.ts
+  h_2f452a9c375069 1-4
+.config/opencode/opencode.jsonc
+  h_2f452a9c375069 38,58-61,109-114,126,138-139,149-154,156,170-171,215-281,312-315,334-337,368
+.config/opencode/package.json
+  h_2f452a9c375069 1-15
+.config/opencode/plugins/agent-urls/README.md
+  h_2f452a9c375069 89-95,102-104
+.config/opencode/plugins/agent-urls/agent-urls.test.ts
+  h_2f452a9c375069 9-17,31,39,45-51,73,76-80,98,118,121,123,129,137,151,158,167,191-239,248-249,256,264,270-271,273,280-281,289-290,299,324-338,349,356,358-359,380
+.config/opencode/plugins/agent-urls/coordinator.ts
+  h_2f452a9c375069 3-4,14-15,25,29-33,35-44,49,53,57-62,119,162,167-169,174,176,178-186,188-189,192,197-198,208-210,213-214,216,227-235,263-266,322,343
+.config/opencode/plugins/agent-urls/index.ts
+  h_2f452a9c375069 5,112,140
+.config/opencode/plugins/agent-urls/state.ts
+  h_2f452a9c375069 4,14,16,24-29
+.config/opencode/plugins/agent-urls/test/fixture/index.ts
+  h_2f452a9c375069 14,64-65
+.config/opencode/plugins/agent-urls/test/smoke.ts
+  h_2f452a9c375069 23,60,77-78,93,98
+.config/opencode/plugins/skill-urls/README.md
+  h_2f452a9c375069 49-54
+.config/opencode/plugins/skill-urls/index.ts
+  h_2f452a9c375069 4,18-19,25,34-42,52-56,61,121-122,124,128
+.config/opencode/plugins/skill-urls/references.ts
+  h_2f452a9c375069 81
+.config/opencode/plugins/skill-urls/skill-urls.test.ts
+  h_2f452a9c375069 9-17,57,181,188,195,200,218-219,228-242,254,287
+.config/opencode/plugins/skill-urls/test/smoke.ts
+  h_2f452a9c375069 21-22,42,48-49,63-67,77,79
+.config/opencode/tsconfig.json
+  h_2f452a9c375069 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b00900323bf104679f9afd6a1df11deab495ac1",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
