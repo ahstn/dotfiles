@@ -71,6 +71,10 @@ describe("configuration structure", () => {
     expect(config.websearch).toEqual({ provider: "exa" })
   })
 
+  test("loads shared skills directly from the dotfiles source", () => {
+    expect(config.skills).toEqual(["~/git/dotfiles/skills"])
+  })
+
   test("uses the native V2 external_directory action and trusted path exceptions", () => {
     expect(config.permissions.filter((rule: Rule) => rule.action === "external_directory")).toEqual([
       { action: "external_directory", resource: "*", effect: "ask" },

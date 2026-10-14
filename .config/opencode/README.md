@@ -10,6 +10,10 @@ connect Exa through `/connect` / `EXA_API_KEY` on each machine. No search creden
 belongs in this repository. Search queries leave the machine; do not include
 private source, credentials, or sensitive incident details.
 
+Skills explicitly include `~/git/dotfiles/skills`. This source takes precedence
+over automatically discovered `~/.agents/skills` and `~/.claude/skills` copies
+with the same skill ID, so edits to the source are used directly.
+
 ## References
 
 - `axum`: upstream Axum source; compare with the consuming project's lockfile.

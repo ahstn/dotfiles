@@ -4,6 +4,9 @@
   // Use the existing Exa connection; never track its API key here.
   "websearch": { "provider": "exa" },
 
+  // Prefer the source skills over automatically discovered compatibility copies.
+  "skills": ["~/git/dotfiles/skills"],
+
   // Cached upstream checkouts are read-only and may lag the installed version.
   "references": {
     "axum": {
