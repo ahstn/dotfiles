@@ -1,8 +1,8 @@
 # Skill URLs for OpenCode V2
 
 Adds OMP-style skill references to the existing file tools and native skill
-attachments. Tested against OpenCode and `@opencode/plugin` **2.0.26**; the SDK
-peer version is pinned because newer releases may change client return shapes.
+attachments. Tested against OpenCode **2.0.26** and alongside the agent plugin on
+**2.0.29**. Development types remain pinned to 2.0.26.
 
 ## Usage
 

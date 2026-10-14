@@ -10,7 +10,7 @@
         "typescript": "7.0.2",
       },
       "peerDependencies": {
-        "@opencode/plugin": "2.0.26",
+        "@opencode/plugin": ">=2.0.26 <=2.0.29",
       },
     },
   },

@@ -9,7 +9,7 @@
     "smoke": "bun run test/smoke.ts",
     "typecheck": "tsc --noEmit"
   },
-  "peerDependencies": { "@opencode/plugin": "2.0.26" },
+  "peerDependencies": { "@opencode/plugin": ">=2.0.26 <=2.0.29" },
   "devDependencies": {
     "@opencode/plugin": "2.0.26",
     "@types/bun": "1.4.3",

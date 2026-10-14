@@ -81,3 +81,12 @@ See [V2 permissions](https://opencode.ai/v2/docs/permissions/) for rule order.
 global `~/.config/opencode/plugins/` directory, so OpenCode discovers it without
 an additional `plugins` config entry. See its [README](plugins/skill-urls/README.md)
 for supported aliases, read-only behavior, permission checks, and verification.
+
+## Agent coordination plugin
+
+`plugins/agent-urls/` adds model-selected child sessions and `agent://` output
+handles with two-way messaging. It needs **OpenCode 2.0.29** for native permission
+assertions; it is not activated safely on 2.0.26. The [plugin README](plugins/agent-urls/README.md)
+documents tool inputs, frozen system prompts, authority boundaries, costs, and
+the isolated local-provider smoke test. Neither plugin is deployed by merely
+committing this repository change.
