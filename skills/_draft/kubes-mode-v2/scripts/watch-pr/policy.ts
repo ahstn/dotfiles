@@ -245,15 +245,26 @@ async function readCi(
       all: checks.checks,
       hadPreviousPassingCi: merge.hadPreviousPassingCi,
     };
-    if (failed !== null && merge.github.headRollupState === "SUCCESS") {
-      // The inverse race of ROLLUP_DISAGREES: a failed check was rerun and
-      // went green between the two reads. Poll again rather than send the
-      // agent after a failure that no longer exists.
+    const rollup = merge.github.headRollupState;
+    // The owner-approval gate is left out of pending on purpose, but the
+    // commit rollup still counts it as PENDING; that alone isn't disagreement.
+    const gateHoldsRollup =
+      (rollup === "PENDING" || rollup === "EXPECTED") &&
+      checks.checks.some((check) => check.kind === "code-review-gate");
+    if (
+      failed !== null &&
+      (rollup === "SUCCESS" ||
+        ((rollup === "PENDING" || rollup === "EXPECTED") && !gateHoldsRollup))
+    ) {
+      // The inverse race of ROLLUP_DISAGREES: a failed check was rerun
+      // between the two reads. A failure would keep the rollup at FAILURE, so
+      // PENDING or SUCCESS means the rerun is running or already green. Poll
+      // again rather than send the agent after a failure that no longer exists.
       const disagreement: T.PendingCheck = {
         kind: "pending",
         name: ROLLUP_DISAGREES,
-        reportedState: "SUCCESS",
-        description: "checks failed but the commit rollup has since passed",
+        reportedState: rollup ?? "UNKNOWN",
+        description: "checks failed but the commit rollup has since moved on",
         link: "",
         workflow: "",
       };
@@ -283,8 +294,9 @@ async function readCi(
     else if (pending !== null)
       ci = { ...base, kind: "ci-pending", failed: [], pending };
     else if (
-      merge.github.headRollupState !== null &&
-      merge.github.headRollupState !== "SUCCESS"
+      rollup !== null &&
+      rollup !== "SUCCESS" &&
+      !gateHoldsRollup
     ) {
       // The check list and the rollup are separate reads of the same commit,
       // so a retry or new workflow between them can leave a passing list next
@@ -293,7 +305,7 @@ async function readCi(
       const disagreement: T.PendingCheck = {
         kind: "pending",
         name: ROLLUP_DISAGREES,
-        reportedState: merge.github.headRollupState,
+        reportedState: rollup,
         description: "checks passed but the commit rollup has not",
         link: "",
         workflow: "",

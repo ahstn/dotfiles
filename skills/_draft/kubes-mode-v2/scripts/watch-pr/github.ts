@@ -1162,6 +1162,9 @@ export function orderStack(
       visit(child);
     }
   };
+  // Walk up from every node on the way down too, so siblings that branch off
+  // an ancestor are part of the connected stack.
+  for (const node of [...down].reverse()) visit(node);
   visit(start);
   return (
     nonEmpty(

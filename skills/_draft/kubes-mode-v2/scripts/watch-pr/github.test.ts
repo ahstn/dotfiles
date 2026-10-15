@@ -467,6 +467,17 @@ describe("context and stack discovery", () => {
     ).toThrow("heads more than one open PR");
   });
 
+  it("includes siblings that branch off an ancestor", () => {
+    const ordered = orderStack(context, [
+      { number: parsePrNumber(41), headRefName: "a", baseRefName: "main" },
+      { number: context.number, headRefName: "b", baseRefName: "a" },
+      { number: parsePrNumber(43), headRefName: "c", baseRefName: "a" },
+    ]);
+    expect(ordered.map((item) => Number(item.number)).sort()).toEqual([
+      41, 42, 43,
+    ]);
+  });
+
   it("orders the connected stack bottom-to-top", () => {
     const ordered = orderStack(context, [
       {

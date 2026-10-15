@@ -20,6 +20,7 @@ import {
   pendingCheck,
 } from "./fakes.test-helper.ts";
 import type {
+  Check,
   GitHubReader,
   NonEmpty,
   PollingOptions,
@@ -490,6 +491,40 @@ it("reports owner threads when another reviewer's lookup fails", async () => {
   if (snapshot.kind !== "open") throw new Error("expected open");
   expect(snapshot.threads.map((t) => t.id)).toEqual(["owner"]);
   await expect(read([thread("member", "m", "MEMBER")])).rejects.toBe(outage);
+});
+
+it("waits while a failed check is being rerun", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      fastPath: { kind: "checks", checks: [failedCheck()] },
+      commitRollups: [{ oid: "head", state: "PENDING" }],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
+it("does not wait on the ignored review gate through the rollup", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Code Review Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      fastPath: { kind: "checks", checks: [passingCheck(), gate] },
+      commitRollups: [{ oid: "head", state: "PENDING" }],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("ready");
 });
 
 it("waits while GitHub is still computing mergeability", async () => {

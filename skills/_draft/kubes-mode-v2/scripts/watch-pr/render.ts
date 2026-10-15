@@ -56,11 +56,14 @@ export function renderStatusTable(rows: T.NonEmpty<T.PrSnapshot>): string {
   return `${lines.join("\n")}\n`;
 }
 function threadLine(thread: T.ReviewThreadSummary): string {
-  const comment = thread.firstComment;
+  // Where the thread is comes from the opener; what it says now comes from
+  // the comment that decided it (a follow-up or an edit), which is what woke us.
+  const anchor = thread.firstComment;
+  const comment = thread.decidingComment ?? anchor;
   return [
     thread.id,
-    comment?.path ?? "None",
-    comment?.line ?? "None",
+    anchor?.path ?? "None",
+    anchor?.line ?? "None",
     comment?.authorLogin ?? "None",
     `disposition=${thread.disposition}`,
     `isBugBot=${thread.isBugbot}`,

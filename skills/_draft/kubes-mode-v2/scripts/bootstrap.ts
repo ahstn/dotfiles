@@ -48,6 +48,34 @@ function requestedTimeoutMs(argv: readonly string[]): number | null {
   return null;
 }
 
+/**
+ * The watcher's own TIMEOUT verdict (exit 5, reason `startup`), written here
+ * because the install ran out of time before the CLI could load. Mirrors
+ * render.ts by hand, since commander and the CLI aren't importable yet.
+ */
+function startupTimeout(argv: readonly string[]): never {
+  const mode = argv.includes("--queued-stack")
+    ? "queued-stack"
+    : argv.includes("--stack")
+      ? "stack"
+      : "single";
+  process.stdout.write(
+    argv.includes("--pretty")
+      ? "TIMEOUT: --timeout ran out installing dependencies\n"
+      : `${JSON.stringify({
+          schemaVersion: 1,
+          sequence: 1,
+          observedAt: new Date().toISOString(),
+          mode,
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "startup" },
+        })}\n`
+  );
+  process.exit(5);
+}
+
 export function ensureDependenciesInstalled(): void {
   const startedAt = Date.now();
   const requested = requestedTimeoutMs(process.argv.slice(2));
@@ -71,9 +99,10 @@ export function ensureDependenciesInstalled(): void {
     { cwd: scriptsDirectory, timeout: installTimeoutMs }
   );
   if (result.exitCode === null || result.signalCode) {
-    throw new Error(
-      `bun install --frozen-lockfile did not finish within ${installTimeoutMs / 1_000}s`
+    process.stderr.write(
+      `bun install --frozen-lockfile did not finish within ${installTimeoutMs / 1_000}s\n`
     );
+    startupTimeout(process.argv.slice(2));
   }
   if (result.exitCode !== 0) {
     process.stdout.write(result.stdout);
