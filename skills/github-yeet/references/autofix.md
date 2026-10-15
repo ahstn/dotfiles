@@ -48,7 +48,7 @@ Classify each thread and act:
 | Wrong | Reply with the evidence, such as a file and line, a test, or a doc. Leave it unresolved for the reviewer. |
 | Unclear or architectural | Ask the user in chat. Don't reply or resolve yet. |
 
-Write each reply body to a file with your file-writing tool, never inline in a shell string, so review text cannot be interpolated by the shell. The last line of every reply must be the marker below. Without it, the watcher treats your own reply as new feedback and wakes you again.
+Write each reply body to a file with your file-writing tool, never inline in a shell string, so review text cannot be interpolated by the shell. The last line of every reply must be the marker below. Without it, the watcher treats your own reply as new feedback and wakes you again. The marker only counts on a comment written by the authenticated `gh` user, so a pasted copy from anyone else is ignored.
 
 ```md
 Fixed in abc1234: the empty cursor now returns the first page.

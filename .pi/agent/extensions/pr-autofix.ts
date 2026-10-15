@@ -63,7 +63,9 @@ function verdictKey(verdict: Verdict): string {
     case "review-threads":
       return `threads:${(b.threads ?? []).map((t: { id: string }) => t.id).sort().join(",")}`;
     case "failing-checks":
-      return `checks:${(b.ci?.failed ?? []).map((c: { name: string; link: string }) => `${c.name}@${c.link}`).sort().join(",")}`;
+      // The head SHA separates a new failure after a push from the one the
+      // agent was already woken for, even when a check's name and link repeat.
+      return `checks:${b.headRefOid}:${(b.ci?.failed ?? []).map((c: { name: string; link: string }) => `${c.name}@${c.link}`).sort().join(",")}`;
     default:
       return `${verdict.kind}:${b.kind ?? ""}:${b.reason ?? ""}`;
   }
@@ -119,6 +121,11 @@ export default function (pi: ExtensionAPI) {
     let stdout = "";
     const child = spawn(watcher, args, { cwd: current.cwd, stdio: ["ignore", "pipe", "pipe"] });
     current.child = child;
+    // A missing or non-executable watcher emits "error"; unhandled, it would
+    // crash the whole pi process rather than just stop autofix.
+    child.on("error", (error) => {
+      if (watch === current) stop(`could not run watch-pr: ${error.message}`);
+    });
     child.stdout?.setEncoding("utf8").on("data", (chunk: string) => (stdout += chunk));
     child.on("close", (code) => {
       if (watch !== current) return; // stopped or restarted meanwhile

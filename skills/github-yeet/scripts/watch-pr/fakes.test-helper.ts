@@ -6,7 +6,6 @@ import type {
   OpenPullRequest,
   PrContext,
   PullRequestFacts,
-  Repository,
   ReviewThread,
   RollupPage,
 } from "./types.ts";
@@ -19,7 +18,6 @@ export interface FakeReaderOptions {
   readonly threads?: readonly ReviewThread[];
   readonly commitRollups?: readonly CommitRollup[];
   readonly openPullRequests?: readonly OpenPullRequest[];
-  readonly origin?: Repository | null;
   readonly current?: PrContext;
 }
 
@@ -80,12 +78,6 @@ export function fakeReader(
   let page = 0;
   return {
     calls,
-    async originRepo() {
-      calls.push("originRepo");
-      return options.origin === undefined
-        ? { owner: "owner", repo: "repo" }
-        : options.origin;
-    },
     async currentPr(pr) {
       calls.push("currentPr");
       return { ...context, number: pr ?? context.number };

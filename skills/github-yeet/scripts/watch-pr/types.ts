@@ -206,6 +206,7 @@ export type MergeBlocker =
   | {
       readonly kind: "failing-checks";
       readonly pr: PrContext;
+      readonly headRefOid: string | null;
       readonly ci: CiFailing | CiGithubRejected;
     }
   | {
@@ -393,7 +394,6 @@ export interface RollupPage {
   readonly endCursor: string | null;
 }
 export interface GitHubReader {
-  originRepo(): Promise<Repository | null>;
   currentPr(pr: PrNumber | null): Promise<PrContext>;
   pullRequest(context: PrContext): Promise<PullRequestFacts>;
   openPullRequests(repository: Repository): Promise<readonly OpenPullRequest[]>;

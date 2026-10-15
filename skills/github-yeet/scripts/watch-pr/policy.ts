@@ -163,7 +163,12 @@ function threadBlocker(row: T.PrSnapshot): T.MergeBlocker | null {
 const ciBlocker = (row: T.PrSnapshot): T.MergeBlocker | null =>
   row.kind === "open" &&
   (row.ci.kind === "ci-failing" || row.ci.kind === "ci-github-rejected")
-    ? { kind: "failing-checks", pr: row.context, ci: row.ci }
+    ? {
+        kind: "failing-checks",
+        pr: row.context,
+        headRefOid: row.facts.headRefOid,
+        ci: row.ci,
+      }
     : null;
 function gateReason(
   row: T.PrSnapshot,

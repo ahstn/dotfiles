@@ -2,10 +2,15 @@ import { spawn } from "node:child_process";
 import type * as T from "./types.ts";
 import { nonEmpty, parsePrNumber } from "./types.ts";
 export const REVIEW_THREADS_QUERY = `
-query ReviewThreads($owner: String!, $repo: String!, $pr: Int!) {
+query ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) {
+  viewer { login }
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $pr) {
-      reviewThreads(first: 100) {
+      reviewThreads(first: 100, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
         nodes {
           id
           isResolved
@@ -189,34 +194,6 @@ const reviewDecision = (value: unknown): T.ReviewDecision =>
     REVIEW_DECISIONS,
     "pull request.reviewDecision"
   );
-function parseRemote(value: string): T.Repository | null {
-  let normalized = value.trim();
-  if (normalized.startsWith("git@github.com:"))
-    normalized = `https://github.com/${normalized.slice(15)}`;
-  if (normalized.startsWith("ssh://git@github.com/"))
-    normalized = `https://github.com/${normalized.slice(21)}`;
-  try {
-    const url = new URL(normalized);
-    const parts = url.pathname
-      .replace(/\.git$/, "")
-      .split("/")
-      .filter(Boolean);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "github.com" ||
-      url.port ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash ||
-      parts.length !== 2
-    )
-      return null;
-    return { owner: parts[0], repo: parts[1] };
-  } catch {
-    return null;
-  }
-}
 function parsePrUrl(value: string): T.PrContext {
   try {
     const url = new URL(value);
@@ -366,21 +343,24 @@ function parseComment(value: unknown): T.ReviewComment {
 // Mirrors who Claude Desktop's auto-fix listens to: people with write access
 // and installed GitHub Apps. CONTRIBUTOR and NONE can be anyone on the internet.
 const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
-// The agent usually posts through the user's own `gh` login, so authorship
-// cannot tell the user's review notes from the agent's replies. Agent replies
-// carry this marker instead, and a thread whose newest comment has it is
-// waiting on the reviewer.
+// The agent posts through the user's own `gh` login, so authorship alone
+// cannot tell the user's review notes from the agent's replies, and the marker
+// alone can be pasted by anyone. A thread is waiting on the reviewer only when
+// its newest comment has the marker and was written by the `gh` viewer.
 export const AUTOFIX_REPLY_MARKER = "<!-- github-yeet:autofix -->";
 function threadDisposition(
   first: T.ReviewComment | null,
-  last: LatestComment | null
+  last: LatestComment | null,
+  viewerLogin: string | null
 ): T.ThreadDisposition {
   if (
     first === null ||
     !(first.authorIsBot || TRUSTED_ASSOCIATIONS.has(first.authorAssociation))
   )
     return "untrusted";
-  return last?.body.includes(AUTOFIX_REPLY_MARKER)
+  return viewerLogin !== null &&
+    last?.authorLogin === viewerLogin &&
+    last.body.includes(AUTOFIX_REPLY_MARKER)
     ? "awaiting-reviewer"
     : "actionable";
 }
@@ -439,6 +419,10 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
     at(value, ["data", "repository", "pullRequest", "reviewThreads", "nodes"]),
     "reviewThreads.nodes"
   );
+  const data = isRecord(value) ? value.data : null;
+  const viewer = isRecord(data) ? data.viewer : null;
+  const viewerLogin =
+    isRecord(viewer) && typeof viewer.login === "string" ? viewer.login : null;
   const threads: {
     readonly id: string;
     readonly firstComment: T.ReviewComment | null;
@@ -477,7 +461,7 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
       id,
       firstComment,
       lastAuthorLogin: latest?.authorLogin ?? firstComment?.authorLogin ?? null,
-      disposition: threadDisposition(firstComment, latest),
+      disposition: threadDisposition(firstComment, latest, viewerLogin),
       isBugbot: isBugbot(firstComment),
       bugbotReviewPasses: passes,
     }));
@@ -534,10 +518,6 @@ function graphqlArgs(
 }
 
 export class GhGitHubReader implements T.GitHubReader {
-  async originRepo(): Promise<T.Repository | null> {
-    const result = await run(["git", "remote", "get-url", "origin"]);
-    return result.code === 0 ? parseRemote(result.stdout) : null;
-  }
   async currentPr(pr: T.PrNumber | null): Promise<T.PrContext> {
     const argv: [string, ...string[]] = ["gh", "pr", "view"];
     if (pr !== null) argv.push(String(pr));
@@ -654,9 +634,34 @@ export class GhGitHubReader implements T.GitHubReader {
   async reviewThreads(
     context: T.PrContext
   ): Promise<readonly T.ReviewThread[]> {
-    return parseReviewThreads(
-      await runJson(graphqlArgs(REVIEW_THREADS_QUERY, context))
-    );
+    // Resolved and parked threads still fill pages, so an actionable thread
+    // can sit past the first 100. Read every page before classifying.
+    const nodes: unknown[] = [];
+    let viewer: unknown = null;
+    let after: string | null = null;
+    do {
+      const argv = graphqlArgs(REVIEW_THREADS_QUERY, context);
+      if (after !== null) argv.push("-f", `after=${after}`);
+      const value = await runJson(argv);
+      viewer = at(value, ["data", "viewer"]);
+      const connection = record(
+        at(value, ["data", "repository", "pullRequest", "reviewThreads"]),
+        "reviewThreads"
+      );
+      nodes.push(...list(connection.nodes, "reviewThreads.nodes"));
+      const page = record(connection.pageInfo, "reviewThreads.pageInfo");
+      const cursor = optionalString(
+        page.endCursor,
+        "reviewThreads.pageInfo.endCursor"
+      );
+      after = page.hasNextPage === true && cursor ? cursor : null;
+    } while (after !== null);
+    return parseReviewThreads({
+      data: {
+        viewer,
+        repository: { pullRequest: { reviewThreads: { nodes } } },
+      },
+    });
   }
   async commitRollups(
     context: T.PrContext
@@ -733,15 +738,8 @@ export async function resolveContext(args: {
 }): Promise<T.PrContext> {
   if (args.pr !== null && args.owner !== null && args.repo !== null)
     return { owner: args.owner, repo: args.repo, number: args.pr };
-  if (args.pr !== null) {
-    const origin = await args.reader.originRepo();
-    if (origin !== null)
-      return {
-        owner: args.owner ?? origin.owner,
-        repo: args.repo ?? origin.repo,
-        number: args.pr,
-      };
-  }
+  // `gh pr view` resolves the PR's base repository. In a fork checkout,
+  // `origin` is the fork, so a PR number must not be paired with it.
   const inferred = await args.reader.currentPr(args.pr);
   return {
     owner: args.owner ?? inferred.owner,

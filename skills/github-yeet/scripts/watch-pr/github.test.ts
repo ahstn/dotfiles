@@ -269,15 +269,18 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
   const thread = (
     id: string,
     first: object,
-    lastBody: string
+    lastBody: string,
+    lastLogin = "me"
   ): Record<string, unknown> => ({
     id,
     isResolved: false,
     comments: { nodes: [first] },
-    latest: { nodes: [{ body: lastBody, author: { login: "me" } }] },
+    latest: { nodes: [{ body: lastBody, author: { login: lastLogin } }] },
   });
+  const marked = `Disproved: the null case is handled above.\n${AUTOFIX_REPLY_MARKER}`;
   const threads = parseReviewThreads({
     data: {
+      viewer: { login: "me" },
       repository: {
         pullRequest: {
           reviewThreads: {
@@ -295,7 +298,13 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
               thread(
                 "answered",
                 comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
-                `Disproved: the null case is handled above.\n${AUTOFIX_REPLY_MARKER}`
+                marked
+              ),
+              thread(
+                "forged-marker",
+                comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
+                marked,
+                "rando"
               ),
               thread(
                 "drive-by",
@@ -314,6 +323,7 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     member: "actionable",
     app: "actionable",
     answered: "awaiting-reviewer",
+    "forged-marker": "actionable",
     "drive-by": "untrusted",
   });
 });
@@ -332,8 +342,10 @@ describe("context and stack discovery", () => {
     expect(reader.calls).toEqual([]);
   });
 
-  it("uses the local origin before currentPr for an explicit number", async () => {
-    const reader = fakeReader({ origin: { owner: "local", repo: "checkout" } });
+  it("resolves an explicit number through gh, not origin, so forks get the base repo", async () => {
+    const reader = fakeReader({
+      current: { owner: "upstream", repo: "repo", number: parsePrNumber(1) },
+    });
     expect(
       await resolveContext({
         reader,
@@ -341,8 +353,8 @@ describe("context and stack discovery", () => {
         repo: null,
         pr: context.number,
       })
-    ).toEqual({ owner: "local", repo: "checkout", number: context.number });
-    expect(reader.calls).toEqual(["originRepo"]);
+    ).toEqual({ owner: "upstream", repo: "repo", number: context.number });
+    expect(reader.calls).toEqual(["currentPr"]);
   });
 
   it("orders the connected stack bottom-to-top", () => {
