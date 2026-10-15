@@ -117,7 +117,10 @@ export async function readSnapshot(args: {
       now.mergedAt === facts.mergedAt &&
       // A review comment posted or edited after the thread read changes no
       // field above; updatedAt catches it before a stale READY goes out.
-      now.updatedAt === facts.updatedAt
+      now.updatedAt === facts.updatedAt &&
+      // A ruleset or protection change can flip CLEAN to BLOCKED with nothing
+      // else above moving.
+      now.mergeStateStatus === facts.mergeStateStatus
     ) {
       // Check activity moves none of the fields above. Before a clean CI read
       // can become READY, confirm no check has registered or failed since.
@@ -264,8 +267,10 @@ async function readCi(
   // GitHub reports UNKNOWN while it is still computing conflicts, typically
   // right after a push. Treat that as a pending check so the watcher polls
   // again instead of declaring READY before a conflict shows up.
+  // mergeStateStatus UNKNOWN is the same "not computed yet", for the gates
+  // (protection, rules) rather than the conflict check.
   const mergeability: T.PendingCheck[] =
-    facts.mergeable === "UNKNOWN"
+    facts.mergeable === "UNKNOWN" || facts.mergeStateStatus === "UNKNOWN"
       ? [
           {
             kind: "pending",

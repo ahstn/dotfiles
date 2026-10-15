@@ -842,6 +842,45 @@ it("re-reads before READY when a check registers after the CI read", async () =>
   expect(classifyPr(snapshot).kind).toBe("waiting");
 });
 
+it("waits while GitHub hasn't computed the merge state", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeable: "MERGEABLE", mergeStateStatus: "UNKNOWN" },
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
+it("re-reads when the merge state changes mid-read", async () => {
+  const base = fakeReader();
+  let facts = 0;
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      facts += 1;
+      return {
+        ...(await base.pullRequest(pr)),
+        mergeStateStatus: facts === 1 ? "CLEAN" : "BLOCKED",
+        reviewDecision: "APPROVED",
+      };
+    },
+    async recheck(pr) {
+      return { ...(await base.recheck(pr)), mergeStateStatus: "BLOCKED" };
+    },
+  };
+  const snapshot = await readSnapshot({
+    reader,
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(facts).toBe(2);
+  expect(classifyPr(snapshot).kind).toBe("blocker");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

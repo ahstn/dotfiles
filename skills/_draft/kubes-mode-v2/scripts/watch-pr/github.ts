@@ -757,6 +757,20 @@ export class GhGitHubReader implements T.GitHubReader {
     let rulesStrict = false;
     let rulesKnown = false;
     const rules = await run(["gh", "api", `${repo}/rules/branches/${branch}`]);
+    // Only a definite "can't see this" (403/404) may become null, which ends
+    // the watch at a human gate. Anything else (5xx, 429, rate limits, a
+    // network blip) retries like any other failed read.
+    const settledNo = (result: CommandResult) =>
+      /HTTP 40[34]\b/.test(result.stderr) && !/rate limit/i.test(result.stderr);
+    const retry = (result: CommandResult, what: string): never => {
+      throw new WatcherQueryError({
+        kind: "command-exit",
+        retryable: true,
+        code: result.code,
+        detail: firstLine(result.stderr) || `${what} exited ${result.code}`,
+      });
+    };
+    if (rules.code !== 0 && !settledNo(rules)) retry(rules, "branch rules lookup");
     if (rules.code === 0) {
       try {
         const list = JSON.parse(rules.stdout) as unknown;
@@ -794,6 +808,7 @@ export class GhGitHubReader implements T.GitHubReader {
     }
     if (/Branch not protected|not enabled/i.test(classic.stderr))
       return rulesKnown ? false : null;
+    if (!settledNo(classic)) retry(classic, "branch protection lookup");
     return null;
   }
   async recheck(context: T.PrContext): Promise<T.RecheckFacts> {
@@ -806,7 +821,7 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "headRefOid,baseRefOid,state,isDraft,reviewDecision,mergedAt,updatedAt",
+        "headRefOid,baseRefOid,state,isDraft,reviewDecision,mergedAt,updatedAt,mergeStateStatus",
       ]),
       "pull request recheck"
     );
@@ -824,6 +839,11 @@ export class GhGitHubReader implements T.GitHubReader {
       reviewDecision: reviewDecision(object.reviewDecision),
       mergedAt: optionalString(object.mergedAt, "pull request.mergedAt"),
       updatedAt: optionalString(object.updatedAt, "pull request.updatedAt"),
+      mergeStateStatus: enumValue(
+        object.mergeStateStatus,
+        MERGE_STATES,
+        "pull request.mergeStateStatus"
+      ),
     };
   }
   async openPullRequests(

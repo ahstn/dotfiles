@@ -112,6 +112,7 @@ export function fakeReader(
         reviewDecision,
         mergedAt,
         updatedAt,
+        mergeStateStatus,
       } = { ...defaults, ...options.facts };
       return {
         headRefOid,
@@ -121,6 +122,7 @@ export function fakeReader(
         reviewDecision,
         mergedAt,
         updatedAt,
+        mergeStateStatus,
       };
     },
     async openPullRequests() {

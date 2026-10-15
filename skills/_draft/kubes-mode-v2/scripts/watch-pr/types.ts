@@ -68,6 +68,7 @@ export type RecheckFacts = Pick<
   | "reviewDecision"
   | "mergedAt"
   | "updatedAt"
+  | "mergeStateStatus"
 >;
 export interface OpenPullRequest {
   readonly number: PrNumber;
