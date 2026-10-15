@@ -118,8 +118,20 @@ export async function readSnapshot(args: {
       // A review comment posted or edited after the thread read changes no
       // field above; updatedAt catches it before a stale READY goes out.
       now.updatedAt === facts.updatedAt
-    )
-      return snapshot;
+    ) {
+      // Check activity moves none of the fields above. Before a clean CI read
+      // can become READY, confirm no check has registered or failed since.
+      if (
+        snapshot.kind !== "open" ||
+        snapshot.ci.kind !== "ci-clean" ||
+        (
+          await resolveChecks(args.reader, args.context, args.allowNoChecks)
+        ).checks.every(
+          (check) => check.kind !== "pending" && check.kind !== "failed"
+        )
+      )
+        return snapshot;
+    }
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
         kind: "head-moved",

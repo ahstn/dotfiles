@@ -820,6 +820,28 @@ it("holds BEHIND at a merge gate when the rules can't be read", async () => {
   });
 });
 
+it("re-reads before READY when a check registers after the CI read", async () => {
+  const base = fakeReader();
+  let checkReads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        checkReads += 1;
+        return {
+          kind: "checks",
+          checks: checkReads === 1 ? [passingCheck()] : [passingCheck(), pendingCheck("late")],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(checkReads).toBeGreaterThanOrEqual(3);
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
