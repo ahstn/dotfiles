@@ -1623,6 +1623,68 @@ it("rescans a stack when an earlier clean row gains a pending check", async () =
   expect(verdict.kind).toBe("READY");
 });
 
+it("rescans a stack whose order changed on rediscovery", async () => {
+  const base = fakeReader();
+  let rediscoveries = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: base,
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: true,
+    options,
+    rediscover: async () => {
+      rediscoveries += 1;
+      return [context(2), context(1)];
+    },
+  });
+  expect(rediscoveries).toBe(2);
+  expect(
+    verdict.kind === "STATUS" && verdict.rows.map((row) => Number(row.context.number))
+  ).toEqual([2, 1]);
+});
+
+it("keeps a stack conflict when the final revalidation fails", async () => {
+  const base = fakeReader();
+  let rechecks = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          return {
+            ...(await base.pullRequest(pr)),
+            mergeable: "CONFLICTING" as const,
+            mergeStateStatus: "DIRTY" as const,
+          };
+        },
+        async recheck(pr) {
+          rechecks += 1;
+          // Each snapshot's own recheck succeeds; the stack revalidation fails.
+          if (rechecks > 2)
+            throw new WatcherQueryError({
+              kind: "command-exit",
+              retryable: true,
+              code: 1,
+              detail: "502",
+            });
+          return { ...(await base.recheck(pr)), mergeStateStatus: "DIRTY" as const };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

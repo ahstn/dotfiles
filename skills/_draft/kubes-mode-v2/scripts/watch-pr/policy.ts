@@ -946,33 +946,44 @@ export async function runSimple(args: {
     };
     // --stack: membership first. A PR that joined or left the connected
     // stack mid-watch changes what the verdict covers (merged rows naturally
-    // leave the open-PR graph, so only open rows count).
-    let rediscovered = false;
-    if (args.rediscover !== undefined) {
-      const from = rows.find((row) => row.kind === "open")?.context;
-      if (from !== undefined) {
-        const current = await args.rediscover(from);
-        rediscovered = true;
-        const now = new Set(current.map((pr) => pr.number));
-        const known = new Set(contexts.map((pr) => pr.number));
-        const joined = current.some((pr) => !known.has(pr.number));
-        const left = rows.some(
-          (row) => row.kind === "open" && !now.has(row.context.number)
-        );
-        if (joined || left) {
-          contexts = current;
-          return rescan;
-        }
-      }
-    }
+    // leave the open-PR graph, so only open rows count), and so does a
+    // reorder from retargeted bases: tiers and the frontier follow order.
     // Then every row again, last row last: each was validated as it was
     // read, but any of them can change while the others (or the open-PR
-    // graph) are read.
-    if (
-      (rows.length > 1 || rediscovered) &&
-      (await rowsMoved(args.dependencies.reader, rows, args.options.allowNoChecks))
-    )
-      return rescan;
+    // graph) are read. A failed read here must not hide a conflict the scan
+    // already found, as with the scan's own reads.
+    try {
+      let rediscovered = false;
+      if (args.rediscover !== undefined) {
+        const from = rows.find((row) => row.kind === "open")?.context;
+        if (from !== undefined) {
+          const current = await args.rediscover(from);
+          rediscovered = true;
+          const openRows = rows
+            .filter((row) => row.kind === "open")
+            .map((row) => row.context.number);
+          const now = current.map((pr) => pr.number);
+          const changed =
+            now.length !== openRows.length ||
+            now.some((number, index) => number !== openRows[index]);
+          if (changed) {
+            contexts = current;
+            return rescan;
+          }
+        }
+      }
+      if (
+        (rows.length > 1 || rediscovered) &&
+        (await rowsMoved(args.dependencies.reader, rows, args.options.allowNoChecks))
+      )
+        return rescan;
+    } catch (error) {
+      const conflict =
+        error instanceof WatcherQueryError ? knownConflict(rows) : null;
+      if (conflict !== null)
+        return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+      throw error;
+    }
     if (args.statusOnly)
       return {
         kind: "terminal",
