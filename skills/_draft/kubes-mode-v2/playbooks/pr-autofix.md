@@ -5,9 +5,10 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 `scripts/watch-pr/watch-pr` (relative to this skill) does the watching. It needs `gh` and Bun >= 1.3.2, and installs its own dependencies on first run. Run it from the PR's checkout:
 
 ```shell
-<skill-dir>/scripts/watch-pr/watch-pr --pr <number> --allow-draft --timeout 540
+<skill-dir>/scripts/watch-pr/watch-pr --owner <owner> --repo <repo> --pr <number> --allow-draft --timeout 540
 ```
 
+- `<owner>/<repo>` is the PR's base repository, the one the PR was opened against. Always pass it: in a fork checkout a bare number is ambiguous, and the watcher refuses it rather than guess.
 - Add `--allow-no-checks` when the repository has no CI. Without it, a PR with no checks ends in exit 7.
 - `--timeout 540` keeps one run under a 10-minute shell tool limit.
 - Output is NDJSON, and the last line is the verdict. Act on the exit code:
@@ -75,7 +76,7 @@ Classify each thread and act:
 | Wrong | Reply with the evidence, such as a file and line, a test, or a doc. Leave it unresolved for the reviewer. |
 | Unclear or architectural | Ask the user. Don't reply or resolve yet. |
 
-For each reply, create a fresh file outside the repository with `mktemp -t pr-autofix-reply`, and write the body to that path with your file-writing tool. Never put the body inline in a shell string, so review text cannot be interpolated by the shell. Delete that exact file after posting: nothing is left to commit by accident, and concurrent sessions never share a path.
+For each reply, create a fresh file outside the repository with `mktemp "${TMPDIR:-/tmp}/pr-autofix-reply.XXXXXX"` (this form works with both GNU and BSD `mktemp`), and write the body to that path with your file-writing tool. Never put the body inline in a shell string, so review text cannot be interpolated by the shell. Delete that exact file after posting: nothing is left to commit by accident, and concurrent sessions never share a path.
 
 The last line of every reply must be one of two markers. Without one, the watcher treats your own reply as new feedback. A marker only counts on a comment written by the authenticated `gh` user, so a pasted copy from anyone else is ignored.
 

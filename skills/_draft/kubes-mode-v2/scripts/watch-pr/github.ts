@@ -624,6 +624,38 @@ export class GhGitHubReader implements T.GitHubReader {
       number: pr ?? parsePrNumber(object.number, "current PR.number"),
     };
   }
+  async checkoutRepository(): Promise<{
+    readonly repository: T.Repository;
+    readonly parent: T.Repository | null;
+  }> {
+    const object = record(
+      await runJson(["gh", "repo", "view", "--json", "nameWithOwner,parent"]),
+      "checkout repository"
+    );
+    const [owner, repo] = string(
+      object.nameWithOwner,
+      "checkout repository.nameWithOwner"
+    ).split("/");
+    if (!owner || !repo)
+      missing("checkout repository.nameWithOwner", object.nameWithOwner);
+    const parent =
+      object.parent === null || object.parent === undefined
+        ? null
+        : record(object.parent, "checkout repository.parent");
+    return {
+      repository: { owner, repo },
+      parent:
+        parent === null
+          ? null
+          : {
+              owner: string(
+                record(parent.owner, "checkout repository.parent.owner").login,
+                "checkout repository.parent.owner.login"
+              ),
+              repo: string(parent.name, "checkout repository.parent.name"),
+            },
+    };
+  }
   async pullRequest(context: T.PrContext): Promise<T.PullRequestFacts> {
     return parsePullRequest(
       await runJson([
@@ -970,8 +1002,21 @@ export async function resolveContext(args: {
 }): Promise<T.PrContext> {
   if (args.pr !== null && args.owner !== null && args.repo !== null)
     return { owner: args.owner, repo: args.repo, number: args.pr };
-  // `gh pr view` resolves the PR's base repository. In a fork checkout,
-  // `origin` is the fork, so a PR number must not be paired with it.
+  if (args.pr !== null) {
+    // A bare number belongs to some repository, and in a fork checkout `gh`
+    // (and `origin`) may point at the fork while the PR lives upstream, or
+    // the other way round. Rather than guess and watch an unrelated PR that
+    // shares the number, a fork checkout must name the repository.
+    const checkout = await args.reader.checkoutRepository();
+    if (checkout.parent !== null)
+      throw new WatcherQueryError({
+        kind: "ambiguous-repository",
+        retryable: false,
+        detail: `this checkout is a fork of ${checkout.parent.owner}/${checkout.parent.repo}; pass --owner and --repo with --pr ${args.pr}`,
+      });
+    return { ...checkout.repository, number: args.pr };
+  }
+  // With no number, `gh pr view` finds the current branch's PR.
   const inferred = await args.reader.currentPr(args.pr);
   return {
     owner: args.owner ?? inferred.owner,

@@ -282,6 +282,11 @@ export type QueryFailure =
       readonly detail: string;
     }
   | {
+      readonly kind: "ambiguous-repository";
+      readonly retryable: false;
+      readonly detail: string;
+    }
+  | {
       readonly kind: "head-moved";
       readonly retryable: true;
       readonly detail: string;
@@ -455,6 +460,11 @@ export interface RollupPage {
 }
 export interface GitHubReader {
   currentPr(pr: PrNumber | null): Promise<PrContext>;
+  /** The checkout's `gh` default repository, and its parent when it is a fork. */
+  checkoutRepository(): Promise<{
+    readonly repository: Repository;
+    readonly parent: Repository | null;
+  }>;
   pullRequest(context: PrContext): Promise<PullRequestFacts>;
   /** The PR's current head commit; a cheap re-read to detect mid-snapshot pushes. */
   headRefOid(context: PrContext): Promise<string | null>;

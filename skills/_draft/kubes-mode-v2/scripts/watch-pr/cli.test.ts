@@ -38,7 +38,7 @@ it("retries a transient failure while resolving the PR", async () => {
   let attempts = 0;
   const reader: GitHubReader = {
     ...base,
-    async currentPr(pr) {
+    async checkoutRepository() {
       attempts += 1;
       if (attempts === 1)
         throw new WatcherQueryError({
@@ -47,7 +47,7 @@ it("retries a transient failure while resolving the PR", async () => {
           code: 1,
           detail: "502 from api.github.com",
         });
-      return base.currentPr(pr);
+      return base.checkoutRepository();
     },
   };
   const harness = testRuntime(reader);
@@ -74,7 +74,7 @@ it("gives polling only the timeout left after discovery retries", async () => {
   let failures = 2;
   const reader: GitHubReader = {
     ...base,
-    async currentPr(pr) {
+    async checkoutRepository() {
       if (failures-- > 0)
         throw new WatcherQueryError({
           kind: "command-exit",
@@ -82,7 +82,7 @@ it("gives polling only the timeout left after discovery retries", async () => {
           code: 1,
           detail: "502",
         });
-      return base.currentPr(pr);
+      return base.checkoutRepository();
     },
     async checksFastPath() {
       return { kind: "checks", checks: [{ ...passingCheck(), kind: "pending" }] };
@@ -108,9 +108,9 @@ it("stops when discovery itself runs past the timeout", async () => {
   const base = fakeReader();
   const reader: GitHubReader = {
     ...base,
-    async currentPr(pr) {
+    async checkoutRepository() {
       now += 120;
-      return base.currentPr(pr);
+      return base.checkoutRepository();
     },
     async pullRequest() {
       throw new Error("snapshot should not start");

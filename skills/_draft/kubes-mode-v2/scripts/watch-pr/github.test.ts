@@ -407,10 +407,8 @@ describe("context and stack discovery", () => {
     expect(reader.calls).toEqual([]);
   });
 
-  it("resolves an explicit number through gh, not origin, so forks get the base repo", async () => {
-    const reader = fakeReader({
-      current: { owner: "upstream", repo: "repo", number: parsePrNumber(1) },
-    });
+  it("pairs a bare --pr with the checkout's repository when it isn't a fork", async () => {
+    const reader = fakeReader();
     expect(
       await resolveContext({
         reader,
@@ -418,8 +416,24 @@ describe("context and stack discovery", () => {
         repo: null,
         pr: context.number,
       })
-    ).toEqual({ owner: "upstream", repo: "repo", number: context.number });
-    expect(reader.calls).toEqual(["currentPr"]);
+    ).toEqual({ owner: "owner", repo: "repo", number: context.number });
+    expect(reader.calls).toEqual(["checkoutRepository"]);
+  });
+
+  it("refuses a bare --pr in a fork checkout instead of guessing the repo", async () => {
+    const reader = fakeReader({
+      checkoutParent: { owner: "upstream", repo: "repo" },
+    });
+    const resolving = resolveContext({
+      reader,
+      owner: null,
+      repo: null,
+      pr: context.number,
+    });
+    await expect(resolving).rejects.toThrow("pass --owner and --repo");
+    await resolving.catch((error: WatcherQueryError) =>
+      expect(error.failure.retryable).toBe(false)
+    );
   });
 
   it("ignores fork PRs whose head name matches a local branch", () => {

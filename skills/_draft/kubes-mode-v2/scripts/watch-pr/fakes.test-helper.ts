@@ -20,6 +20,7 @@ export interface FakeReaderOptions {
   readonly commitRollups?: readonly CommitRollup[];
   readonly openPullRequests?: readonly OpenPullRequest[];
   readonly current?: PrContext;
+  readonly checkoutParent?: { readonly owner: string; readonly repo: string };
 }
 
 export function passingCheck(name = "ci"): Check {
@@ -79,6 +80,13 @@ export function fakeReader(
   let page = 0;
   return {
     calls,
+    async checkoutRepository() {
+      calls.push("checkoutRepository");
+      return {
+        repository: { owner: context.owner, repo: context.repo },
+        parent: options.checkoutParent ?? null,
+      };
+    },
     async currentPr(pr) {
       calls.push("currentPr");
       return { ...context, number: pr ?? context.number };
