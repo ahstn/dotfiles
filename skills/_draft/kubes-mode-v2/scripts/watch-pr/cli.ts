@@ -9,6 +9,7 @@ import {
   GhGitHubReader,
   WatcherQueryError,
   discoverStack,
+  setWatchDeadline,
   resolveContext,
 } from "./github.ts";
 import {
@@ -220,6 +221,11 @@ export async function main(
   // one transient `gh` failure at startup doesn't end the watch.
   const stamp = verdictFactory(runtime.clock, options.mode);
   const started = runtime.clock.now();
+  setWatchDeadline(
+    options.polling.timeout > 0
+      ? Date.now() + options.polling.timeout * 1_000
+      : null
+  );
   const { timeout, maxQueryErrors, interval } = options.polling;
   let contexts: T.NonEmpty<T.PrContext> | null = null;
   for (let failures = 1; contexts === null; failures += 1) {

@@ -79,9 +79,13 @@ export async function readSnapshot(args: {
     try {
       head = await args.reader.headRefOid(args.context);
     } catch (error) {
-      // Same rule as readOpenOrConflict: a known conflict outranks a failed
+      // A known conflict or actionable thread outranks a failed
       // lower-priority read.
-      if (error instanceof WatcherQueryError && isConflicted(facts))
+      if (
+        error instanceof WatcherQueryError &&
+        (isConflicted(facts) ||
+          (snapshot.kind === "open" && snapshot.threads.length > 0))
+      )
         return snapshot;
       throw error;
     }
@@ -109,31 +113,35 @@ async function readOpenOrConflict(
     // not hide it behind a query error.
     if (!(error instanceof WatcherQueryError) || !isConflicted(facts))
       throw error;
-    const unread: T.PendingCheck = {
-      kind: "pending",
-      name: "(not read: merge conflict)",
-      reportedState: "PENDING",
-      description: error.failure.detail,
-      link: "",
-      workflow: "",
-    };
     return {
       kind: "open",
       context: args.context,
       facts,
       threads: [],
       parkedThreads: [],
-      ci: {
-        kind: "ci-pending",
-        source: "graphql-rollup",
-        all: [unread],
-        failed: [],
-        pending: [unread],
-        hadPreviousPassingCi: false,
-      },
+      ci: unreadCi("(not read: merge conflict)", error.failure.detail),
       reviewAutomationRunning: false,
     };
   }
+}
+/** Stands in for CI that wasn't read because a higher-priority blocker is known. */
+function unreadCi(name: string, detail: string): T.CiState {
+  const unread: T.PendingCheck = {
+    kind: "pending",
+    name,
+    reportedState: "PENDING",
+    description: detail,
+    link: "",
+    workflow: "",
+  };
+  return {
+    kind: "ci-pending",
+    source: "graphql-rollup",
+    all: [unread],
+    failed: [],
+    pending: [unread],
+    hadPreviousPassingCi: false,
+  };
 }
 const isConflicted = (facts: T.PullRequestFacts): boolean =>
   facts.mergeable === "CONFLICTING" ||
@@ -157,6 +165,37 @@ async function readOpenSnapshot(
   const parkedThreads = summaries.filter(
     (thread) => thread.disposition !== "actionable"
   );
+  try {
+    const { ci, reviewAutomationRunning } = await readCi(args, facts);
+    return {
+      kind: "open",
+      context: args.context,
+      facts,
+      threads,
+      parkedThreads,
+      ci,
+      reviewAutomationRunning,
+    };
+  } catch (error) {
+    // Threads outrank CI (see classifyPr), so a failed CI read (an API blip,
+    // or a repo with no checks) must not hide actionable threads already found.
+    if (!(error instanceof WatcherQueryError) || threads.length === 0)
+      throw error;
+    return {
+      kind: "open",
+      context: args.context,
+      facts,
+      threads,
+      parkedThreads,
+      ci: unreadCi("(not read: review threads first)", error.failure.detail),
+      reviewAutomationRunning: false,
+    };
+  }
+}
+async function readCi(
+  args: Parameters<typeof readSnapshot>[0],
+  facts: T.PullRequestFacts
+): Promise<{ readonly ci: T.CiState; readonly reviewAutomationRunning: boolean }> {
   const checks = await resolveChecks(
     args.reader,
     args.context,
@@ -257,11 +296,6 @@ async function readOpenSnapshot(
       };
   }
   return {
-    kind: "open",
-    context: args.context,
-    facts,
-    threads,
-    parkedThreads,
     ci,
     reviewAutomationRunning: checks.checks.some(
       (check) =>

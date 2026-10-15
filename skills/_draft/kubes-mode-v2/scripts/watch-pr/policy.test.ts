@@ -398,6 +398,34 @@ it("waits when the check list passed but the rollup has not", async () => {
   expect(classifyPr(snapshot).kind).toBe("waiting");
 });
 
+it("reports actionable threads even when the checks can't be read", async () => {
+  const thread: ReviewThread = {
+    id: "t",
+    firstComment: null,
+    recentComments: [],
+    historyComplete: true,
+    decidingComment: null,
+    lastAuthorLogin: null,
+    latestCommentAt: null,
+    disposition: "actionable",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  };
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      threads: [thread],
+      fastPath: { kind: "unusable", exitCode: 1, stderr: "no checks reported" },
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
+    "review-threads"
+  );
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

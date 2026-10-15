@@ -100,11 +100,49 @@ export class ChecksUnavailable extends WatcherQueryError {
 }
 const firstLine = (value: string): string =>
   value.trim().split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
+// A gh call normally takes seconds; this caps one stalled by the network or
+// a credential helper even when no --timeout was given.
+const CALL_TIMEOUT_MS = 120_000;
+let watchDeadline: number | null = null;
+/**
+ * Wall-clock time (ms since epoch) by which every gh call must finish, from
+ * --timeout. Deadline checks between calls can't interrupt a hung child, so
+ * each call is killed at whichever comes first: this or CALL_TIMEOUT_MS.
+ */
+export function setWatchDeadline(at: number | null): void {
+  watchDeadline = at;
+}
 function run(argv: readonly [string, ...string[]]): Promise<CommandResult> {
+  const budget = Math.max(
+    0,
+    Math.min(
+      CALL_TIMEOUT_MS,
+      watchDeadline === null ? Infinity : watchDeadline - Date.now()
+    )
+  );
   return new Promise((resolve, reject) => {
     const child = spawn(argv[0], argv.slice(1), {
       stdio: ["ignore", "pipe", "pipe"],
     });
+    let settled = false;
+    const settle = (result: CommandResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    // Resolve on the timer itself: a grandchild (a credential helper, say)
+    // can hold the pipes open, so "close" may never come.
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      child.stdout.destroy();
+      child.stderr.destroy();
+      settle({
+        code: -1,
+        stdout: "",
+        stderr: `${argv.slice(0, 3).join(" ")} timed out after ${Math.round(budget / 1000)}s`,
+      });
+    }, budget);
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf8");
@@ -115,8 +153,13 @@ function run(argv: readonly [string, ...string[]]): Promise<CommandResult> {
     child.stderr.on("data", (chunk: string) => {
       stderr += chunk;
     });
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ code: code ?? -1, stdout, stderr }));
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => settle({ code: code ?? -1, stdout, stderr }));
   });
 }
 function parseJson(text: string, label: string): unknown {
@@ -1038,6 +1081,20 @@ export function orderStack(
   const local = open.filter((pr) => pr.isCrossRepository !== true);
   const byNumber = new Map(local.map((pr) => [pr.number, pr]));
   const byHead = new Map(local.map((pr) => [pr.headRefName, pr]));
+  // One branch can head several open PRs (into different bases). Where the
+  // walk passes through such a branch the parent/child links are ambiguous,
+  // and picking one would silently drop the other PR from the stack.
+  const heads = new Map<string, number>();
+  for (const pr of local)
+    heads.set(pr.headRefName, (heads.get(pr.headRefName) ?? 0) + 1);
+  const unambiguous = (branch: string): void => {
+    if ((heads.get(branch) ?? 0) > 1)
+      throw new WatcherQueryError({
+        kind: "ambiguous-stack",
+        retryable: false,
+        detail: `branch ${branch} heads more than one open PR, so the stack is ambiguous; pass --queued-stack --stack-prs instead of --stack`,
+      });
+  };
   const children = new Map<string, T.OpenPullRequest[]>();
   for (const pr of local)
     children.set(pr.baseRefName, [...(children.get(pr.baseRefName) ?? []), pr]);
@@ -1049,6 +1106,7 @@ export function orderStack(
   let current = start;
   const walked = new Set<T.PrNumber>([start.number]);
   while (byHead.has(current.baseRefName)) {
+    unambiguous(current.baseRefName);
     const parent = byHead.get(current.baseRefName);
     if (parent === undefined || walked.has(parent.number)) break;
     walked.add(parent.number);
@@ -1061,6 +1119,7 @@ export function orderStack(
   ]);
   const up: T.OpenPullRequest[] = [];
   const visit = (parent: T.OpenPullRequest): void => {
+    unambiguous(parent.headRefName);
     for (const child of children.get(parent.headRefName) ?? []) {
       if (seen.has(child.number)) continue;
       seen.add(child.number);

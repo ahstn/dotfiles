@@ -457,6 +457,16 @@ describe("context and stack discovery", () => {
     expect(ordered.map((item) => Number(item.number))).toEqual([43, 42]);
   });
 
+  it("refuses a stack that passes through a branch heading two PRs", () => {
+    expect(() =>
+      orderStack(context, [
+        { number: parsePrNumber(40), headRefName: "shared", baseRefName: "main" },
+        { number: parsePrNumber(41), headRefName: "shared", baseRefName: "release" },
+        { number: context.number, headRefName: "feature", baseRefName: "shared" },
+      ])
+    ).toThrow("heads more than one open PR");
+  });
+
   it("orders the connected stack bottom-to-top", () => {
     const ordered = orderStack(context, [
       {

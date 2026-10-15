@@ -27,6 +27,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 1. **Gate.** Confirm a plain `git push` from here would publish only your fix, to the PR's branch. Run `gh pr view <number> -R <owner>/<repo> --json headRefName,headRepository,headRefOid`. Then check all of these:
    - `git branch --show-current` equals `headRefName`.
    - `git rev-parse HEAD` equals `headRefOid`, so no unpublished local commits ride along.
+   - `git status --porcelain` is empty, so no staged, unstaged or untracked work gets swept into a fix or a merge commit. If it isn't, don't stash or reset someone's changes: stop and report, or do the autofix in a separate, clean worktree of the PR branch.
    - In `git push --dry-run --porcelain`, the `To` line is `github.com` and `headRepository.nameWithOwner`, and every destination is `refs/heads/<headRefName>`.
 
    The dry run accounts for push refspecs and `push.default`. A branch name match alone doesn't: a fork PR from `main` matches the base repository's `main`. If anything differs, stop and report. Don't switch branches, remotes or commits yourself.
