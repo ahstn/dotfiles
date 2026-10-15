@@ -163,11 +163,15 @@ export interface CheckDetails {
    */
   readonly completedAt?: string;
   /**
-   * Rollup reads only: which check this run is an attempt of, and when it
-   * started (null while queued). resolveChecks keeps each check's newest
-   * attempt and drops this field.
+   * Rollup reads only: which check this run is an attempt of, the check
+   * suite (workflow run) it ran in, and when it started (null while queued).
+   * resolveChecks keeps each check's newest suite and drops this field.
    */
-  readonly attempt?: { readonly key: string; readonly startedAt: string | null };
+  readonly attempt?: {
+    readonly key: string;
+    readonly suite: string;
+    readonly startedAt: string | null;
+  };
 }
 export type Check =
   | (CheckDetails & { readonly kind: "passed" })

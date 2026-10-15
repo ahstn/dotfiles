@@ -31,7 +31,9 @@ export function assessGitHubMerge(args: {
         headRollupState: args.headRollupState,
         cause: "failing-rollup",
       };
-    if (!args.blockExplained && args.mergeQueue)
+    // An open conversation can stop a PR entering the queue too, so it
+    // outranks the queue's own BLOCKED.
+    if (!args.blockExplained && args.mergeQueue && !args.parkedThreads)
       return {
         kind: "allowed",
         basis: "merge-queue",

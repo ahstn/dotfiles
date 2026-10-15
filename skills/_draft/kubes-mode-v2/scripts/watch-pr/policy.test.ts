@@ -101,6 +101,18 @@ describe("readiness truth table", () => {
     expect(failing.ci.kind).toBe("ci-github-rejected");
   });
 
+  it("reports a parked conversation on a merge-queue base", () => {
+    expect(
+      assessGitHubMerge({
+        mergeStateStatus: "BLOCKED",
+        headRollupState: "SUCCESS",
+        blockExplained: false,
+        parkedThreads: true,
+        mergeQueue: true,
+      })
+    ).toMatchObject({ kind: "refused", cause: "open-conversations" });
+  });
+
   it("turns a clean visible list plus GitHub refusal into an explicit CI blocker", async () => {
     const reader = fakeReader({
       facts: { mergeStateStatus: "BLOCKED" },

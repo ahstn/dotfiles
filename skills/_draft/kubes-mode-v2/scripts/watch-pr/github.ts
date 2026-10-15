@@ -79,7 +79,7 @@ export const PR_COMMIT_STATUS_QUERY =
 export const PR_MERGE_QUEUE_QUERY =
   "query PrMergeQueue($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { isMergeQueueEnabled } } }";
 export const PR_CHECK_ROLLUP_QUERY =
-  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      databaseId\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 interface CommandResult {
   readonly code: number;
@@ -406,12 +406,17 @@ export function mapRollupNode(value: unknown): T.Check | null {
       flow !== null && typeof flow.name === "string" ? flow.name : details.workflow;
     // Names aren't unique: two workflow files can share one, and so can two
     // Apps' checks. Key attempts by the App's and workflow's IDs, and when
-    // GitHub withholds an ID, don't collapse the check at all.
+    // GitHub withholds an ID, don't collapse the check at all. Jobs in one
+    // suite (workflow run) can share a name too, so the suite says which
+    // attempt a run belongs to.
     const identity =
       run === null
         ? [app]
         : [app, flow?.databaseId, typeof run.event === "string" ? run.event : null];
-    const known = identity.every((part) => Number.isInteger(part) || typeof part === "string");
+    const suiteId = suite?.databaseId;
+    const known = [...identity, suiteId].every(
+      (part) => Number.isInteger(part) || typeof part === "string"
+    );
     return mapCheckRun(object, {
       ...details,
       link,
@@ -420,6 +425,7 @@ export function mapRollupNode(value: unknown): T.Check | null {
         ? {
             attempt: {
               key: ["CheckRun", ...identity, details.name].join("\0"),
+              suite: String(suiteId),
               startedAt: typeof object.startedAt === "string" ? object.startedAt : null,
             },
           }
@@ -433,6 +439,8 @@ export function mapRollupNode(value: unknown): T.Check | null {
     link,
     attempt: {
       key: ["StatusContext", details.name].join("\0"),
+      // Each status post stands alone; the newest one for a context wins.
+      suite: typeof object.createdAt === "string" ? object.createdAt : "",
       startedAt: typeof object.createdAt === "string" ? object.createdAt : null,
     },
   };
@@ -1211,28 +1219,36 @@ export async function requireWriteAccess(
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 /**
  * The rollup lists every attempt of a check on the commit, so a cancelled run
- * sits beside the rerun that passed. Keep each check's newest attempt, as
- * `gh pr checks` does. A queued attempt (not started) counts as newest, and
- * attempts that tie are all kept, so a failure is never hidden by a guess.
+ * sits beside the rerun that passed. Keep each check's newest suite, as
+ * `gh pr checks` keeps the newest attempt. A queued attempt (not started)
+ * counts as newest. Same-name runs in the newest suite are all kept: they
+ * may be distinct jobs, so no failure is hidden by a guess. So are ties.
  */
 function latestAttempts(checks: readonly T.Check[]): T.Check[] {
   const startOf = (check: T.Check): number => {
     const started = Date.parse(check.attempt?.startedAt ?? "");
     return Number.isNaN(started) ? Infinity : started;
   };
-  const newest = new Map<string, number>();
-  for (const check of checks)
-    if (check.attempt !== undefined)
-      newest.set(
-        check.attempt.key,
-        Math.max(newest.get(check.attempt.key) ?? -Infinity, startOf(check))
-      );
+  const newest = new Map<string, { readonly start: number; readonly suite: string }>();
+  for (const check of checks) {
+    if (check.attempt === undefined) continue;
+    const current = newest.get(check.attempt.key);
+    if (current === undefined || startOf(check) > current.start)
+      newest.set(check.attempt.key, {
+        start: startOf(check),
+        suite: check.attempt.suite,
+      });
+  }
   return checks
-    .filter(
-      (check) =>
-        check.attempt === undefined ||
-        startOf(check) === newest.get(check.attempt.key)
-    )
+    .filter((check) => {
+      if (check.attempt === undefined) return true;
+      const latest = newest.get(check.attempt.key);
+      return (
+        latest === undefined ||
+        check.attempt.suite === latest.suite ||
+        startOf(check) === latest.start
+      );
+    })
     .map(({ attempt: _attempt, ...check }) => check as T.Check);
 }
 export async function resolveChecks(
