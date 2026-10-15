@@ -34,18 +34,23 @@ export const STARTED_AT_ENV = "WATCH_PR_STARTED_AT";
 
 /**
  * The --timeout the watcher was given, in ms, read before commander is
- * installed so the install itself can't outlast a short deadline. Null when
+ * installed so the install itself can't outlast a short deadline. Like
+ * commander, the last occurrence wins and `--` ends option parsing. Null when
  * absent, 0 or malformed; the CLI validates it properly later.
  */
-function requestedTimeoutMs(argv: readonly string[]): number | null {
+export function requestedTimeoutMs(argv: readonly string[]): number | null {
+  let value: string | undefined;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    const value = arg === "--timeout" ? argv[i + 1] : arg.startsWith("--timeout=") ? arg.slice(10) : undefined;
-    if (value === undefined) continue;
-    const seconds = Number(value);
-    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : null;
+    if (arg === "--") break;
+    if (arg === "--timeout") {
+      value = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--timeout=")) value = arg.slice(10);
   }
-  return null;
+  if (value === undefined) return null;
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : null;
 }
 
 /**
