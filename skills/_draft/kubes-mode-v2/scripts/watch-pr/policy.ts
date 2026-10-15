@@ -17,9 +17,9 @@ export function assessGitHubMerge(args: {
   /** Unresolved threads the watcher deliberately parks (they don't block READY). */
   readonly parkedThreads?: boolean;
   /**
-   * The base requires the merge queue. A ready PR is BLOCKED there until it
-   * is queued, so BLOCKED alone isn't a hidden blocker (`gh pr merge` makes
-   * the same exception).
+   * The merge queue alone explains BLOCKED (see queueOwnsBlock): a ready PR
+   * is BLOCKED there until it is queued (`gh pr merge` makes the same
+   * exception).
    */
   readonly mergeQueue?: boolean;
 }): T.GitHubMergeAssessment {
@@ -61,11 +61,32 @@ export function assessGitHubMerge(args: {
     headRollupState: args.headRollupState,
   };
 }
+/**
+ * Whether the merge queue alone explains a BLOCKED PR: the base queues merges,
+ * every rule on it is visible and none could block a ready PR, and every
+ * check its rules require has passed. Otherwise BLOCKED is a hidden blocker,
+ * queue or not.
+ */
+async function queueOwnsBlock(
+  reader: T.GitHubReader,
+  facts: T.PullRequestFacts,
+  checks: readonly T.Check[]
+): Promise<boolean> {
+  const rules = await reader.mergeQueueRules(facts.context, facts.baseRefName);
+  if (rules === null) return false;
+  const passed = new Set(
+    checks
+      .filter((check) => check.kind === "passed" || check.kind === "skipped")
+      .map((check) => check.name)
+  );
+  return rules.requiredChecks.every((name) => passed.has(name));
+}
 async function mergeAssessment(
   reader: T.GitHubReader,
   facts: T.PullRequestFacts,
   blockExplained: boolean,
-  parkedThreads: boolean
+  parkedThreads: boolean,
+  checks: readonly T.Check[]
 ) {
   const commits = await reader.commitRollups(facts.context);
   const headRollupState =
@@ -91,7 +112,7 @@ async function mergeAssessment(
         !parkedThreads &&
         headRollupState !== "FAILURE" &&
         headRollupState !== "ERROR"
-          ? await reader.mergeQueueEnabled(facts.context)
+          ? await queueOwnsBlock(reader, facts, checks)
           : false,
     }),
   };
@@ -194,7 +215,7 @@ async function ciMoved(
       return true;
     return (
       row.ci.github.basis === "merge-queue" &&
-      !(await reader.mergeQueueEnabled(row.context))
+      !(await queueOwnsBlock(reader, row.facts, checks))
     );
   }
   if (row.ci.kind === "ci-failing") {
@@ -237,7 +258,7 @@ async function ciMoved(
     if ((head?.state ?? null) !== row.ci.github.headRollupState) return true;
     return (
       row.ci.github.cause === "unexplained-block" &&
-      (await reader.mergeQueueEnabled(row.context))
+      (await queueOwnsBlock(reader, row.facts, checks))
     );
   }
   return false;
@@ -250,6 +271,9 @@ function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
     // A retarget between branches at the same commit moves only the name,
     // but the branch rules (BEHIND, merge queue) belong to the name.
     now.baseRefName === facts.baseRefName &&
+    // GitHub computes conflicts asynchronously; mergeable can flip to
+    // CONFLICTING behind an unchanged BLOCKED.
+    now.mergeable === facts.mergeable &&
     now.state === facts.state &&
     now.isDraft === facts.isDraft &&
     now.reviewDecision === facts.reviewDecision &&
@@ -537,7 +561,8 @@ async function readCi(
           // Not an opted-out check: its name can't prove it's GitHub's only
           // reason to block, so it mustn't hide another rule behind READY.
           checks.checks.some((check) => check.kind === "pending"),
-        threadCounts.parked > 0
+        threadCounts.parked > 0,
+        checks.checks
       );
     } catch (error) {
       // The rollup only refines a verdict. A pending check already proves the

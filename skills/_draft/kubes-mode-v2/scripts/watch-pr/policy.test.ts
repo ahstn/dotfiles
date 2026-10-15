@@ -185,7 +185,7 @@ describe("readiness truth table", () => {
       const snapshot = await readSnapshot({
         reader: {
           ...base,
-          async mergeQueueEnabled() {
+          async mergeQueueRules() {
             throw new WatcherQueryError({
               kind: "command-exit",
               retryable: true,
@@ -217,9 +217,9 @@ describe("readiness truth table", () => {
       reader: {
         ...base,
         // An admin turns the queue off right after the first lookup.
-        async mergeQueueEnabled() {
+        async mergeQueueRules() {
           lookups += 1;
-          return lookups === 1;
+          return lookups === 1 ? { requiredChecks: [] } : null;
         },
       },
       context: context(1),
@@ -282,6 +282,27 @@ describe("readiness truth table", () => {
     });
     if (snapshot.kind !== "open") throw new Error("expected open snapshot");
     expect(snapshot.ci.kind).toBe("ci-failing");
+  });
+
+  it("doesn't let a merge queue explain BLOCKED while a required check is missing", async () => {
+    const snapshot = await readSnapshot({
+      reader: fakeReader({
+        facts: { mergeStateStatus: "BLOCKED" },
+        fastPath: { kind: "checks", checks: [passingCheck("unit")] },
+        commitRollups: [{ oid: "head", state: "SUCCESS" }],
+        mergeQueueEnabled: true,
+        // A required check that never reported.
+        queueRequiredChecks: ["unit", "e2e"],
+      }),
+      context: context(1),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+    expect(snapshot.ci).toMatchObject({
+      kind: "ci-github-rejected",
+      github: { cause: "unexplained-block" },
+    });
   });
 
   it("reports a parked conversation on a merge-queue base", () => {
@@ -839,7 +860,7 @@ it("re-reads the snapshot when the base branch moves mid-read", async () => {
       };
     },
     async recheck(pr) {
-      return { ...(await base.recheck(pr)), baseRefOid: "new-base" };
+      return { ...(await base.recheck(pr)), baseRefOid: "new-base", mergeable: "CONFLICTING" };
     },
   };
   const snapshot = await readSnapshot({
@@ -1483,7 +1504,7 @@ it("returns a conflict already read instead of timing out a stack scan", async (
         async recheck(pr) {
           return {
             ...(await base.recheck(pr)),
-            ...(Number(pr.number) === 1 ? { mergeStateStatus: "DIRTY" as const } : {}),
+            ...(Number(pr.number) === 1 ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const } : {}),
           };
         },
       },
@@ -1543,7 +1564,11 @@ it("keeps a stack conflict when a later PR's read fails", async () => {
           };
         },
         async recheck(pr) {
-          return { ...(await base.recheck(pr)), mergeStateStatus: "DIRTY" as const };
+          return {
+            ...(await base.recheck(pr)),
+            mergeable: "CONFLICTING" as const,
+            mergeStateStatus: "DIRTY" as const,
+          };
         },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
@@ -1674,7 +1699,11 @@ it("keeps a queued conflict when a later PR's read fails", async () => {
           };
         },
         async recheck(pr) {
-          return { ...(await base.recheck(pr)), mergeStateStatus: "DIRTY" as const };
+          return {
+            ...(await base.recheck(pr)),
+            mergeable: "CONFLICTING" as const,
+            mergeStateStatus: "DIRTY" as const,
+          };
         },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
@@ -1727,7 +1756,7 @@ it("scans a PR that joined the stack before declaring it READY", async () => {
         async recheck(pr) {
           return {
             ...(await base.recheck(pr)),
-            ...(Number(pr.number) === 3 ? { mergeStateStatus: "DIRTY" as const } : {}),
+            ...(Number(pr.number) === 3 ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const } : {}),
           };
         },
       },
@@ -1762,7 +1791,7 @@ it("drops a PR that left the stack before returning its blocker", async () => {
         async recheck(pr) {
           return {
             ...(await base.recheck(pr)),
-            ...(conflicted(pr) ? { mergeStateStatus: "DIRTY" as const } : {}),
+            ...(conflicted(pr) ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const } : {}),
           };
         },
       },
@@ -1923,7 +1952,7 @@ it("follows the requested PR's stack when a retarget splits it", async () => {
         async recheck(pr) {
           return {
             ...(await base.recheck(pr)),
-            ...(conflicted(pr) ? { mergeStateStatus: "DIRTY" as const } : {}),
+            ...(conflicted(pr) ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const } : {}),
           };
         },
       },
@@ -2161,6 +2190,30 @@ it("rescans a stack when a GitHub-rejected row's rollup recovers", async () => {
   expect(verdict.kind).toBe("READY");
 });
 
+it("re-reads a snapshot when GitHub finds a conflict behind an unchanged BLOCKED", async () => {
+  const base = fakeReader({ facts: { mergeStateStatus: "BLOCKED" } });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async pullRequest(pr) {
+        reads += 1;
+        return {
+          ...(await base.pullRequest(pr)),
+          mergeable: reads === 1 ? ("MERGEABLE" as const) : ("CONFLICTING" as const),
+        };
+      },
+      async recheck(pr) {
+        return { ...(await base.recheck(pr)), mergeable: "CONFLICTING" as const };
+      },
+    },
+    context: context(1),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(snapshot.facts.mergeable).toBe("CONFLICTING");
+});
+
 it("re-reads a snapshot when the PR was retargeted to a branch at the same commit", async () => {
   const base = fakeReader();
   let reads = 0;
@@ -2259,7 +2312,11 @@ it("keeps a stack conflict when the final revalidation fails", async () => {
               code: 1,
               detail: "502",
             });
-          return { ...(await base.recheck(pr)), mergeStateStatus: "DIRTY" as const };
+          return {
+            ...(await base.recheck(pr)),
+            mergeable: "CONFLICTING" as const,
+            mergeStateStatus: "DIRTY" as const,
+          };
         },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
@@ -2502,7 +2559,7 @@ it("returns a conflict already read instead of timing out a queued sweep", async
         async recheck(pr) {
           return {
             ...(await base.recheck(pr)),
-            ...(conflicting(pr) ? { mergeStateStatus: "DIRTY" as const } : {}),
+            ...(conflicting(pr) ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const } : {}),
           };
         },
       },

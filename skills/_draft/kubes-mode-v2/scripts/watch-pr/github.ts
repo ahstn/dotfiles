@@ -76,6 +76,19 @@ fragment ThreadComment on PullRequestReviewComment {
 const MAX_HISTORY_PAGES = 10;
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+// Rules that gate only what the watcher already reads (checks, reviews,
+// threads) or that don't apply to merging a PR. Any other rule on a queue
+// branch, such as required signatures or deployments, could be why it is
+// BLOCKED, so the queue can't vouch for it.
+const QUEUE_SAFE_RULES = new Set([
+  "merge_queue",
+  "required_status_checks",
+  "pull_request",
+  "deletion",
+  "non_fast_forward",
+  "required_linear_history",
+  "creation",
+]);
 export const PR_MERGE_QUEUE_QUERY =
   "query PrMergeQueue($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { isMergeQueueEnabled } } }";
 export const PR_CHECK_ROLLUP_QUERY =
@@ -888,7 +901,7 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "headRefOid,baseRefOid,baseRefName,state,isDraft,reviewDecision,mergedAt,updatedAt,mergeStateStatus",
+        "headRefOid,baseRefOid,baseRefName,mergeable,state,isDraft,reviewDecision,mergedAt,updatedAt,mergeStateStatus",
       ]),
       "pull request recheck"
     );
@@ -898,6 +911,11 @@ export class GhGitHubReader implements T.GitHubReader {
       headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
       baseRefOid: optionalString(object.baseRefOid, "pull request.baseRefOid"),
       baseRefName: string(object.baseRefName, "pull request.baseRefName"),
+      mergeable: enumValue(
+        object.mergeable,
+        ["MERGEABLE", "CONFLICTING", "UNKNOWN"] as const,
+        "pull request.mergeable"
+      ),
       state: enumValue(
         object.state,
         ["OPEN", "CLOSED", "MERGED"] as const,
@@ -1144,7 +1162,10 @@ export class GhGitHubReader implements T.GitHubReader {
       }
     return ids;
   }
-  async mergeQueueEnabled(context: T.PrContext): Promise<boolean> {
+  async mergeQueueRules(
+    context: T.PrContext,
+    baseRefName: string
+  ): Promise<T.MergeQueueRules | null> {
     const value = await runJson(graphqlArgs(PR_MERGE_QUEUE_QUERY, context));
     const enabled = at(value, [
       "data",
@@ -1154,7 +1175,43 @@ export class GhGitHubReader implements T.GitHubReader {
     ]);
     if (typeof enabled !== "boolean")
       missing("pullRequest.isMergeQueueEnabled", enabled);
-    return enabled;
+    if (!enabled) return null;
+    const branch = encodeURIComponent(baseRefName);
+    const repo = `repos/${context.owner}/${context.repo}`;
+    // Classic protection's rules (signed commits, say) need admin to read.
+    const classic = record(
+      await runJson(["gh", "api", `${repo}/branches/${branch}`]),
+      "branch"
+    );
+    if (isRecord(classic.protection) && classic.protection.enabled !== false)
+      return null;
+    const pages = list(
+      await runJson([
+        "gh",
+        "api",
+        "--paginate",
+        "--slurp",
+        `${repo}/rules/branches/${branch}`,
+      ]),
+      "branch rules pages"
+    );
+    const requiredChecks: string[] = [];
+    for (const page of pages)
+      for (const rule of list(page, "branch rules")) {
+        const object = record(rule, "branch rule");
+        const type = string(object.type, "branch rule.type");
+        if (!QUEUE_SAFE_RULES.has(type)) return null;
+        if (type !== "required_status_checks") continue;
+        const parameters = isRecord(object.parameters) ? object.parameters : {};
+        for (const check of list(
+          parameters.required_status_checks ?? [],
+          "required_status_checks"
+        ))
+          requiredChecks.push(
+            string(record(check, "required check").context, "required check.context")
+          );
+      }
+    return { requiredChecks };
   }
   async commitRollups(
     context: T.PrContext

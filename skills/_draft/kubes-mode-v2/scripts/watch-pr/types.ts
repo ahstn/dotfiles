@@ -64,6 +64,7 @@ export type RecheckFacts = Pick<
   | "headRefOid"
   | "baseRefOid"
   | "baseRefName"
+  | "mergeable"
   | "state"
   | "isDraft"
   | "reviewDecision"
@@ -594,8 +595,16 @@ export interface GitHubReader {
   commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
   /** IDs of the jobs in a workflow run's latest attempt. */
   latestAttemptJobs(context: PrContext, run: number): Promise<ReadonlySet<number>>;
-  /** Whether the PR's base branch merges through GitHub's merge queue. */
-  mergeQueueEnabled(context: PrContext): Promise<boolean>;
+  /**
+   * For a base that merges through GitHub's merge queue, the checks its rules
+   * require, when every rule on it is visible and none could block a ready
+   * PR. null otherwise: no queue, classic protection (unreadable without
+   * admin), or a rule such as required signatures.
+   */
+  mergeQueueRules(context: PrContext, baseRefName: string): Promise<MergeQueueRules | null>;
+}
+export interface MergeQueueRules {
+  readonly requiredChecks: readonly string[];
 }
 export interface PollingOptions {
   readonly interval: number;

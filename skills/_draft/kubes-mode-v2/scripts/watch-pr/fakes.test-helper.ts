@@ -20,6 +20,8 @@ export interface FakeReaderOptions {
   readonly upToDateRequired?: boolean | null;
   readonly commitRollups?: readonly CommitRollup[];
   readonly mergeQueueEnabled?: boolean;
+  /** Checks the queue branch's rules require (default none). */
+  readonly queueRequiredChecks?: readonly string[];
   readonly latestAttemptJobs?: Readonly<Record<number, readonly number[]>>;
   readonly openPullRequests?: readonly OpenPullRequest[];
   readonly current?: PrContext;
@@ -110,6 +112,7 @@ export function fakeReader(
         headRefOid,
         baseRefOid,
         baseRefName,
+        mergeable,
         state,
         isDraft,
         reviewDecision,
@@ -121,6 +124,7 @@ export function fakeReader(
         headRefOid,
         baseRefOid,
         baseRefName,
+        mergeable,
         state,
         isDraft,
         reviewDecision,
@@ -154,9 +158,11 @@ export function fakeReader(
       calls.push(`latestAttemptJobs:${run}`);
       return new Set(options.latestAttemptJobs?.[run] ?? []);
     },
-    async mergeQueueEnabled() {
-      calls.push("mergeQueueEnabled");
-      return options.mergeQueueEnabled ?? false;
+    async mergeQueueRules() {
+      calls.push("mergeQueueRules");
+      return options.mergeQueueEnabled
+        ? { requiredChecks: options.queueRequiredChecks ?? [] }
+        : null;
     },
     async commitRollups() {
       calls.push("commitRollups");
