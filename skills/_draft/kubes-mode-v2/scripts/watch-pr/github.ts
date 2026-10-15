@@ -1281,5 +1281,15 @@ export async function discoverStack(
   reader: T.GitHubReader,
   context: T.PrContext
 ): Promise<T.NonEmpty<T.PrContext>> {
-  return orderStack(context, await reader.openPullRequests(context));
+  const open = await reader.openPullRequests(context);
+  // A seed that has merged (or closed) is no longer in the open-PR graph, so
+  // its stack can't be rediscovered: orderStack would return the seed alone,
+  // and the watcher would report READY with the PRs above it still open.
+  if (!open.some((pr) => pr.number === context.number))
+    throw new WatcherQueryError({
+      kind: "stack-seed-gone",
+      retryable: false,
+      detail: `PR #${context.number} is no longer open, so its stack can't be rediscovered; rerun --stack with a still-open PR from it (the lowest open row of the last STATUS)`,
+    });
+  return orderStack(context, open);
 }

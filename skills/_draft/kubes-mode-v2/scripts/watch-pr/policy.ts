@@ -365,18 +365,15 @@ async function readCi(
       gatePresent &&
       fresh !== null &&
       fresh.every((check) => check.kind !== "pending" && check.kind !== "failed");
-    // A rerun shows as a PENDING rollup (a remaining failure would keep it at
-    // FAILURE), unless the gate is what's pending; otherwise the fresh read
-    // decides.
+    // A failing first read always gets a fresh read, taken after the rollup,
+    // so it is the newest evidence: it alone decides whether a failure
+    // remains. The rollup in between may predate a check that failed since.
     const failureGone =
-      rollup === "SUCCESS" ||
-      (rollupPending && !gatePresent) ||
-      (fresh !== null && !fresh.some((check) => check.kind === "failed"));
+      fresh !== null && !fresh.some((check) => check.kind === "failed");
     if (failed !== null && failureGone) {
-      // The inverse race of ROLLUP_DISAGREES: a failed check was rerun
-      // between the two reads. A failure would keep the rollup at FAILURE, so
-      // PENDING or SUCCESS means the rerun is running or already green. Poll
-      // again rather than send the agent after a failure that no longer exists.
+      // The failure the first read saw is gone (rerun running, or green).
+      // Poll again rather than send the agent after a failure that no longer
+      // exists.
       const disagreement: T.PendingCheck = {
         kind: "pending",
         name: ROLLUP_DISAGREES,

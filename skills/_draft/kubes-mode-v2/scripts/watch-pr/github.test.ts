@@ -4,6 +4,7 @@ import {
   AUTOFIX_REPLY_MARKER,
   ChecksUnavailable,
   WatcherQueryError,
+  discoverStack,
   mapRollupNode,
   orderStack,
   parsePullRequest,
@@ -478,6 +479,15 @@ describe("context and stack discovery", () => {
     expect(ordered.map((item) => Number(item.number)).sort()).toEqual([
       41, 42, 43,
     ]);
+  });
+
+  it("refuses to rediscover a stack from a seed that is no longer open", async () => {
+    const reader = fakeReader({
+      openPullRequests: [
+        { number: parsePrNumber(43), headRefName: "upstack", baseRefName: "feature" },
+      ],
+    });
+    await expect(discoverStack(reader, context)).rejects.toThrow("no longer open");
   });
 
   it("orders the connected stack bottom-to-top", () => {

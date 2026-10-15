@@ -332,6 +332,11 @@ export type QueryFailure =
       readonly detail: string;
     }
   | {
+      readonly kind: "stack-seed-gone";
+      readonly retryable: false;
+      readonly detail: string;
+    }
+  | {
       readonly kind: "ambiguous-stack";
       readonly retryable: false;
       readonly detail: string;

@@ -433,11 +433,16 @@ it("reports actionable threads even when the checks can't be read", async () => 
 });
 
 it("waits when the check list failed but the rollup has since passed", async () => {
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "SUCCESS" }] });
+  let reads = 0;
   const snapshot = await readSnapshot({
-    reader: fakeReader({
-      fastPath: { kind: "checks", checks: [failedCheck()] },
-      commitRollups: [{ oid: "head", state: "SUCCESS" }],
-    }),
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return { kind: "checks", checks: [reads === 1 ? failedCheck() : passingCheck()] };
+      },
+    },
     context: context(9),
     pendingHistory: "include",
     allowDraft: false,
@@ -499,11 +504,16 @@ it("reports owner threads when another reviewer's lookup fails", async () => {
 });
 
 it("waits while a failed check is being rerun", async () => {
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] });
+  let reads = 0;
   const snapshot = await readSnapshot({
-    reader: fakeReader({
-      fastPath: { kind: "checks", checks: [failedCheck()] },
-      commitRollups: [{ oid: "head", state: "PENDING" }],
-    }),
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return { kind: "checks", checks: [reads === 1 ? failedCheck() : pendingCheck()] };
+      },
+    },
     context: context(9),
     pendingHistory: "include",
     allowDraft: false,
@@ -932,6 +942,33 @@ it("names open conversations when only parked threads could explain BLOCKED", as
     kind: "ci-github-rejected",
     github: { cause: "open-conversations" },
   });
+});
+
+it("reports a failure the fresh read saw even when the rollup said SUCCESS", async () => {
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "SUCCESS" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks:
+            reads === 1
+              ? [failedCheck("a"), passingCheck("b")]
+              : [passingCheck("a"), failedCheck("b")],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  if (decision.kind !== "blocker" || decision.blocker.kind !== "failing-checks")
+    throw new Error("expected failing checks");
+  expect(decision.blocker.ci.failed.map((check) => check.name)).toEqual(["b"]);
 });
 
 it("waits while GitHub is still computing mergeability", async () => {
