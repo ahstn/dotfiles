@@ -225,9 +225,13 @@ export async function main(
     return error.exitCode === 0 ? 0 : 64;
   }
   setIgnoredPendingChecks(options.ignoredPendingChecks);
-  const render = options.pretty ? renderPretty : renderJson;
+  const render = options.pretty
+    ? (verdict: T.WatcherVerdict) =>
+        renderPretty(verdict, { allowDraft: options.polling.allowDraft })
+    : renderJson;
   const emit = (verdict: T.ProgressVerdict): void =>
     runtime.stdout(render(verdict));
+  let anchor: T.PrContext | undefined;
   const discover = async (): Promise<T.NonEmpty<T.PrContext>> => {
     const seed = await resolveContext({
       reader: runtime.reader,
@@ -235,6 +239,7 @@ export async function main(
       repo: options.repo,
       pr: options.pr ?? options.stackPrs[0] ?? null,
     });
+    anchor = seed;
     return (
       nonEmpty(options.stackPrs.map((number) => ({ ...seed, number }))) ??
       (options.mode === "single"
@@ -344,6 +349,7 @@ export async function main(
             ? {
                 rediscover: (from: T.PrContext) =>
                   discoverStack(runtime.reader, from),
+                ...(anchor === undefined ? {} : { anchor }),
               }
             : {}),
         });

@@ -1500,7 +1500,7 @@ it("rescans a stack when an earlier row changed before READY", async () => {
           firstRowRechecks += 1;
           // The revalidation after the first scan (2nd recheck of row 1)
           // sees a new comment; later reads agree.
-          return firstRowRechecks === 2 ? { ...facts, updatedAt: "moved" } : facts;
+          return firstRowRechecks === 2 ? { ...facts, baseRefOid: "moved" } : facts;
         },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
@@ -1531,7 +1531,7 @@ it("rescans a status-only stack when an earlier row moved", async () => {
           const facts = await base.recheck(pr);
           if (Number(pr.number) !== 1) return facts;
           firstRowRechecks += 1;
-          return firstRowRechecks === 2 ? { ...facts, updatedAt: "moved" } : facts;
+          return firstRowRechecks === 2 ? { ...facts, baseRefOid: "moved" } : facts;
         },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
@@ -1720,7 +1720,7 @@ it("rescans a stack when the last row changed during revalidation", async () => 
           const facts = await base.recheck(pr);
           if (Number(pr.number) !== 2) return facts;
           lastRowRechecks += 1;
-          return lastRowRechecks === 2 ? { ...facts, updatedAt: "moved" } : facts;
+          return lastRowRechecks === 2 ? { ...facts, baseRefOid: "moved" } : facts;
         },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
@@ -1828,6 +1828,211 @@ it("drops a row that closed before it was read from the stack", async () => {
     rediscover: async () => [context(1), context(3)],
   });
   expect(verdict.kind).toBe("READY");
+});
+
+it("follows the requested PR's stack when a retarget splits it", async () => {
+  const base = fakeReader();
+  const conflicted = (pr: PrContext) => Number(pr.number) === 2;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          return {
+            ...(await base.pullRequest(pr)),
+            ...(conflicted(pr)
+              ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const }
+              : {}),
+          };
+        },
+        async recheck(pr) {
+          return {
+            ...(await base.recheck(pr)),
+            ...(conflicted(pr) ? { mergeStateStatus: "DIRTY" as const } : {}),
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+    // #2, the PR asked about, was retargeted away from #1 mid-scan.
+    anchor: context(2),
+    rediscover: async (from) => [from],
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+  expect(
+    verdict.kind === "BLOCKER" &&
+      "pr" in verdict.blocker &&
+      Number(verdict.blocker.pr.number)
+  ).toBe(2);
+});
+
+it("reports the newest failing attempt when a rerun fails again", async () => {
+  const base = fakeReader();
+  let row1CheckReads = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async checksFastPath(pr) {
+          if (Number(pr.number) !== 1)
+            return { kind: "checks", checks: [passingCheck()] };
+          row1CheckReads += 1;
+          const run = row1CheckReads <= 2 ? "runs/1" : "runs/2";
+          return { kind: "checks", checks: [{ ...failedCheck("unit"), link: run }] };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(
+    verdict.kind === "BLOCKER" &&
+      verdict.blocker.kind === "failing-checks" &&
+      verdict.blocker.ci.kind === "ci-failing" &&
+      verdict.blocker.ci.failed[0].link
+  ).toBe("runs/2");
+});
+
+it("keeps a known thread blocker when stack revalidation fails", async () => {
+  const comment = {
+    authorLogin: "owner",
+    body: "fix this",
+    path: null,
+    line: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    activityAt: "2026-01-01T00:00:00Z",
+    authorAssociation: "OWNER",
+    authorIsBot: false,
+    isViewer: false,
+  };
+  const threads = fakeReader({
+    threads: [
+      {
+        id: "t",
+        firstComment: comment,
+        recentComments: [comment],
+        historyComplete: true,
+        decidingComment: comment,
+        lastAuthorLogin: "owner",
+        latestCommentAt: comment.activityAt,
+        disposition: "actionable",
+        isBugbot: false,
+        bugbotReviewPasses: 0,
+      },
+    ],
+  });
+  const base = fakeReader();
+  let row1CheckReads = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async reviewThreads(pr) {
+          return Number(pr.number) === 2 ? threads.reviewThreads(pr) : [];
+        },
+        async checksFastPath(pr) {
+          if (Number(pr.number) === 1 && (row1CheckReads += 1) > 2)
+            throw new WatcherQueryError({
+              kind: "command-exit",
+              retryable: true,
+              code: 1,
+              detail: "GraphQL unavailable",
+            });
+          return { kind: "checks", checks: [passingCheck()] };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("review-threads");
+});
+
+it("settles a snapshot when only untrusted activity moves updatedAt", async () => {
+  const base = fakeReader();
+  let rechecks = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      // Drive-by comments bump the PR's updatedAt on every read.
+      async recheck(pr) {
+        rechecks += 1;
+        return { ...(await base.recheck(pr)), updatedAt: `bumped-${rechecks}` };
+      },
+    },
+    context: context(1),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(snapshot.kind === "open" && snapshot.ci.kind).toBe("ci-clean");
+  expect(rechecks).toBe(1);
+});
+
+it("re-reads a snapshot when updatedAt moved for a trusted comment", async () => {
+  const comment = {
+    authorLogin: "owner",
+    body: "fix this",
+    path: null,
+    line: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    activityAt: "2026-01-01T00:00:00Z",
+    authorAssociation: "OWNER",
+    authorIsBot: false,
+    isViewer: false,
+  };
+  const thread = fakeReader({
+    threads: [
+      {
+        id: "t",
+        firstComment: comment,
+        recentComments: [comment],
+        historyComplete: true,
+        decidingComment: comment,
+        lastAuthorLogin: "owner",
+        latestCommentAt: comment.activityAt,
+        disposition: "actionable",
+        isBugbot: false,
+        bugbotReviewPasses: 0,
+      },
+    ],
+  });
+  const base = fakeReader();
+  let threadReads = 0;
+  let rechecks = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      // The owner comments right after the first thread read.
+      async reviewThreads(pr) {
+        threadReads += 1;
+        return threadReads === 1 ? [] : thread.reviewThreads(pr);
+      },
+      async pullRequest(pr) {
+        return { ...(await base.pullRequest(pr)), updatedAt: rechecks === 0 ? "t0" : "t1" };
+      },
+      async recheck(pr) {
+        rechecks += 1;
+        return { ...(await base.recheck(pr)), updatedAt: "t1" };
+      },
+    },
+    context: context(1),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(snapshot.kind === "open" && snapshot.threads.map((t) => t.id)).toEqual(["t"]);
 });
 
 it("rescans a stack whose order changed on rediscovery", async () => {

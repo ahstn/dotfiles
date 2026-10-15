@@ -125,6 +125,7 @@ export async function readSnapshot(args: {
     // landing during any of them is caught by the final comparison.
     let now: T.RecheckFacts;
     let confirmed = true;
+    let moved = true;
     try {
       // Before a clean CI read can become READY, confirm it (see ciMoved).
       // A failing read was already confirmed after the rollup in readCi.
@@ -147,6 +148,7 @@ export async function readSnapshot(args: {
       )
         confirmed = false;
       now = await args.reader.recheck(args.context);
+      moved = !confirmed || (await factsMoved(args.reader, snapshot, now));
     } catch (error) {
       // A known conflict or actionable thread outranks a failed
       // lower-priority read.
@@ -161,7 +163,7 @@ export async function readSnapshot(args: {
     // The base matters too: a base-branch update can create a conflict with
     // no new head commit. So do the gates: a PR closed, set to draft, or given
     // changes-requested mid-read would otherwise slip out as READY.
-    if (sameFacts(facts, now) && confirmed) return snapshot;
+    if (!moved) return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
         kind: "head-moved",
@@ -175,7 +177,7 @@ export async function readSnapshot(args: {
  * merge-queue settings move none of the recheck fields, so before a verdict
  * rests on them: a clean read must have gained no pending or failed check and
  * (when the merge queue explained BLOCKED) the queue must still be on, and a
- * failing read must still fail the same checks.
+ * failing read must still fail the same check attempts.
  */
 async function ciMoved(
   reader: T.GitHubReader,
@@ -194,12 +196,16 @@ async function ciMoved(
     );
   }
   if (row.ci.kind === "ci-failing") {
+    // By attempt, not name: a rerun that fails again keeps the name but has a
+    // new link, and the blocker must point the agent at the current run.
     const names = (checks: readonly T.Check[]) =>
       checks
         .filter((check) => check.kind === "failed")
-        .map((check) => check.name)
+        .map((check) =>
+          [check.name, check.link, check.completedAt ?? ""].join("\0")
+        )
         .sort()
-        .join("\0");
+        .join("\n");
     const checks = (await resolveChecks(reader, row.context, allowNoChecks))
       .checks;
     return names(checks) !== names(row.ci.failed);
@@ -221,6 +227,29 @@ function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
     // A ruleset or protection change can flip CLEAN to BLOCKED with nothing
     // else above moving.
     now.mergeStateStatus === facts.mergeStateStatus
+  );
+}
+/**
+ * Whether a row's facts moved in a way that matters. updatedAt moves on any
+ * comment, drive-by ones the trust rules ignore included, so an outsider
+ * could otherwise keep every snapshot from settling. When it is the only
+ * change, re-read the threads and accept the row if their trusted view (what
+ * the verdict carries) is unchanged.
+ */
+async function factsMoved(
+  reader: T.GitHubReader,
+  row: T.PrSnapshot,
+  now: T.RecheckFacts
+): Promise<boolean> {
+  if (sameFacts(row.facts, now)) return false;
+  if (row.kind !== "open" || !sameFacts(row.facts, { ...now, updatedAt: row.facts.updatedAt }))
+    return true;
+  const view = splitThreads(
+    await requireWriteAccess(reader, row.context, await reader.reviewThreads(row.context))
+  );
+  return (
+    JSON.stringify(view) !==
+    JSON.stringify({ threads: row.threads, parkedThreads: row.parkedThreads })
   );
 }
 /**
@@ -246,7 +275,7 @@ async function rowsMoved(
     // Failing rows too: a check on an early row can recover while later
     // rows are read, and the stack verdict must not send the agent after it.
     if (await ciMoved(reader, row, allowNoChecks)) return true;
-    if (!sameFacts(row.facts, await reader.recheck(row.context))) return true;
+    if (await factsMoved(reader, row, await reader.recheck(row.context))) return true;
   }
   return false;
 }
@@ -307,15 +336,14 @@ const isConflicted = (facts: T.PullRequestFacts): boolean =>
   facts.mergeable === "CONFLICTING" ||
   facts.mergeStateStatus === "DIRTY" ||
   facts.mergeStateStatus === "CONFLICTING";
-async function readOpenSnapshot(
-  args: Parameters<typeof readSnapshot>[0],
-  facts: T.PullRequestFacts
-): Promise<T.PrSnapshot> {
-  const allThreads = await requireWriteAccess(
-    args.reader,
-    args.context,
-    await args.reader.reviewThreads(args.context)
-  );
+/**
+ * What a snapshot carries of its threads: actionable ones in full (less the
+ * history), parked ones as metadata only.
+ */
+function splitThreads(allThreads: readonly T.ReviewThread[]): {
+  readonly threads: T.ReviewThreadSummary[];
+  readonly parkedThreads: T.ParkedThreadSummary[];
+} {
   const summaries = allThreads.map(
     ({ recentComments: _history, ...summary }): T.ReviewThreadSummary => summary
   );
@@ -337,6 +365,18 @@ async function readOpenSnapshot(
             },
           ]
   );
+  return { threads, parkedThreads };
+}
+async function readOpenSnapshot(
+  args: Parameters<typeof readSnapshot>[0],
+  facts: T.PullRequestFacts
+): Promise<T.PrSnapshot> {
+  const allThreads = await requireWriteAccess(
+    args.reader,
+    args.context,
+    await args.reader.reviewThreads(args.context)
+  );
+  const { threads, parkedThreads } = splitThreads(allThreads);
   try {
     const { ci, reviewAutomationRunning } = await readCi(
       args,
@@ -962,6 +1002,11 @@ export async function runSimple(args: {
    * stack can be READY.
    */
   readonly rediscover?: (from: T.PrContext) => Promise<T.NonEmpty<T.PrContext>>;
+  /**
+   * The PR the user asked about. Rediscovery follows its stack while it is
+   * open, so a retarget that splits the stack can't drop it from the watch.
+   */
+  readonly anchor?: T.PrContext;
 }): Promise<T.TerminalVerdict> {
   const stamp = args.stamp ?? verdictFactory(args.dependencies.clock, args.mode);
   const started = args.dependencies.clock.now();
@@ -1039,15 +1084,20 @@ export async function runSimple(args: {
     // read, but any of them can change while the others (or the open-PR
     // graph) are read. A failed read here must not hide a conflict the scan
     // already found, as with the scan's own reads.
+    let rediscovered = false;
     try {
-      let rediscovered = false;
       const seeds = rows.flatMap((row) => (row.kind === "open" ? [row.context] : []));
       if (args.rediscover !== undefined && seeds.length > 0) {
-        // A row can merge or close after it was read (auto-merge as CI
-        // settles). Seed from the next open row; if every one has gone, the
-        // cached rows are stale, so read them again.
+        // Follow the requested PR's stack while it is open. A row can merge
+        // or close after it was read (auto-merge as CI settles), so then seed
+        // from the next open row; if every one has gone, the cached rows are
+        // stale, so read them again.
+        const candidates = [
+          ...(args.anchor === undefined ? [] : [args.anchor]),
+          ...seeds.filter((seed) => seed.number !== args.anchor?.number),
+        ];
         let current: T.NonEmpty<T.PrContext> | null = null;
-        for (const seed of seeds) {
+        for (const seed of candidates) {
           try {
             current = await args.rediscover(seed);
             break;
@@ -1073,16 +1123,30 @@ export async function runSimple(args: {
           return rescan;
         }
       }
+    } catch (error) {
+      // Membership is unknown, so only a conflict (the top tier, which no
+      // newly joined row could outrank) is safe to report.
+      const conflict =
+        error instanceof WatcherQueryError ? knownConflict(rows) : null;
+      if (conflict !== null)
+        return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+      throw error;
+    }
+    try {
       if (
         (rows.length > 1 || rediscovered) &&
         (await rowsMoved(args.dependencies.reader, rows, args.options.allowNoChecks))
       )
         return rescan;
     } catch (error) {
-      const conflict =
-        error instanceof WatcherQueryError ? knownConflict(rows) : null;
-      if (conflict !== null)
-        return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+      // Membership is confirmed; a lower-priority read failed. As in
+      // readSnapshot, a known conflict or actionable thread still stands.
+      const known =
+        error instanceof WatcherQueryError
+          ? (knownConflict(rows) ?? rows.map(threadBlocker).find((b) => b !== null) ?? null)
+          : null;
+      if (known !== null)
+        return { kind: "terminal", verdict: blockerVerdict(stamp, known) };
       throw error;
     }
     if (args.statusOnly)

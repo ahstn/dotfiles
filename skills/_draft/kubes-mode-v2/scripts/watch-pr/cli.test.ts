@@ -533,6 +533,20 @@ describe("main", () => {
     expect(table).not.toContain("⏸ draft");
   });
 
+  it("marks an allowed draft as allowed in the pretty status table", async () => {
+    const harness = testRuntime(fakeReader({ facts: { isDraft: true } }));
+    await main(
+      [
+        "--owner", "owner", "--repo", "repo", "--pr", "1",
+        "--status-only", "--pretty", "--allow-draft",
+      ],
+      harness.runtime
+    );
+    const table = harness.stdout.join("");
+    expect(table).toContain("✅ (draft allowed)");
+    expect(table).not.toContain("⏸ draft");
+  });
+
   it("shows help without touching the reader", async () => {
     const reader = fakeReader();
     const harness = testRuntime(reader);

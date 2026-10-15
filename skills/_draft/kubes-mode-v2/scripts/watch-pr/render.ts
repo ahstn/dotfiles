@@ -68,7 +68,7 @@ function reviewCell(row: T.PrSnapshot): string {
       ? `📝 ${open} open${parked}`
       : `✅${parked}`;
 }
-function mergeCell(row: T.PrSnapshot): string {
+function mergeCell(row: T.PrSnapshot, allowDraft: boolean): string {
   if (row.kind === "merged") return "✅ merged";
   if (row.kind === "closed") return "❌ closed";
   // Conflicts (and a required update) outrank the human gates below, as in
@@ -85,7 +85,8 @@ function mergeCell(row: T.PrSnapshot): string {
     row.upToDateRequired === true
   )
     return "⚠️ behind base";
-  if (row.facts.isDraft) return "⏸ draft";
+  // With --allow-draft a draft is no gate; say so rather than hide it.
+  if (row.facts.isDraft && !allowDraft) return "⏸ draft";
   if (row.facts.reviewDecision === "CHANGES_REQUESTED")
     return "⚠️ changes requested";
   if (row.facts.reviewDecision === "REVIEW_REQUIRED") return "⏳ needs approval";
@@ -96,14 +97,17 @@ function mergeCell(row: T.PrSnapshot): string {
     return "⚠️ needs a human";
   if (row.facts.mergeStateStatus === "BEHIND" && row.kind === "open")
     return row.upToDateRequired === false ? "✅ (behind, not required)" : "⚠️ behind base";
-  return "✅";
+  return row.facts.isDraft ? "✅ (draft allowed)" : "✅";
 }
-export function renderStatusTable(rows: T.NonEmpty<T.PrSnapshot>): string {
+export function renderStatusTable(
+  rows: T.NonEmpty<T.PrSnapshot>,
+  allowDraft = false
+): string {
   const lines = ["| PR | CI | Review | Merge |", "| --- | --- | --- | --- |"];
   for (const row of rows) {
     const url = `https://github.com/${row.context.owner}/${row.context.repo}/pull/${row.context.number}`;
     lines.push(
-      `| [#${row.context.number}](${url}) | ${ciCell(row)} | ${reviewCell(row)} | ${mergeCell(row)} |`
+      `| [#${row.context.number}](${url}) | ${ciCell(row)} | ${reviewCell(row)} | ${mergeCell(row, allowDraft)} |`
     );
   }
   return `${lines.join("\n")}\n`;
@@ -200,12 +204,15 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
     }
   }
 }
-export function renderPretty(verdict: T.WatcherVerdict): string {
+export function renderPretty(
+  verdict: T.WatcherVerdict,
+  options: { readonly allowDraft?: boolean } = {}
+): string {
   switch (verdict.kind) {
     case "QUEUE":
       return `QUEUE: captured ${verdict.queue.length} PR${verdict.queue.length === 1 ? "" : "s"} bottom-to-top: ${verdict.queue.map((pr) => `#${pr.number}`).join(",")}\n`;
     case "STATUS":
-      return renderStatusTable(verdict.rows);
+      return renderStatusTable(verdict.rows, options.allowDraft);
     case "WAITING":
       return verdict.reason.kind === "pending-checks"
         ? `WAITING: frontier=#${verdict.frontier.number}; ${verdict.reason.pending.length} check${verdict.reason.pending.length === 1 ? "" : "s"} pending\n`
