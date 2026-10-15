@@ -19,7 +19,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 | 3 | Actionable review threads | [Review threads](#review-threads) |
 | 4 | Failing checks | [Failing checks](#failing-checks) |
 | 5 | Timeout, checks still pending | Rerun the watcher. |
-| 6 | Merge gate: changes requested, or PR closed | Report. A human has to act. |
+| 6 | Merge gate: changes requested, PR closed, or a review thread too long to read in full | Report. A human has to act. |
 | 7 | GitHub query failed | Check `gh auth status` and the PR number, then report. |
 | 64 | Bad arguments | Fix the command. |
 
@@ -75,7 +75,7 @@ Classify each thread and act:
 | Wrong | Reply with the evidence, such as a file and line, a test, or a doc. Leave it unresolved for the reviewer. |
 | Unclear or architectural | Ask the user. Don't reply or resolve yet. |
 
-Write each reply body to a file outside the repository, for example under `${TMPDIR:-/tmp}`, with your file-writing tool. Never put it inline in a shell string, so review text cannot be interpolated by the shell. Delete the file after posting, so nothing is left behind to be committed by accident.
+For each reply, create a fresh file outside the repository with `mktemp -t pr-autofix-reply`, and write the body to that path with your file-writing tool. Never put the body inline in a shell string, so review text cannot be interpolated by the shell. Delete that exact file after posting: nothing is left to commit by accident, and concurrent sessions never share a path.
 
 The last line of every reply must be one of two markers. Without one, the watcher treats your own reply as new feedback. A marker only counts on a comment written by the authenticated `gh` user, so a pasted copy from anyone else is ignored.
 
@@ -88,12 +88,12 @@ Fixed in abc1234: the empty cursor now returns the first page.
 <!-- pr-autofix:fixed -->
 ```
 
-Post the reply, then resolve the thread only when it was fixed:
+Post the reply from that file, then resolve the thread only when it was fixed:
 
 ```shell
-gh api graphql -F threadId=<thread-id> -F body=@"${TMPDIR:-/tmp}/autofix-reply.md" -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }'
+gh api graphql -F threadId=<thread-id> -F body=@<reply-file> -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }'
 gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
-rm "${TMPDIR:-/tmp}/autofix-reply.md"
+rm <reply-file>
 ```
 
 ## Failing checks

@@ -431,14 +431,13 @@ export function decideThread(
       latestCommentAt: first?.activityAt ?? null,
     };
   const trustedRecent = thread.recentComments.filter(trusted);
-  const newestTrusted = trustedRecent.at(-1);
-  // With history missing, the trusted comment that decides the thread may be
-  // in the part not read (an agent answer buried under drive-by replies), so
-  // the opener alone cannot reopen it.
-  if (newestTrusted === undefined && !thread.historyComplete)
+  // With history missing, the deciding trusted comment (or a newer edit to
+  // one) may be in the part not read. Neither waking nor parking is safe, so
+  // the thread is held for a human (see ThreadDisposition).
+  if (!thread.historyComplete)
     return {
       ...thread,
-      disposition: "awaiting-reviewer",
+      disposition: "unverifiable",
       decidingComment: null,
       lastAuthorLogin: null,
       latestCommentAt: null,

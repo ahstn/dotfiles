@@ -289,13 +289,14 @@ export async function main(
   const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
   const verdict =
     options.mode === "queued-stack" && !options.statusOnly
-      ? await runQueued({ dependencies, contexts, options: polling })
+      ? await runQueued({ dependencies, contexts, options: polling, stamp })
       : await runSimple({
           dependencies,
           contexts,
           mode: options.mode,
           statusOnly: options.statusOnly,
           options: polling,
+          stamp,
         });
   runtime.stdout(render(verdict));
   return verdict.exitCode;

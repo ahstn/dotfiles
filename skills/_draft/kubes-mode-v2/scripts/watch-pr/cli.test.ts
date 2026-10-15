@@ -60,6 +60,9 @@ it("retries a transient failure while resolving the PR", async () => {
   expect(attempts).toBe(2);
   expect(slept).toEqual([60]);
   expect(JSON.parse(harness.stdout[0] ?? "{}").kind).toBe("RETRY");
+  expect(
+    harness.stdout.map((line) => JSON.parse(line).sequence as number)
+  ).toEqual([1, 2]);
 });
 
 it("gives polling only the timeout left after discovery retries", async () => {

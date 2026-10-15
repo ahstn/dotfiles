@@ -388,7 +388,7 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
       },
     },
   });
-  expect(flooded[0]?.disposition).toBe("awaiting-reviewer");
+  expect(flooded[0]?.disposition).toBe("unverifiable");
   expect(flooded[0]?.historyComplete).toBe(false);
   expect(outsider?.lastAuthorLogin).toBe("me");
 });

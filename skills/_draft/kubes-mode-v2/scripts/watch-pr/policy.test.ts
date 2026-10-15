@@ -359,6 +359,45 @@ it("keeps a known conflict when the head re-check fails", async () => {
   );
 });
 
+it("holds a PR with an unverifiable thread at a merge gate", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      threads: [
+        {
+          id: "huge",
+          firstComment: null,
+          recentComments: [],
+          historyComplete: false,
+          decidingComment: null,
+          lastAuthorLogin: null,
+          latestCommentAt: null,
+          disposition: "unverifiable",
+          isBugbot: false,
+          bugbotReviewPasses: 0,
+        },
+      ],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker).toMatchObject({
+    kind: "merge-gate",
+    reason: "unverifiable-thread",
+  });
+});
+
+it("waits when the check list passed but the rollup has not", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

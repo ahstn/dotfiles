@@ -79,7 +79,16 @@ export interface ReviewComment {
  * Neither of those blocks, so a reply that disputes a comment does not
  * re-wake the agent, and drive-by comments cannot steer it.
  */
-export type ThreadDisposition = "actionable" | "awaiting-reviewer" | "untrusted";
+/**
+ * `unverifiable` threads ran past the history page budget, so a newer trusted
+ * edit could sit in the unread part. They don't wake the agent (that would let
+ * a flood of replies trigger it), but they block READY as a merge gate.
+ */
+export type ThreadDisposition =
+  | "actionable"
+  | "awaiting-reviewer"
+  | "untrusted"
+  | "unverifiable";
 export interface ReviewThread {
   readonly id: string;
   readonly firstComment: ReviewComment | null;
@@ -225,7 +234,8 @@ export interface MergedPr {
 export type MergeGateReason =
   | "closed-without-merge"
   | "draft-pr"
-  | "changes-requested";
+  | "changes-requested"
+  | "unverifiable-thread";
 export type MergeBlocker =
   | {
       readonly kind: "merge-conflicts";

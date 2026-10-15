@@ -51,6 +51,7 @@ async function mergeAssessment(
   };
 }
 export const MERGEABILITY_PENDING = "(GitHub mergeability)";
+export const ROLLUP_DISAGREES = "(GitHub check rollup)";
 const AUTOMATION_TOKENS = [
   "bugbot",
   "security review",
@@ -223,7 +224,30 @@ async function readOpenSnapshot(
       };
     else if (pending !== null)
       ci = { ...base, kind: "ci-pending", failed: [], pending };
-    else
+    else if (
+      merge.github.headRollupState !== null &&
+      merge.github.headRollupState !== "SUCCESS"
+    ) {
+      // The check list and the rollup are separate reads of the same commit,
+      // so a retry or new workflow between them can leave a passing list next
+      // to a pending or failing rollup. Wait for a poll where they agree
+      // rather than call it clean.
+      const disagreement: T.PendingCheck = {
+        kind: "pending",
+        name: ROLLUP_DISAGREES,
+        reportedState: merge.github.headRollupState,
+        description: "checks passed but the commit rollup has not",
+        link: "",
+        workflow: "",
+      };
+      ci = {
+        ...base,
+        all: [...base.all, disagreement],
+        kind: "ci-pending",
+        failed: [],
+        pending: [disagreement],
+      };
+    } else
       ci = {
         ...base,
         kind: "ci-clean",
@@ -276,8 +300,11 @@ function gateReason(
   if (row.kind === "merged") return null;
   if (row.kind === "closed") return "closed-without-merge";
   if (row.facts.isDraft && !allowDraft) return "draft-pr";
-  return row.facts.reviewDecision === "CHANGES_REQUESTED"
-    ? "changes-requested"
+  if (row.facts.reviewDecision === "CHANGES_REQUESTED")
+    return "changes-requested";
+  return row.kind === "open" &&
+    row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
+    ? "unverifiable-thread"
     : null;
 }
 function gateBlocker(
@@ -577,8 +604,10 @@ export async function runSimple(args: {
   readonly mode: T.WatchMode;
   readonly statusOnly: boolean;
   readonly options: T.PollingOptions;
+  /** Continue a caller's sequence numbers (the CLI's discovery retries). */
+  readonly stamp?: VerdictStamp;
 }): Promise<T.TerminalVerdict> {
-  const stamp = verdictFactory(args.dependencies.clock, args.mode);
+  const stamp = args.stamp ?? verdictFactory(args.dependencies.clock, args.mode);
   const started = args.dependencies.clock.now();
   const step = async (): Promise<StepResult<T.TerminalVerdict>> => {
     const rows: T.PrSnapshot[] = [];
@@ -887,9 +916,11 @@ export async function runQueued(args: {
   readonly dependencies: RunDependencies;
   readonly contexts: T.NonEmpty<T.PrContext>;
   readonly options: T.PollingOptions;
+  readonly stamp?: VerdictStamp;
 }): Promise<T.QueueTerminalVerdict> {
   let state = createQueueState(args.contexts, args.dependencies.clock.now());
-  const stamp = verdictFactory(args.dependencies.clock, "queued-stack");
+  const stamp =
+    args.stamp ?? verdictFactory(args.dependencies.clock, "queued-stack");
   args.dependencies.emit(
     stamp({ kind: "QUEUE", terminal: false, queue: args.contexts })
   );
@@ -999,7 +1030,22 @@ export async function runQueued(args: {
             remaining: evaluation.remaining,
           })
         );
-        return { kind: "continue" };
+        return {
+          kind: "continue",
+          // The snapshot that saw the merge may itself have crossed the
+          // deadline; don't read the new frontier past it.
+          onDeadline: () =>
+            stamp({
+              kind: "TIMEOUT",
+              terminal: true,
+              exitCode: 5,
+              reason: {
+                kind: "queued-stack",
+                frontier: evaluation.frontier,
+                unmergedCount: activeRows(evaluation.state).length,
+              },
+            }),
+        };
       case "timeout":
         return {
           kind: "terminal",
