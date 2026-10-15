@@ -1,4 +1,11 @@
 import type * as T from "./types.ts";
+// Control and direction-override characters in PR-controlled text (review
+// bodies, paths, check names) could rewrite or reorder the terminal around
+// them, making untrusted text pass for watcher output. Show them as escapes.
+// The JSON renderer already escapes control bytes.
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+export const safe = (text: string): string =>
+  text.replace(UNSAFE, (char) => `\\u{${char.codePointAt(0)?.toString(16)}}`);
 export const renderJson = (verdict: T.WatcherVerdict): string =>
   `${JSON.stringify(verdict)}\n`;
 function ciCell(row: T.PrSnapshot): string {
@@ -50,7 +57,8 @@ function mergeCell(row: T.PrSnapshot): string {
     row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
   )
     return "⚠️ needs a human";
-  if (row.facts.mergeStateStatus === "BEHIND") return "⚠️ behind base";
+  if (row.facts.mergeStateStatus === "BEHIND" && row.kind === "open")
+    return row.upToDateRequired === false ? "✅ (behind, not required)" : "⚠️ behind base";
   return row.facts.mergeable === "CONFLICTING" ||
     row.facts.mergeStateStatus === "DIRTY" ||
     row.facts.mergeStateStatus === "CONFLICTING"
@@ -74,13 +82,13 @@ function threadLine(thread: T.ReviewThreadSummary): string {
   const comment = thread.decidingComment ?? anchor;
   return [
     thread.id,
-    anchor?.path ?? "None",
+    safe(anchor?.path ?? "None"),
     anchor?.line ?? "None",
-    comment?.authorLogin ?? "None",
+    safe(comment?.authorLogin ?? "None"),
     `disposition=${thread.disposition}`,
     `isBugBot=${thread.isBugbot}`,
     `bugbotReviewPasses=${thread.bugbotReviewPasses}`,
-    (comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? "",
+    safe((comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? ""),
   ].join(" ");
 }
 type StatusQueryBlocker = {
@@ -111,7 +119,7 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
       const failed = blocker.ci.kind === "ci-failing" ? blocker.ci.failed : [];
       const details = failed.map(
         (check) =>
-          `${check.name} ${check.reportedState} ${check.description} ${check.link}`
+          safe(`${check.name} ${check.reportedState} ${check.description} ${check.link}`)
       );
       if (blocker.ci.kind === "ci-github-rejected")
         details.push(
@@ -133,6 +141,8 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
             ? "mark the PR ready for review before waiting for the merge queue"
             : blocker.reason === "unverifiable-thread"
               ? "a review thread is too long to read in full; check it on GitHub"
+              : blocker.reason === "behind-base"
+                ? "the PR is behind its base and GitHub won't say whether that blocks merging; check the branch rules"
               : "resolve the changes-requested review before waiting for the merge queue";
       return [
         `BLOCKER: ${blocker.reason}`,
@@ -144,7 +154,7 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
       return [
         "BLOCKER: status-query",
         `failures=${blocker.failures}`,
-        `detail=${blocker.failure.detail}`,
+        `detail=${safe(blocker.failure.detail)}`,
         "action=verify current PR context, GitHub authentication, and API availability, then rearm",
       ].join("\n");
     default: {
@@ -166,7 +176,7 @@ export function renderPretty(verdict: T.WatcherVerdict): string {
     case "ADVANCE":
       return `ADVANCE: merged #${verdict.merged.number}; next=#${verdict.frontier.number}; remaining=${verdict.remaining}\n`;
     case "RETRY":
-      return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s\ndetail=${verdict.failure.detail}\n`;
+      return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s\ndetail=${safe(verdict.failure.detail)}\n`;
     case "BLOCKER":
       return `${renderBlocker(verdict.blocker)}\n`;
     case "READY": {

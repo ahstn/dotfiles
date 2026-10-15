@@ -209,6 +209,14 @@ async function readOpenSnapshot(
       parkedThreads,
       ci,
       reviewAutomationRunning,
+      ...(facts.mergeStateStatus === "BEHIND"
+        ? {
+            upToDateRequired: await args.reader.upToDateRequired(
+              args.context,
+              facts.baseRefName
+            ),
+          }
+        : {}),
     };
   } catch (error) {
     // Threads outrank CI (see classifyPr), so a failed CI read (an API blip,
@@ -417,7 +425,8 @@ async function readCi(
 // is the same as for a conflict (merge the base, push), so it shares exit 2.
 const conflictBlocker = (row: T.PrSnapshot): T.MergeBlocker | null =>
   row.kind === "open" &&
-  (isConflicted(row.facts) || row.facts.mergeStateStatus === "BEHIND")
+  (isConflicted(row.facts) ||
+    (row.facts.mergeStateStatus === "BEHIND" && row.upToDateRequired === true))
     ? { kind: "merge-conflicts", pr: row.context, facts: row.facts }
     : null;
 function threadBlocker(row: T.PrSnapshot): T.MergeBlocker | null {
@@ -446,6 +455,14 @@ function gateReason(
   if (row.facts.isDraft && !allowDraft) return "draft-pr";
   if (row.facts.reviewDecision === "CHANGES_REQUESTED")
     return "changes-requested";
+  // Behind, and we couldn't tell whether the base requires up to date: a
+  // human decides, rather than READY or an unneeded merge commit.
+  if (
+    row.kind === "open" &&
+    row.facts.mergeStateStatus === "BEHIND" &&
+    row.upToDateRequired === null
+  )
+    return "behind-base";
   return row.kind === "open" &&
     row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
     ? "unverifiable-thread"

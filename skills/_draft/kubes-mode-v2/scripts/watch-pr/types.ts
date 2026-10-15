@@ -235,6 +235,8 @@ export type PrSnapshot =
       readonly facts: PullRequestFacts;
       readonly threads: readonly ReviewThreadSummary[];
       readonly parkedThreads: readonly ReviewThreadSummary[];
+      /** Only read when mergeStateStatus is BEHIND; see GitHubReader.upToDateRequired. */
+      readonly upToDateRequired?: boolean | null;
       readonly ci: CiState;
       readonly reviewAutomationRunning: boolean;
     };
@@ -261,7 +263,8 @@ export type MergeGateReason =
   | "closed-without-merge"
   | "draft-pr"
   | "changes-requested"
-  | "unverifiable-thread";
+  | "unverifiable-thread"
+  | "behind-base";
 export type MergeBlocker =
   | {
       readonly kind: "merge-conflicts";
@@ -517,6 +520,12 @@ export interface GitHubReader {
   pullRequest(context: PrContext): Promise<PullRequestFacts>;
   /** The PR's current head commit; a cheap re-read to detect mid-snapshot pushes. */
   recheck(context: PrContext): Promise<RecheckFacts>;
+  /**
+   * Whether the base branch must be up to date to merge (strict required
+   * checks, no merge queue). null when GitHub won't say, e.g. classic branch
+   * protection without admin access.
+   */
+  upToDateRequired(context: PrContext, baseRefName: string): Promise<boolean | null>;
   openPullRequests(repository: Repository): Promise<readonly OpenPullRequest[]>;
   checksFastPath(context: PrContext): Promise<ChecksFastPath>;
   checkRollupPage(

@@ -62,7 +62,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 
 Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.facts` has `baseRefName` and `headRefName`. If `blocker.facts.mergeStateStatus` is `BEHIND`, there's no conflict; the branch only has to be brought up to date. The same steps apply, and the merge goes through cleanly.
 
-1. Fetch the base branch from the PR's base repository, not `origin`, which is the fork in a fork checkout. Run `base=$(gh pr view <number> -R <owner>/<repo> --json baseRefName -q .baseRefName) && git fetch "https://github.com/<owner>/<repo>.git" "refs/heads/$base" && git merge FETCH_HEAD`. Merge, don't rebase, so no force-push is needed.
+1. Fetch the base branch from the PR's base repository, not `origin`, which is the fork in a fork checkout. Run `base=$(gh pr view <number> -R <owner>/<repo> --json baseRefName -q .baseRefName) && git fetch "https://github.com/<owner>/<repo>.git" "refs/heads/$base" && git merge --no-edit FETCH_HEAD`. `--no-edit` keeps a clean merge from opening an editor and hanging the session. Merge, don't rebase, so no force-push is needed.
 2. Resolve each conflict by keeping the intent of both sides. Run the affected tests.
 3. If you cannot reconcile a conflict with confidence, run `git merge --abort` and report the files and both intents to the user.
 4. Commit the merge and push.
@@ -97,6 +97,8 @@ Fixed in abc1234: the empty cursor now returns the first page.
 
 <!-- pr-autofix:fixed -->
 ```
+
+Just before posting, rerun the watcher with `--status-only` and find this thread by `id` in `rows[0].threads`. If its `latestCommentAt` changed, or it's no longer listed, a trusted reviewer moved on while you worked: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
 
 Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { type CliRuntime, main, parseArgs } from "./cli.ts";
 import { fakeReader, passingCheck } from "./fakes.test-helper.ts";
 import { WatcherQueryError } from "./github.ts";
-import { renderJson, renderPretty } from "./render.ts";
+import { renderJson, renderPretty, safe } from "./render.ts";
 import type { GitHubReader, WatcherVerdict } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
 
@@ -189,6 +189,11 @@ it("flags unverifiable threads in the pretty status table", () => {
   });
   expect(table).toContain("⚠️ 1 too long to verify");
   expect(table).toContain("⚠️ needs a human");
+});
+
+it("escapes control and bidi characters in pretty output", () => {
+  expect(safe("ok\u001b[2Jhidden\u202eevil")).toBe("ok\\u{1b}[2Jhidden\\u{202e}evil");
+  expect(safe("plain review text")).toBe("plain review text");
 });
 
 describe("parseArgs", () => {

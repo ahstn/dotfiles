@@ -747,6 +747,55 @@ export class GhGitHubReader implements T.GitHubReader {
       context
     );
   }
+  async upToDateRequired(
+    context: T.PrContext,
+    baseRefName: string
+  ): Promise<boolean | null> {
+    const branch = encodeURIComponent(baseRefName);
+    const repo = `repos/${context.owner}/${context.repo}`;
+    // Rulesets are readable with plain read access.
+    let rulesStrict = false;
+    let rulesKnown = false;
+    const rules = await run(["gh", "api", `${repo}/rules/branches/${branch}`]);
+    if (rules.code === 0) {
+      try {
+        const list = JSON.parse(rules.stdout) as unknown;
+        if (Array.isArray(list)) {
+          rulesKnown = true;
+          for (const rule of list) {
+            if (!isRecord(rule)) continue;
+            // A merge queue brings PRs up to date itself; authors needn't.
+            if (rule.type === "merge_queue") return false;
+            if (
+              rule.type === "required_status_checks" &&
+              isRecord(rule.parameters) &&
+              rule.parameters.strict_required_status_checks_policy === true
+            )
+              rulesStrict = true;
+          }
+        }
+      } catch {
+        rulesKnown = false;
+      }
+    }
+    if (rulesStrict) return true;
+    // Classic branch protection needs admin to read. "Branch not protected"
+    // and "not enabled" are definite; a bare 404/403 just means we can't see.
+    const classic = await run([
+      "gh",
+      "api",
+      `${repo}/branches/${branch}/protection/required_status_checks`,
+      "--jq",
+      ".strict",
+    ]);
+    if (classic.code === 0) {
+      if (classic.stdout.trim() === "true") return true;
+      return rulesKnown ? false : null;
+    }
+    if (/Branch not protected|not enabled/i.test(classic.stderr))
+      return rulesKnown ? false : null;
+    return null;
+  }
   async recheck(context: T.PrContext): Promise<T.RecheckFacts> {
     const object = record(
       await runJson([

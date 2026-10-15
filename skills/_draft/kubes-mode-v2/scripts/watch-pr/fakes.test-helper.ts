@@ -17,6 +17,7 @@ export interface FakeReaderOptions {
   readonly rollupPages?: readonly RollupPage[];
   readonly threads?: readonly ReviewThread[];
   readonly writers?: Readonly<Record<string, boolean | null>>;
+  readonly upToDateRequired?: boolean | null;
   readonly commitRollups?: readonly CommitRollup[];
   readonly openPullRequests?: readonly OpenPullRequest[];
   readonly current?: PrContext;
@@ -96,6 +97,10 @@ export function fakeReader(
     async pullRequest(requested) {
       calls.push("pullRequest");
       return { ...defaults, ...options.facts, context: requested };
+    },
+    async upToDateRequired() {
+      calls.push("upToDateRequired");
+      return options.upToDateRequired === undefined ? true : options.upToDateRequired;
     },
     async recheck() {
       calls.push("recheck");

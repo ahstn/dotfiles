@@ -790,6 +790,36 @@ it("blocks a green PR that GitHub reports as behind its base", async () => {
   );
 });
 
+it("lets BEHIND through when the base doesn't require up to date", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeStateStatus: "BEHIND" },
+      upToDateRequired: false,
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("ready");
+});
+
+it("holds BEHIND at a merge gate when the rules can't be read", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeStateStatus: "BEHIND" },
+      upToDateRequired: null,
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker).toMatchObject({
+    kind: "merge-gate",
+    reason: "behind-base",
+  });
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
