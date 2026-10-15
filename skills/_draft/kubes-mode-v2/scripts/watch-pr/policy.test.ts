@@ -1463,6 +1463,64 @@ it("keeps a queued conflict when a later PR's read fails", async () => {
   expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
 });
 
+it("doesn't let an ignored pending check explain a BLOCKED merge", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Human Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeStateStatus: "BLOCKED", reviewDecision: "APPROVED" },
+      fastPath: { kind: "checks", checks: [passingCheck(), gate] },
+      commitRollups: [{ oid: "head", state: "SUCCESS" }],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).not.toBe("ready");
+});
+
+it("scans a PR that joined the stack before declaring it READY", async () => {
+  const base = fakeReader();
+  const scanned: number[] = [];
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          scanned.push(Number(pr.number));
+          return {
+            ...(await base.pullRequest(pr)),
+            ...(Number(pr.number) === 3
+              ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const }
+              : {}),
+          };
+        },
+        async recheck(pr) {
+          return {
+            ...(await base.recheck(pr)),
+            ...(Number(pr.number) === 3 ? { mergeStateStatus: "DIRTY" as const } : {}),
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+    rediscover: async () => [context(1), context(2), context(3)],
+  });
+  expect(scanned).toContain(3);
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

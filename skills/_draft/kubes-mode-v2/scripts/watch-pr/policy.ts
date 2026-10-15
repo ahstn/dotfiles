@@ -370,9 +370,9 @@ async function readCi(
       facts.reviewDecision === "REVIEW_REQUIRED" ||
         facts.reviewDecision === "CHANGES_REQUESTED" ||
         threadCounts.blocking > 0 ||
-        checks.checks.some(
-          (check) => check.kind === "pending" || check.kind === "code-review-gate"
-        ),
+        // Not an opted-out check: its name can't prove it's GitHub's only
+        // reason to block, so it mustn't hide another rule behind READY.
+        checks.checks.some((check) => check.kind === "pending"),
       threadCounts.parked > 0
     );
     const base = {
@@ -861,12 +861,19 @@ export async function runSimple(args: {
   readonly options: T.PollingOptions;
   /** Continue a caller's sequence numbers (the CLI's discovery retries). */
   readonly stamp?: VerdictStamp;
+  /**
+   * --stack only: rediscover the connected stack from an open PR. A PR opened
+   * into, or retargeted onto, the stack mid-watch must be scanned before the
+   * stack can be READY.
+   */
+  readonly rediscover?: (from: T.PrContext) => Promise<T.NonEmpty<T.PrContext>>;
 }): Promise<T.TerminalVerdict> {
   const stamp = args.stamp ?? verdictFactory(args.dependencies.clock, args.mode);
   const started = args.dependencies.clock.now();
+  let contexts = args.contexts;
   const step = async (): Promise<StepResult<T.TerminalVerdict>> => {
     const rows: T.PrSnapshot[] = [];
-    for (const context of args.contexts) {
+    for (const context of contexts) {
       // A large or slow --stack can cross --timeout mid-scan; stop between
       // PRs instead of reading the rest.
       if (
@@ -888,7 +895,7 @@ export async function runSimple(args: {
             reason: {
               kind: "stack-scan",
               read: rows.length,
-              total: args.contexts.length,
+              total: contexts.length,
             },
           }),
         };
@@ -925,7 +932,7 @@ export async function runSimple(args: {
           reason: {
             kind: "stack-scan",
             read: rows.length,
-            total: args.contexts.length,
+            total: contexts.length,
           },
         }),
     };
@@ -981,6 +988,17 @@ export async function runSimple(args: {
       (await earlierRowsMoved(args.dependencies.reader, rows))
     )
       return rescan;
+    if (decision.kind === "clear" && args.rediscover !== undefined) {
+      const from = rows.find((row) => row.kind === "open")?.context;
+      if (from !== undefined) {
+        const known = new Set(contexts.map((pr) => pr.number));
+        const current = await args.rediscover(from);
+        if (current.some((pr) => !known.has(pr.number))) {
+          contexts = current;
+          return rescan;
+        }
+      }
+    }
     if (decision.kind === "clear")
       return {
         kind: "terminal",

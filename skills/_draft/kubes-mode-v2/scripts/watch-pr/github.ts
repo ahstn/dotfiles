@@ -480,8 +480,10 @@ export const AUTOFIX_REPLY_MARKER = "<!-- pr-autofix -->";
 // threads are read, so seeing it means a reviewer reopened the thread: that is
 // new feedback, not an answer awaiting the reviewer.
 export const AUTOFIX_FIXED_MARKER = "<!-- pr-autofix:fixed -->";
+// The marker must be the comment's last line on its own, as the playbook
+// writes it; one that merely ends a sentence is still feedback.
 const endsWithMarker = (body: string, marker: string): boolean =>
-  body.trimEnd().endsWith(marker);
+  body.trimEnd().split(/\r?\n/).at(-1)?.trim() === marker;
 export type CommentTrust = (comment: T.ReviewComment) => boolean;
 export const trustedByAssociation: CommentTrust = (comment) =>
   comment.isViewer ||

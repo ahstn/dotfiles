@@ -340,6 +340,12 @@ export async function main(
           statusOnly: options.statusOnly,
           options: polling,
           stamp,
+          ...(options.mode === "stack"
+            ? {
+                rediscover: (from: T.PrContext) =>
+                  discoverStack(runtime.reader, from),
+              }
+            : {}),
         });
   runtime.stdout(render(verdict));
   return verdict.exitCode;

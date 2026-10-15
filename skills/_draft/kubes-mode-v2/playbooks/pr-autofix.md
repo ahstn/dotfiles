@@ -99,7 +99,7 @@ Fixed in abc1234: the empty cursor now returns the first page.
 <!-- pr-autofix:fixed -->
 ```
 
-Just before posting, rerun the watcher with `--status-only` and find this thread by `id` in the `threads` of the row whose `context.number` is `blocker.pr.number`. In stack modes it may not be the first row. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
+Just before posting, rerun the watcher with `--status-only` for that one PR, `--owner <owner> --repo <repo> --pr <blocker.pr.number>` and no `--stack`, and find this thread by `id` in `rows[0].threads`. A single-PR read re-checks the PR after reading it; a stack scan can't do that for every row at once. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
 
 Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
 
