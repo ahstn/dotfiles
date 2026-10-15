@@ -679,6 +679,33 @@ it("reports the fresh read's failures when the first read's recovered", async ()
   expect(decision.blocker.ci.failed.map((check) => check.name)).toEqual(["b"]);
 });
 
+it("names the current failure when a different check fails between reads", async () => {
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "FAILURE" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks:
+            reads === 1
+              ? [failedCheck("a"), passingCheck("b")]
+              : [passingCheck("a"), failedCheck("b")],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  if (decision.kind !== "blocker" || decision.blocker.kind !== "failing-checks")
+    throw new Error("expected failing checks");
+  expect(decision.blocker.ci.failed.map((check) => check.name)).toEqual(["b"]);
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

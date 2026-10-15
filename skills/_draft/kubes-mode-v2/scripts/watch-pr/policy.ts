@@ -265,20 +265,27 @@ async function readCi(
     const gatePresent = checks.checks.some(
       (check) => check.kind === "code-review-gate"
     );
+    // A second check read, taken after the rollup, whenever the first one is
+    // about to be reported as failing or discounted for the gate: checks can
+    // recover or start failing between reads, and the verdict must name
+    // failures that still exist.
     const fresh =
-      rollupPending && gatePresent
+      failed !== null || (rollupPending && gatePresent)
         ? (await resolveChecks(args.reader, args.context, args.allowNoChecks))
             .checks
         : null;
     const gateHoldsRollup =
+      rollupPending &&
+      gatePresent &&
       fresh !== null &&
       fresh.every((check) => check.kind !== "pending" && check.kind !== "failed");
-    // With the gate holding the rollup at PENDING, only the fresh read can say
-    // whether the earlier failure still stands.
+    // A rerun shows as a PENDING rollup (a remaining failure would keep it at
+    // FAILURE), unless the gate is what's pending; otherwise the fresh read
+    // decides.
     const failureGone =
       rollup === "SUCCESS" ||
-      (rollupPending &&
-        (fresh === null || !fresh.some((check) => check.kind === "failed")));
+      (rollupPending && !gatePresent) ||
+      (fresh !== null && !fresh.some((check) => check.kind === "failed"));
     if (failed !== null && failureGone) {
       // The inverse race of ROLLUP_DISAGREES: a failed check was rerun
       // between the two reads. A failure would keep the rollup at FAILURE, so
