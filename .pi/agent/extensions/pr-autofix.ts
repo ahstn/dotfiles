@@ -38,8 +38,8 @@ const WATCHER_CANDIDATES = [
 interface Watch {
   readonly cwd: string;
   readonly pr: number;
-  /** The agent commits and pushes in cwd, so it must stay on this branch. */
-  readonly headRefName: string;
+  /** The agent commits and pushes in cwd, so its push target must stay this. */
+  readonly head: PrHead;
   readonly allowNoChecks: boolean;
   child: ChildProcess | null;
   timer: ReturnType<typeof setTimeout> | null;
@@ -61,22 +61,72 @@ function output(command: string, args: string[], cwd: string): Promise<string | 
   );
 }
 
-/** The PR (given, or the current branch's) and the branch it lives on. */
-async function prHead(cwd: string, pr: number | null): Promise<{ number: number; headRefName: string } | null> {
-  const args = ["pr", "view", ...(pr === null ? [] : [String(pr)]), "--json", "number,headRefName"];
+interface PrHead {
+  readonly number: number;
+  readonly headRefName: string;
+  /** owner/repo the PR's branch lives in; a fork for fork PRs. */
+  readonly headRepository: string;
+}
+
+/** The PR (given, or the current branch's) and where its branch lives. */
+async function prHead(cwd: string, pr: number | null): Promise<PrHead | null> {
+  const args = ["pr", "view", ...(pr === null ? [] : [String(pr)]), "--json", "number,headRefName,headRepository"];
   const json = await output("gh", args, cwd);
   if (json === null) return null;
   try {
-    const value = JSON.parse(json) as { number?: unknown; headRefName?: unknown };
-    return typeof value.number === "number" && typeof value.headRefName === "string"
-      ? { number: value.number, headRefName: value.headRefName }
+    const value = JSON.parse(json) as {
+      number?: unknown;
+      headRefName?: unknown;
+      headRepository?: { nameWithOwner?: unknown } | null;
+    };
+    const repository = value.headRepository?.nameWithOwner;
+    return typeof value.number === "number" && typeof value.headRefName === "string" && typeof repository === "string"
+      ? { number: value.number, headRefName: value.headRefName, headRepository: repository }
       : null;
   } catch {
     return null;
   }
 }
 
-const currentBranch = (cwd: string) => output("git", ["branch", "--show-current"], cwd);
+function githubRepository(url: string): string | null {
+  const match = /github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?\/?$/.exec(url.trim());
+  return match?.[1] ?? null;
+}
+
+/**
+ * Where a plain `git push` from cwd lands, which is what the playbook runs:
+ * the push remote (branch pushRemote, then remote.pushDefault, then the
+ * upstream remote) and the upstream branch.
+ */
+async function pushTarget(cwd: string): Promise<{ branch: string; repository: string | null; ref: string | null } | null> {
+  const branch = await output("git", ["branch", "--show-current"], cwd);
+  if (!branch) return null;
+  const config = (key: string) => output("git", ["config", "--get", key], cwd);
+  const remote =
+    (await config(`branch.${branch}.pushRemote`)) || (await config("remote.pushDefault")) || (await config(`branch.${branch}.remote`));
+  const merge = await config(`branch.${branch}.merge`);
+  const url = remote ? await output("git", ["remote", "get-url", "--push", remote], cwd) : null;
+  return {
+    branch,
+    repository: url ? githubRepository(url) : null,
+    ref: merge?.replace(/^refs\/heads\//, "") ?? null,
+  };
+}
+
+/**
+ * Null when a fix committed and pushed from cwd lands on the PR's branch.
+ * A name match isn't enough: a fork PR from `main` matches the base repo's
+ * `main`, so the push repository has to be the PR's head repository too.
+ */
+async function checkoutMismatch(cwd: string, head: PrHead): Promise<string | null> {
+  const target = await pushTarget(cwd);
+  const want = `${head.headRepository}:${head.headRefName}`;
+  if (target === null) return `the checkout is on a detached HEAD, not PR #${head.number}'s branch ${want}`;
+  if (target.branch !== head.headRefName) return `the checkout is on ${target.branch}, not PR #${head.number}'s branch ${want}`;
+  if (target.repository?.toLowerCase() !== head.headRepository.toLowerCase() || target.ref !== head.headRefName)
+    return `${target.branch} pushes to ${target.repository ?? "an unknown remote"}:${target.ref ?? "?"}, not PR #${head.number}'s branch ${want}`;
+  return null;
+}
 
 function findWatcher(): string | null {
   for (const candidate of WATCHER_CANDIDATES) if (candidate && existsSync(candidate)) return candidate;
@@ -218,10 +268,9 @@ export default function (pi: ExtensionAPI) {
         // The agent fixes and pushes whatever is checked out. If that has
         // moved off the PR's branch since /autofix started, a wake would land
         // the fix on the wrong branch, so stop instead.
-        void currentBranch(current.cwd).then((branch) => {
+        void checkoutMismatch(current.cwd, current.head).then((mismatch) => {
           if (watch !== current) return;
-          if (branch !== current.headRefName)
-            return stop(`checkout is on ${branch || "a detached HEAD"}, not PR #${current.pr}'s branch ${current.headRefName}`);
+          if (mismatch !== null) return stop(mismatch);
           pi.sendUserMessage(wakeMessage(current, verdict), { deliverAs: "followUp" });
         });
         return;
@@ -276,18 +325,15 @@ export default function (pi: ExtensionAPI) {
           prArg ? `autofix: could not read PR ${prArg}` : "autofix: this branch has no PR; pass a number, e.g. /autofix 123",
           "error",
         );
-      const branch = await currentBranch(ctx.cwd);
-      if (branch !== head.headRefName)
-        return notify(
-          `autofix: check out PR #${head.number}'s branch ${head.headRefName} first (on ${branch || "a detached HEAD"}); the fix is committed and pushed from here`,
-          "error",
-        );
+      const mismatch = await checkoutMismatch(ctx.cwd, head);
+      if (mismatch !== null)
+        return notify(`autofix: ${mismatch}. Check out the PR first (gh pr checkout ${head.number}); the fix is committed and pushed from here.`, "error");
       const pr = head.number;
       stop();
       watch = {
         cwd: ctx.cwd,
         pr,
-        headRefName: head.headRefName,
+        head,
         allowNoChecks: words.includes("--no-checks"),
         child: null,
         timer: null,

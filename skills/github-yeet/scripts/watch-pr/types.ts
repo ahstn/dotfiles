@@ -399,6 +399,11 @@ export type TimeoutVerdict = Terminal<"TIMEOUT", 5> & {
         readonly kind: "queued-stack";
         readonly frontier: PrContext;
         readonly unmergedCount: number;
+      }
+    | {
+        readonly kind: "stack-scan";
+        readonly read: number;
+        readonly total: number;
       };
 };
 export type TerminalVerdict =

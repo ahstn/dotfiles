@@ -579,9 +579,29 @@ export async function runSimple(args: {
   readonly options: T.PollingOptions;
 }): Promise<T.TerminalVerdict> {
   const stamp = verdictFactory(args.dependencies.clock, args.mode);
+  const started = args.dependencies.clock.now();
   const step = async (): Promise<StepResult<T.TerminalVerdict>> => {
     const rows: T.PrSnapshot[] = [];
-    for (const context of args.contexts)
+    for (const context of args.contexts) {
+      // A large or slow --stack can cross --timeout mid-scan; stop between
+      // PRs instead of reading the rest.
+      if (
+        rows.length > 0 &&
+        deadlinePassed(started, args.options, args.dependencies.clock.now())
+      )
+        return {
+          kind: "terminal",
+          verdict: stamp({
+            kind: "TIMEOUT",
+            terminal: true,
+            exitCode: 5,
+            reason: {
+              kind: "stack-scan",
+              read: rows.length,
+              total: args.contexts.length,
+            },
+          }),
+        };
       rows.push(
         await readSnapshot({
           reader: args.dependencies.reader,
@@ -591,6 +611,7 @@ export async function runSimple(args: {
           allowNoChecks: args.options.allowNoChecks,
         })
       );
+    }
     const complete = nonEmpty(rows);
     if (complete === null) throw new Error("watch context cannot be empty");
     if (args.statusOnly)

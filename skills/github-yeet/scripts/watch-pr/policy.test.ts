@@ -442,6 +442,34 @@ it("waits on a draft while checks are pending, then reports the draft gate", asy
   });
 });
 
+it("stops a --stack scan between PRs once the deadline passes", async () => {
+  let now = 0;
+  const base = fakeReader();
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      now += 100;
+      return base.pullRequest(pr);
+    },
+  };
+  const verdict = await runSimple({
+    dependencies: {
+      reader,
+      clock: { now: () => now, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2), context(3)],
+    mode: "stack",
+    statusOnly: false,
+    options: { ...options, timeout: 150 },
+  });
+  expect(verdict.kind === "TIMEOUT" && verdict.reason).toEqual({
+    kind: "stack-scan",
+    read: 2,
+    total: 3,
+  });
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

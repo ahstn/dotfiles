@@ -164,6 +164,8 @@ export function renderPretty(verdict: T.WatcherVerdict): string {
         return "TIMEOUT: checks still pending\n";
       if (verdict.reason.kind === "status-unavailable")
         return "TIMEOUT: GitHub status remained unavailable\n";
+      if (verdict.reason.kind === "stack-scan")
+        return `TIMEOUT: stack scan stopped after ${verdict.reason.read} of ${verdict.reason.total} PRs\n`;
       return `TIMEOUT: queued stack still has ${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged; frontier=#${verdict.reason.frontier.number}\n`;
     default: {
       const exhaustive: never = verdict;

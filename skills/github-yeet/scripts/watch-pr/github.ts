@@ -69,8 +69,9 @@ fragment ThreadComment on PullRequestReviewComment {
   author { __typename login }
 }
 `;
-// Older pages are only read while no trusted comment has been seen, so a
-// thread flooded past this many comments stops paging and is parked (see
+// Threads past the newest 20 comments are read in full, because an edit to an
+// older trusted comment can be the newest activity. A thread flooded past this
+// many pages stops there; if no trusted comment was loaded it is parked (see
 // decideThread) rather than costing an API call per hundred replies.
 const MAX_HISTORY_PAGES = 10;
 export const PR_COMMIT_STATUS_QUERY =
@@ -769,14 +770,10 @@ export class GhGitHubReader implements T.GitHubReader {
       );
       after = page.hasNextPage === true && cursor ? cursor : null;
     } while (after !== null);
-    const viewerLogin =
-      isRecord(viewer) && typeof viewer.login === "string" ? viewer.login : null;
+    // Permissions can change during a long watch; each snapshot re-checks.
+    this.permissions.clear();
     for (const node of nodes)
-      await this.extendHistory(
-        context,
-        record(node, "review thread"),
-        viewerLogin
-      );
+      await this.extendHistory(record(node, "review thread"));
     return parseReviewThreads({
       data: {
         viewer,
@@ -785,40 +782,17 @@ export class GhGitHubReader implements T.GitHubReader {
     });
   }
   /**
-   * Pages a thread's comments backward, in place, until a comment from a
-   * trusted author is in view or the page budget runs out, so a burst of
-   * untrusted replies cannot push the deciding comment out of the window.
+   * Pages a thread's comments backward, in place, to the start of the thread
+   * or the page budget, so neither a burst of untrusted replies nor an edit
+   * to an older comment can hide the deciding comment.
    */
-  private async extendHistory(
-    context: T.PrContext,
-    thread: Record<string, unknown>,
-    viewerLogin: string | null
-  ): Promise<void> {
-    // Same rule requireWriteAccess applies later; stopping on a read-only
-    // member here would leave the deciding comment unread.
-    const trusted = async (node: unknown): Promise<boolean> => {
-      const comment = parseComment(node, viewerLogin);
-      if (!trustedByAssociation(comment)) return false;
-      return (
-        !needsPermissionCheck(comment) ||
-        (await this.permission(context, comment.authorLogin)) !== false
-      );
-    };
-    const anyTrusted = async (nodes: readonly unknown[]) => {
-      for (const node of [...nodes].reverse())
-        if (await trusted(node)) return true;
-      return false;
-    };
+  private async extendHistory(thread: Record<string, unknown>): Promise<void> {
     if (thread.isResolved === true || !isRecord(thread.latest)) return;
     const latest = thread.latest;
     let nodes = list(latest.nodes, "review thread.latest.nodes");
     let page = record(latest.pageInfo, "review thread.latest.pageInfo");
     for (let pages = 0; pages < MAX_HISTORY_PAGES; pages += 1) {
-      if (
-        page.hasPreviousPage !== true ||
-        typeof page.startCursor !== "string" ||
-        (await anyTrusted(nodes))
-      )
+      if (page.hasPreviousPage !== true || typeof page.startCursor !== "string")
         break;
       const value = await runJson([
         "gh",
@@ -841,8 +815,9 @@ export class GhGitHubReader implements T.GitHubReader {
     latest.nodes = nodes;
     latest.pageInfo = page;
   }
-  // History paging and requireWriteAccess ask about the same people; one
-  // lookup per login per watcher run is enough.
+  // One lookup per login per snapshot: paging and requireWriteAccess ask
+  // about the same people, and reviewThreads clears it so a revoked
+  // permission takes effect on the next poll.
   private readonly permissions = new Map<string, Promise<boolean | null>>();
   permission(context: T.PrContext, login: string): Promise<boolean | null> {
     const key = `${context.owner}/${context.repo}:${login}`;
