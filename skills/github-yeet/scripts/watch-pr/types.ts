@@ -98,6 +98,12 @@ export interface ReviewThread {
   readonly isBugbot: boolean;
   readonly bugbotReviewPasses: number;
 }
+/**
+ * What verdicts carry. The comment history only feeds the disposition: it can
+ * hold hundreds of untrusted replies, and a verdict is pasted into the agent's
+ * context, so it never leaves the watcher.
+ */
+export type ReviewThreadSummary = Omit<ReviewThread, "recentComments">;
 interface CheckDetails {
   readonly name: string;
   readonly reportedState: string;
@@ -187,8 +193,8 @@ export type PrSnapshot =
       readonly kind: "open";
       readonly context: PrContext;
       readonly facts: PullRequestFacts;
-      readonly threads: readonly ReviewThread[];
-      readonly parkedThreads: readonly ReviewThread[];
+      readonly threads: readonly ReviewThreadSummary[];
+      readonly parkedThreads: readonly ReviewThreadSummary[];
       readonly ci: CiState;
       readonly reviewAutomationRunning: boolean;
     };
@@ -224,7 +230,7 @@ export type MergeBlocker =
   | {
       readonly kind: "review-threads";
       readonly pr: PrContext;
-      readonly threads: NonEmpty<ReviewThread>;
+      readonly threads: NonEmpty<ReviewThreadSummary>;
     }
   | {
       readonly kind: "failing-checks";
@@ -257,6 +263,11 @@ export type QueryFailure =
     }
   | {
       readonly kind: "checks-unavailable";
+      readonly retryable: true;
+      readonly detail: string;
+    }
+  | {
+      readonly kind: "head-moved";
       readonly retryable: true;
       readonly detail: string;
     }
@@ -424,6 +435,8 @@ export interface RollupPage {
 export interface GitHubReader {
   currentPr(pr: PrNumber | null): Promise<PrContext>;
   pullRequest(context: PrContext): Promise<PullRequestFacts>;
+  /** The PR's current head commit; a cheap re-read to detect mid-snapshot pushes. */
+  headRefOid(context: PrContext): Promise<string | null>;
   openPullRequests(repository: Repository): Promise<readonly OpenPullRequest[]>;
   checksFastPath(context: PrContext): Promise<ChecksFastPath>;
   checkRollupPage(

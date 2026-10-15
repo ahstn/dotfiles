@@ -424,7 +424,8 @@ export function decideThread(
       lastAuthorLogin: first?.authorLogin ?? null,
       latestCommentAt: first?.activityAt ?? null,
     };
-  const newestTrusted = [...thread.recentComments].reverse().find(trusted);
+  const trustedRecent = thread.recentComments.filter(trusted);
+  const newestTrusted = trustedRecent.at(-1);
   // With history missing, the trusted comment that decides the thread may be
   // in the part not read (an agent answer buried under drive-by replies), so
   // the opener alone cannot reopen it.
@@ -435,7 +436,11 @@ export function decideThread(
       lastAuthorLogin: null,
       latestCommentAt: null,
     };
-  const decisive = newestTrusted ?? first;
+  // Latest activity, not latest position: a reviewer editing an older comment
+  // after the agent's answer is new feedback. Ties keep the later comment.
+  const decisive = [first, ...trustedRecent].reduce((best, comment) =>
+    comment.activityAt >= best.activityAt ? comment : best
+  );
   return {
     ...thread,
     disposition:
@@ -624,6 +629,22 @@ export class GhGitHubReader implements T.GitHubReader {
       context
     );
   }
+  async headRefOid(context: T.PrContext): Promise<string | null> {
+    const object = record(
+      await runJson([
+        "gh",
+        "pr",
+        "view",
+        String(context.number),
+        "--repo",
+        `${context.owner}/${context.repo}`,
+        "--json",
+        "headRefOid",
+      ]),
+      "pull request head"
+    );
+    return optionalString(object.headRefOid, "pull request.headRefOid");
+  }
   async openPullRequests(
     repository: T.Repository
   ): Promise<readonly T.OpenPullRequest[]> {
@@ -747,7 +768,11 @@ export class GhGitHubReader implements T.GitHubReader {
     const viewerLogin =
       isRecord(viewer) && typeof viewer.login === "string" ? viewer.login : null;
     for (const node of nodes)
-      await this.extendHistory(record(node, "review thread"), viewerLogin);
+      await this.extendHistory(
+        context,
+        record(node, "review thread"),
+        viewerLogin
+      );
     return parseReviewThreads({
       data: {
         viewer,
@@ -761,9 +786,25 @@ export class GhGitHubReader implements T.GitHubReader {
    * untrusted replies cannot push the deciding comment out of the window.
    */
   private async extendHistory(
+    context: T.PrContext,
     thread: Record<string, unknown>,
     viewerLogin: string | null
   ): Promise<void> {
+    // Same rule requireWriteAccess applies later; stopping on a read-only
+    // member here would leave the deciding comment unread.
+    const trusted = async (node: unknown): Promise<boolean> => {
+      const comment = parseComment(node, viewerLogin);
+      if (!trustedByAssociation(comment)) return false;
+      return (
+        !needsPermissionCheck(comment) ||
+        (await this.permission(context, comment.authorLogin)) !== false
+      );
+    };
+    const anyTrusted = async (nodes: readonly unknown[]) => {
+      for (const node of [...nodes].reverse())
+        if (await trusted(node)) return true;
+      return false;
+    };
     if (thread.isResolved === true || !isRecord(thread.latest)) return;
     const latest = thread.latest;
     let nodes = list(latest.nodes, "review thread.latest.nodes");
@@ -772,9 +813,7 @@ export class GhGitHubReader implements T.GitHubReader {
       if (
         page.hasPreviousPage !== true ||
         typeof page.startCursor !== "string" ||
-        nodes.some((node) =>
-          trustedByAssociation(parseComment(node, viewerLogin))
-        )
+        (await anyTrusted(nodes))
       )
         break;
       const value = await runJson([
@@ -798,7 +837,19 @@ export class GhGitHubReader implements T.GitHubReader {
     latest.nodes = nodes;
     latest.pageInfo = page;
   }
-  async permission(
+  // History paging and requireWriteAccess ask about the same people; one
+  // lookup per login per watcher run is enough.
+  private readonly permissions = new Map<string, Promise<boolean | null>>();
+  permission(context: T.PrContext, login: string): Promise<boolean | null> {
+    const key = `${context.owner}/${context.repo}:${login}`;
+    let cached = this.permissions.get(key);
+    if (cached === undefined) {
+      cached = this.lookupPermission(context, login);
+      this.permissions.set(key, cached);
+    }
+    return cached;
+  }
+  private async lookupPermission(
     context: T.PrContext,
     login: string
   ): Promise<boolean | null> {
@@ -844,18 +895,19 @@ export class GhGitHubReader implements T.GitHubReader {
 // needs write access to count as trusted. GitHub only answers this for callers
 // with push access, so a fork contributor (null) falls back to association.
 const WRITE_PERMISSIONS = new Set(["admin", "write"]);
+const needsPermissionCheck = (
+  comment: T.ReviewComment
+): comment is T.ReviewComment & { readonly authorLogin: string } =>
+  !comment.isViewer &&
+  !comment.authorIsBot &&
+  comment.authorLogin !== null &&
+  PERMISSION_CHECKED.has(comment.authorAssociation);
 export async function requireWriteAccess(
   reader: T.GitHubReader,
   context: T.PrContext,
   threads: readonly T.ReviewThread[]
 ): Promise<readonly T.ReviewThread[]> {
-  const needsCheck = (comment: T.ReviewComment): comment is T.ReviewComment & {
-    readonly authorLogin: string;
-  } =>
-    !comment.isViewer &&
-    !comment.authorIsBot &&
-    comment.authorLogin !== null &&
-    PERMISSION_CHECKED.has(comment.authorAssociation);
+  const needsCheck = needsPermissionCheck;
   const logins = new Set<string>();
   for (const thread of threads)
     for (const comment of [thread.firstComment, ...thread.recentComments])

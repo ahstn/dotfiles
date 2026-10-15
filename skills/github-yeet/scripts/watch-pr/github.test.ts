@@ -260,16 +260,17 @@ it("annotates Bugbot threads with distinct review-pass counts", () => {
 it("parks answered and untrusted threads so they do not wake the agent", () => {
   const comment = (author: object, authorAssociation: string) => ({
     body: "please fix",
-    createdAt: "now",
+    createdAt: "2026-01-01T00:00:00Z",
     path: "a.ts",
     line: 1,
     authorAssociation,
     author,
   });
+  let clock = 0;
   const reply = (login: string, association: string, body: string) => ({
     ...comment({ __typename: "User", login }, association),
     body,
-    createdAt: "later",
+    createdAt: `2026-01-01T00:00:${String((clock += 1)).padStart(2, "0")}Z`,
   });
   const thread = (
     id: string,
@@ -320,6 +321,14 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
                 reply("rev", "COLLABORATOR", "still wrong")
               ),
               thread(
+                "edited-after-answer",
+                {
+                  ...comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
+                  updatedAt: "2026-02-01T00:00:00Z",
+                },
+                reply("me", "OWNER", marked)
+              ),
+              thread(
                 "drive-by",
                 comment({ __typename: "User", login: "rando" }, "CONTRIBUTOR")
               ),
@@ -338,6 +347,7 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     "forged-marker": "actionable",
     "outsider-after-answer": "awaiting-reviewer",
     "reviewer-follow-up": "actionable",
+    "edited-after-answer": "actionable",
     "drive-by": "untrusted",
   });
   const outsider = threads.find((t) => t.id === "outsider-after-answer");

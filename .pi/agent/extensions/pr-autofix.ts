@@ -1,11 +1,12 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
  * `/autofix [pr] [--no-checks] | off | status` — Claude Desktop style PR auto-fix.
+ * Without a number, the current branch's PR is resolved once, when autofix starts.
  *
  * Runs the github-yeet skill's `watch-pr` in the background and wakes the agent
  * with the verdict when the PR has conflicts, actionable review threads or
@@ -33,7 +34,7 @@ const WATCHER_CANDIDATES = [
 
 interface Watch {
   readonly cwd: string;
-  readonly pr: number | null;
+  readonly pr: number;
   readonly allowNoChecks: boolean;
   child: ChildProcess | null;
   timer: ReturnType<typeof setTimeout> | null;
@@ -47,6 +48,15 @@ interface Verdict {
   readonly exitCode?: number;
   readonly blocker?: Record<string, any>;
   readonly scope?: { kind: string; pr?: { kind: string } };
+}
+
+function branchPr(cwd: string): Promise<number | null> {
+  return new Promise((resolve) =>
+    execFile("gh", ["pr", "view", "--json", "number", "--jq", ".number"], { cwd }, (error, stdout) => {
+      const number = Number(stdout.trim());
+      resolve(error || !Number.isInteger(number) || number <= 0 ? null : number);
+    }),
+  );
 }
 
 function findWatcher(): string | null {
@@ -81,7 +91,7 @@ function verdictKey(verdict: Verdict): string {
 }
 
 function wakeMessage(watch: Watch, verdict: Verdict): string {
-  const pr = watch.pr === null ? "this branch's PR" : `PR #${watch.pr}`;
+  const pr = `PR #${watch.pr}`;
   return [
     `Autofix wake for ${pr}: watch-pr exited ${verdict.exitCode} (${verdict.blocker?.kind}).`,
     "Use the github-yeet skill's Watch & autofix section and follow references/autofix.md for this verdict.",
@@ -122,10 +132,9 @@ export default function (pi: ExtensionAPI) {
     const watcher = findWatcher();
     if (!watcher) return stop("github-yeet watch-pr not found; set GITHUB_YEET_WATCH_PR");
 
-    const args = ["--allow-draft"];
-    if (current.pr !== null) args.push("--pr", String(current.pr));
+    const args = ["--allow-draft", "--pr", String(current.pr)];
     if (current.allowNoChecks) args.push("--allow-no-checks");
-    status(`autofix${current.pr ? ` #${current.pr}` : ""}: watching`);
+    status(`autofix #${current.pr}: watching`);
 
     // Without --timeout the watcher prints a WAITING line every poll for as
     // long as CI stays pending, so keep only the newest complete line.
@@ -158,7 +167,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   function handle(current: Watch, verdict: Verdict, code: number) {
-    const tag = `autofix${current.pr ? ` #${current.pr}` : ""}`;
+    const tag = `autofix #${current.pr}`;
     switch (code) {
       case 0:
         if (verdict.scope?.pr?.kind === "merged-pr") return stop("PR merged");
@@ -219,15 +228,19 @@ export default function (pi: ExtensionAPI) {
       if (words[0] === "status") {
         return notify(
           watch
-            ? `autofix watching ${watch.pr ? `#${watch.pr}` : "current branch PR"}; ${watch.wakes}/${MAX_WAKES} wakes; last=${watch.lastKey ?? "none"}`
+            ? `autofix watching #${watch.pr}; ${watch.wakes}/${MAX_WAKES} wakes; last=${watch.lastKey ?? "none"}`
             : "autofix is off",
         );
       }
       const prArg = words.find((word) => /^#?\d+$/.test(word));
+      // Pin the number now: the watcher reruns for as long as autofix is on,
+      // and resolving the branch each time would follow a checkout to another PR.
+      const pr = prArg ? Number(prArg.replace("#", "")) : await branchPr(ctx.cwd);
+      if (pr === null) return notify("autofix: this branch has no PR; pass a number, e.g. /autofix 123", "error");
       stop();
       watch = {
         cwd: ctx.cwd,
-        pr: prArg ? Number(prArg.replace("#", "")) : null,
+        pr,
         allowNoChecks: words.includes("--no-checks"),
         child: null,
         timer: null,
@@ -235,7 +248,7 @@ export default function (pi: ExtensionAPI) {
         lastKey: null,
         wakes: 0,
       };
-      notify(`autofix on for ${watch.pr ? `PR #${watch.pr}` : "this branch's PR"}`);
+      notify(`autofix on for PR #${watch.pr}`);
       run();
     },
   });

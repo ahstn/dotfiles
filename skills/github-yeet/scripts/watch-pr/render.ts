@@ -55,7 +55,7 @@ export function renderStatusTable(rows: T.NonEmpty<T.PrSnapshot>): string {
   }
   return `${lines.join("\n")}\n`;
 }
-function threadLine(thread: T.ReviewThread): string {
+function threadLine(thread: T.ReviewThreadSummary): string {
   const comment = thread.firstComment;
   return [
     thread.id,

@@ -64,11 +64,33 @@ export async function readSnapshot(args: {
   readonly allowDraft: boolean;
   readonly allowNoChecks?: boolean;
 }): Promise<T.PrSnapshot> {
-  const facts = await args.reader.pullRequest(args.context);
-  if (facts.state === "MERGED" || facts.mergedAt !== null)
-    return { kind: "merged", context: args.context, facts };
-  if (facts.state === "CLOSED")
-    return { kind: "closed", context: args.context, facts };
+  // Threads and checks are read against whatever head is current when each
+  // query runs, so a push mid-snapshot could pair one revision's mergeability
+  // with another's checks. Re-read the head and start over if it moved.
+  for (let attempt = 1; ; attempt += 1) {
+    const facts = await args.reader.pullRequest(args.context);
+    if (facts.state === "MERGED" || facts.mergedAt !== null)
+      return { kind: "merged", context: args.context, facts };
+    if (facts.state === "CLOSED")
+      return { kind: "closed", context: args.context, facts };
+    const snapshot = await readOpenOrConflict(args, facts);
+    const head = await args.reader.headRefOid(args.context);
+    if (head === facts.headRefOid) return snapshot;
+    if (attempt >= HEAD_RACE_ATTEMPTS)
+      throw new WatcherQueryError({
+        kind: "head-moved",
+        retryable: true,
+        detail: `PR head kept moving during ${attempt} snapshots (last ${facts.headRefOid} -> ${head})`,
+      });
+  }
+}
+// Back-to-back pushes are the only way to lose this race repeatedly; three
+// tries absorbs a push-and-fixup, then the poll loop's backoff takes over.
+const HEAD_RACE_ATTEMPTS = 3;
+async function readOpenOrConflict(
+  args: Parameters<typeof readSnapshot>[0],
+  facts: T.PullRequestFacts
+): Promise<T.PrSnapshot> {
   try {
     return await readOpenSnapshot(args, facts);
   } catch (error) {
@@ -116,10 +138,13 @@ async function readOpenSnapshot(
     args.context,
     await args.reader.reviewThreads(args.context)
   );
-  const threads = allThreads.filter(
+  const summaries = allThreads.map(
+    ({ recentComments: _history, ...summary }): T.ReviewThreadSummary => summary
+  );
+  const threads = summaries.filter(
     (thread) => thread.disposition === "actionable"
   );
-  const parkedThreads = allThreads.filter(
+  const parkedThreads = summaries.filter(
     (thread) => thread.disposition !== "actionable"
   );
   const checks = await resolveChecks(
@@ -497,6 +522,15 @@ async function pollUntilTerminal<V>(args: {
           args.dependencies.clock.now()
         )
       );
+      // A capped sleep ends exactly at the deadline; starting another full
+      // snapshot then would overrun --timeout.
+      if (deadlinePassed(started, args.options, args.dependencies.clock.now()))
+        return args.stamp({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "status-unavailable", failure: error.failure },
+        });
       continue;
     }
     if (result.kind === "terminal") return result.verdict;
@@ -514,6 +548,11 @@ async function pollUntilTerminal<V>(args: {
           args.dependencies.clock.now()
         )
       );
+      if (
+        result.onDeadline !== undefined &&
+        deadlinePassed(started, args.options, args.dependencies.clock.now())
+      )
+        return result.onDeadline();
     }
   }
 }

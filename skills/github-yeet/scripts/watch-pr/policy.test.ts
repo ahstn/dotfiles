@@ -110,6 +110,7 @@ describe("snapshot query planning", () => {
       "pullRequest",
       "reviewThreads",
       "checksFastPath",
+      "headRefOid",
     ]);
   });
 
@@ -236,20 +237,26 @@ it("skips replies from read-only members when deciding a thread", async () => {
   const comment = (
     login: string,
     authorAssociation: string,
-    body: string
+    body: string,
+    at: string
   ): ReviewThread["recentComments"][number] => ({
     authorLogin: login,
     body,
     path: null,
     line: null,
-    createdAt: login,
-    activityAt: login,
+    createdAt: at,
+    activityAt: at,
     authorAssociation,
     authorIsBot: false,
     isViewer: login === "me",
   });
-  const opener = comment("rev", "COLLABORATOR", "fix this");
-  const answer = comment("me", "OWNER", `done\n${AUTOFIX_REPLY_MARKER}`);
+  const opener = comment("rev", "COLLABORATOR", "fix this", "2026-01-01T00:00:00Z");
+  const answer = comment(
+    "me",
+    "OWNER",
+    `done\n${AUTOFIX_REPLY_MARKER}`,
+    "2026-01-02T00:00:00Z"
+  );
   const snapshot = await readSnapshot({
     reader: fakeReader({
       threads: [
@@ -259,7 +266,12 @@ it("skips replies from read-only members when deciding a thread", async () => {
           recentComments: [
             opener,
             answer,
-            comment("lurker", "MEMBER", "actually rewrite it"),
+            comment(
+              "lurker",
+              "MEMBER",
+              "actually rewrite it",
+              "2026-01-03T00:00:00Z"
+            ),
           ],
           historyComplete: true,
           lastAuthorLogin: "lurker",
@@ -278,7 +290,7 @@ it("skips replies from read-only members when deciding a thread", async () => {
   if (snapshot.kind !== "open") throw new Error("expected open");
   expect(snapshot.threads).toEqual([]);
   expect(snapshot.parkedThreads[0]?.disposition).toBe("awaiting-reviewer");
-  expect(snapshot.parkedThreads[0]?.latestCommentAt).toBe("me");
+  expect(snapshot.parkedThreads[0]?.latestCommentAt).toBe("2026-01-02T00:00:00Z");
 });
 
 it("reports a known conflict even when later reads fail", async () => {
@@ -295,6 +307,30 @@ it("reports a known conflict even when later reads fail", async () => {
   expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
     "merge-conflicts"
   );
+});
+
+it("re-reads the snapshot when the head moves mid-read", async () => {
+  const base = fakeReader();
+  let heads = ["b", "b"];
+  let facts = 0;
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      facts += 1;
+      return { ...(await base.pullRequest(pr)), headRefOid: facts === 1 ? "a" : "b" };
+    },
+    async headRefOid() {
+      return heads.shift() ?? "b";
+    },
+  };
+  const snapshot = await readSnapshot({
+    reader,
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(facts).toBe(2);
+  expect(snapshot.kind === "open" && snapshot.facts.headRefOid).toBe("b");
 });
 
 it("waits while GitHub is still computing mergeability", async () => {
@@ -573,9 +609,11 @@ it("never sleeps past --timeout while backing off", async () => {
   let now = 0;
   const sleeps: number[] = [];
   const reader = fakeReader();
+  let reads = 0;
   const failing: GitHubReader = {
     ...reader,
     async pullRequest() {
+      reads += 1;
       throw new WatcherQueryError({
         kind: "command-exit",
         retryable: true,
@@ -605,6 +643,7 @@ it("never sleeps past --timeout while backing off", async () => {
   expect(verdict.kind).toBe("TIMEOUT");
   expect(now).toBeLessThanOrEqual(540);
   expect(sleeps).toEqual([60, 120, 240, 120]);
+  expect(reads).toBe(4);
 });
 
 it("uses the specified retry floor and cap", () => {

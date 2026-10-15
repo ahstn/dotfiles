@@ -87,6 +87,10 @@ export function fakeReader(
       calls.push("pullRequest");
       return { ...defaults, ...options.facts, context: requested };
     },
+    async headRefOid() {
+      calls.push("headRefOid");
+      return options.facts?.headRefOid ?? defaults.headRefOid;
+    },
     async openPullRequests() {
       calls.push("openPullRequests");
       return options.openPullRequests ?? [];
