@@ -16,6 +16,14 @@ export const renderJson = (verdict: T.WatcherVerdict): string =>
     JSON_UNSAFE,
     (char) => `\\u${(char.codePointAt(0) ?? 0).toString(16).padStart(4, "0")}`
   )}\n`;
+const REJECTION_ACTIONS: Record<T.GitHubMergeRefusal["cause"], string> = {
+  "failing-rollup":
+    "the commit's checks failed somewhere the list doesn't show; inspect the rollup on GitHub",
+  "open-conversations":
+    "threads left for a reviewer (or from untrusted authors) are unresolved and the repo requires conversation resolution; a human resolves or answers them",
+  "unexplained-block":
+    "GitHub blocks the merge for a rule the watcher can't see (e.g. a required check that never reported); check the branch rules",
+};
 function ciCell(row: T.PrSnapshot): string {
   if (row.kind !== "open") return "\u2014";
   const was = row.ci.hadPreviousPassingCi ? ", was ✅" : "";
@@ -132,7 +140,9 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
       if (blocker.ci.kind === "ci-github-rejected")
         details.push(
           `mergeStateStatus=${blocker.ci.github.mergeStateStatus}`,
-          `headRollupState=${blocker.ci.github.headRollupState}`
+          `headRollupState=${blocker.ci.github.headRollupState}`,
+          `cause=${blocker.ci.github.cause}`,
+          `action=${REJECTION_ACTIONS[blocker.ci.github.cause]}`
         );
       return [
         "BLOCKER: failing-checks",
@@ -190,6 +200,15 @@ export function renderPretty(verdict: T.WatcherVerdict): string {
     case "BLOCKER":
       return `${renderBlocker(verdict.blocker)}\n`;
     case "READY": {
+      // A merged PR short-circuits before threads and checks are read, so
+      // none of the "no conflicts / threads / checks" claims would be true.
+      if (verdict.scope.kind === "single" && verdict.scope.pr.kind === "merged-pr")
+        return `MERGED: #${verdict.scope.pr.context.number} is already merged${verdict.scope.pr.mergedAt ? ` (${verdict.scope.pr.mergedAt})` : ""}\n`;
+      if (verdict.scope.kind === "stack") {
+        const merged = verdict.scope.prs.filter((pr) => pr.kind === "merged-pr");
+        const ready = verdict.scope.prs.length - merged.length;
+        return `READY: stack clear; ${ready} PR${ready === 1 ? "" : "s"} with no conflicts, actionable threads, or failing or pending checks${merged.length ? `, ${merged.length} already merged (${merged.map((pr) => `#${pr.context.number}`).join(", ")})` : ""}\n`;
+      }
       const detail =
         verdict.scope.kind === "single" && verdict.scope.pr.kind === "ready-pr"
           ? `\nmergeStateStatus=${verdict.scope.pr.proof.ci.github.mergeStateStatus}\nreviewDecision=${verdict.scope.pr.proof.gate.reviewDecision}\nisDraft=${verdict.scope.pr.proof.gate.draft === "draft-allowed"}${verdict.scope.pr.proof.gate.draft === "draft-allowed" ? "\nnote=draft allowed (--allow-draft); leave draft \u2014 do not mark ready" : ""}`

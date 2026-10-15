@@ -176,7 +176,8 @@ async function earlierRowsMoved(
   rows: readonly T.PrSnapshot[]
 ): Promise<boolean> {
   for (const row of rows.slice(0, -1)) {
-    if (!sameFacts(row.facts, await reader.recheck(row.context))) return true;
+    // Rule first, facts last (as in readSnapshot), so a push or comment
+    // landing during the rule lookup is caught by the facts comparison.
     if (
       row.kind === "open" &&
       row.facts.mergeStateStatus === "BEHIND" &&
@@ -185,6 +186,7 @@ async function earlierRowsMoved(
         row.upToDateRequired
     )
       return true;
+    if (!sameFacts(row.facts, await reader.recheck(row.context))) return true;
   }
   return false;
 }

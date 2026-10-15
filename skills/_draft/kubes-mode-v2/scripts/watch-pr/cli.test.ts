@@ -209,6 +209,55 @@ it("escapes bidi and C1 characters in JSON output, keeping it valid", () => {
   expect(JSON.parse(line).failure.detail).toBe("a\u202eb\u0085c");
 });
 
+it("renders a merged READY scope as merged and names a rejection's cause", () => {
+  const ctx = { owner: "o", repo: "r", number: parsePrNumber(5) };
+  expect(
+    renderPretty({
+      schemaVersion: 1,
+      sequence: 1,
+      observedAt: "now",
+      mode: "single",
+      kind: "READY",
+      terminal: true,
+      exitCode: 0,
+      scope: {
+        kind: "single",
+        pr: { kind: "merged-pr", context: ctx, mergedAt: "2026-01-01T00:00:00Z" },
+      },
+    })
+  ).toBe("MERGED: #5 is already merged (2026-01-01T00:00:00Z)\n");
+  const text = renderPretty({
+    schemaVersion: 1,
+    sequence: 1,
+    observedAt: "now",
+    mode: "single",
+    kind: "BLOCKER",
+    terminal: true,
+    exitCode: 4,
+    blocker: {
+      kind: "failing-checks",
+      pr: ctx,
+      headRefOid: "h",
+      ci: {
+        kind: "ci-github-rejected",
+        source: "gh-pr-checks",
+        all: [passingCheck()],
+        failed: [],
+        pending: [],
+        hadPreviousPassingCi: false,
+        github: {
+          kind: "refused",
+          mergeStateStatus: "BLOCKED",
+          headRollupState: "SUCCESS",
+          cause: "open-conversations",
+        },
+      },
+    },
+  });
+  expect(text).toContain("cause=open-conversations");
+  expect(text).toContain("conversation resolution");
+});
+
 it("escapes control and bidi characters in pretty output", () => {
   expect(safe("ok\u001b[2Jhidden\u202eevil")).toBe("ok\\u{1b}[2Jhidden\\u{202e}evil");
   expect(safe("plain review text")).toBe("plain review text");
