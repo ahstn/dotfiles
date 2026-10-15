@@ -1367,6 +1367,102 @@ it("rescans a stack when an earlier row changed before READY", async () => {
   expect(verdict.kind).toBe("READY");
 });
 
+it("rescans a status-only stack when an earlier row moved", async () => {
+  const base = fakeReader();
+  let firstRowRechecks = 0;
+  let scans = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 1) scans += 1;
+          return base.pullRequest(pr);
+        },
+        async recheck(pr) {
+          const facts = await base.recheck(pr);
+          if (Number(pr.number) !== 1) return facts;
+          firstRowRechecks += 1;
+          return firstRowRechecks === 2 ? { ...facts, updatedAt: "moved" } : facts;
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: true,
+    options,
+  });
+  expect(scans).toBe(2);
+  expect(verdict.kind).toBe("STATUS");
+});
+
+it("rescans a stack when an earlier BEHIND row's rule flips before READY", async () => {
+  const base = fakeReader({ facts: { mergeStateStatus: "BEHIND" } });
+  let ruleReads = 0;
+  let scans = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 1) scans += 1;
+          return base.pullRequest(pr);
+        },
+        async upToDateRequired(pr) {
+          if (Number(pr.number) !== 1) return false;
+          ruleReads += 1;
+          // Loose for the first snapshot and its confirmation; strict when
+          // the stack revalidates, and from then on.
+          return ruleReads > 2;
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(scans).toBe(2);
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
+it("keeps a queued conflict when a later PR's read fails", async () => {
+  const base = fakeReader();
+  const verdict = await runQueued({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 2)
+            throw new WatcherQueryError({
+              kind: "command-rejected",
+              retryable: false,
+              code: 1,
+              detail: "HTTP 404",
+            });
+          return {
+            ...(await base.pullRequest(pr)),
+            mergeable: "CONFLICTING" as const,
+            mergeStateStatus: "DIRTY" as const,
+          };
+        },
+        async recheck(pr) {
+          return { ...(await base.recheck(pr)), mergeStateStatus: "DIRTY" as const };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    options,
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

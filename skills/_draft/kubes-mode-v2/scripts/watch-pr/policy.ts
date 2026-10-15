@@ -165,6 +165,29 @@ function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
     now.mergeStateStatus === facts.mergeStateStatus
   );
 }
+/**
+ * Whether any row but the last (just validated) changed while later rows were
+ * read: its facts moved, or, for a BEHIND row, the up-to-date rule flipped.
+ * Stack verdicts (READY, and the status-only rows the playbook checks right
+ * before resolving a thread) must not rest on a stale earlier row.
+ */
+async function earlierRowsMoved(
+  reader: T.GitHubReader,
+  rows: readonly T.PrSnapshot[]
+): Promise<boolean> {
+  for (const row of rows.slice(0, -1)) {
+    if (!sameFacts(row.facts, await reader.recheck(row.context))) return true;
+    if (
+      row.kind === "open" &&
+      row.facts.mergeStateStatus === "BEHIND" &&
+      row.upToDateRequired !== undefined &&
+      (await reader.upToDateRequired(row.context, row.facts.baseRefName)) !==
+        row.upToDateRequired
+    )
+      return true;
+  }
+  return false;
+}
 /** The first conflict among rows already read; the top-tier verdict. */
 function knownConflict(rows: readonly T.PrSnapshot[]): T.MergeBlocker | null {
   for (const row of rows) {
@@ -890,6 +913,22 @@ export async function runSimple(args: {
     }
     const complete = nonEmpty(rows);
     if (complete === null) throw new Error("watch context cannot be empty");
+    const rescan: StepResult<T.TerminalVerdict> = {
+      kind: "continue",
+      onDeadline: () =>
+        stamp({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: {
+            kind: "stack-scan",
+            read: rows.length,
+            total: args.contexts.length,
+          },
+        }),
+    };
+    if (args.statusOnly && (await earlierRowsMoved(args.dependencies.reader, rows)))
+      return rescan;
     if (args.statusOnly)
       return {
         kind: "terminal",
@@ -933,28 +972,13 @@ export async function runSimple(args: {
         ),
       };
     // Each row was validated as it was read, but earlier rows can change
-    // while later ones are read. Before calling a whole stack READY, re-check
-    // every row but the last (just validated); if any moved, scan again.
-    if (decision.kind === "clear" && rows.length > 1) {
-      for (const row of rows.slice(0, -1)) {
-        const now = await args.dependencies.reader.recheck(row.context);
-        if (!sameFacts(row.facts, now))
-          return {
-            kind: "continue",
-            onDeadline: () =>
-              stamp({
-                kind: "TIMEOUT",
-                terminal: true,
-                exitCode: 5,
-                reason: {
-                  kind: "stack-scan",
-                  read: rows.length,
-                  total: args.contexts.length,
-                },
-              }),
-          };
-      }
-    }
+    // while later ones are read. Before calling a whole stack READY, check
+    // them again; if any moved, scan again.
+    if (
+      decision.kind === "clear" &&
+      (await earlierRowsMoved(args.dependencies.reader, rows))
+    )
+      return rescan;
     if (decision.kind === "clear")
       return {
         kind: "terminal",
@@ -1219,13 +1243,28 @@ export async function runQueued(args: {
       state.work.kind === "whole-stack-sweep"
         ? state.work.remaining[0]
         : state.work.frontier;
-    const snapshot = await readSnapshot({
-      reader: args.dependencies.reader,
-      context,
-      pendingHistory: "omit",
-      allowDraft: args.options.allowDraft,
-      allowNoChecks: args.options.allowNoChecks,
-    });
+    let snapshot: T.PrSnapshot;
+    try {
+      snapshot = await readSnapshot({
+        reader: args.dependencies.reader,
+        context,
+        pendingHistory: "omit",
+        allowDraft: args.options.allowDraft,
+        allowNoChecks: args.options.allowNoChecks,
+      });
+    } catch (error) {
+      // As in runSimple: a later PR's failed read must not hide a conflict
+      // already recorded lower in the queue.
+      const recorded = state.queue.flatMap((pr) => {
+        const row = state.snapshots.get(pr.number);
+        return row === undefined ? [] : [row];
+      });
+      const conflict =
+        error instanceof WatcherQueryError ? knownConflict(recorded) : null;
+      if (conflict !== null)
+        return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+      throw error;
+    }
     const applied = applyQueueSnapshot(
       state,
       snapshot,
