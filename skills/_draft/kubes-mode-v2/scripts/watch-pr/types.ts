@@ -216,6 +216,16 @@ export type GitHubMergeAllowed =
       readonly basis: "rollup";
       readonly mergeStateStatus: "BLOCKED";
       readonly headRollupState: Exclude<RollupState, "ERROR" | "FAILURE">;
+    }
+  | {
+      readonly kind: "allowed";
+      /**
+       * The base requires the merge queue, so a PR stays BLOCKED until it is
+       * queued; nothing else is in the way.
+       */
+      readonly basis: "merge-queue";
+      readonly mergeStateStatus: "BLOCKED";
+      readonly headRollupState: Exclude<RollupState, "ERROR" | "FAILURE">;
     };
 export type GitHubMergeAssessment = GitHubMergeAllowed | GitHubMergeRefusal;
 interface CiBase {
@@ -572,6 +582,8 @@ export interface GitHubReader {
    */
   permission(context: PrContext, login: string): Promise<boolean | null>;
   commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
+  /** Whether the PR's base branch merges through GitHub's merge queue. */
+  mergeQueueEnabled(context: PrContext): Promise<boolean>;
 }
 export interface PollingOptions {
   readonly interval: number;

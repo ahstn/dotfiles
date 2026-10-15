@@ -76,6 +76,8 @@ fragment ThreadComment on PullRequestReviewComment {
 const MAX_HISTORY_PAGES = 10;
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+export const PR_MERGE_QUEUE_QUERY =
+  "query PrMergeQueue($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { isMergeQueueEnabled } } }";
 export const PR_CHECK_ROLLUP_QUERY =
   "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
@@ -1091,6 +1093,18 @@ export class GhGitHubReader implements T.GitHubReader {
         firstLine(result.stderr) ||
         `permission lookup for ${login} exited ${result.code}`,
     });
+  }
+  async mergeQueueEnabled(context: T.PrContext): Promise<boolean> {
+    const value = await runJson(graphqlArgs(PR_MERGE_QUEUE_QUERY, context));
+    const enabled = at(value, [
+      "data",
+      "repository",
+      "pullRequest",
+      "isMergeQueueEnabled",
+    ]);
+    if (typeof enabled !== "boolean")
+      missing("pullRequest.isMergeQueueEnabled", enabled);
+    return enabled;
   }
   async commitRollups(
     context: T.PrContext

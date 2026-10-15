@@ -76,6 +76,31 @@ describe("readiness truth table", () => {
     }
   });
 
+  it("lets a merge-queue base's BLOCKED through, but not a failing rollup", async () => {
+    const read = (state: "SUCCESS" | "FAILURE") =>
+      readSnapshot({
+        reader: fakeReader({
+          facts: { mergeStateStatus: "BLOCKED" },
+          fastPath: { kind: "checks", checks: [passingCheck()] },
+          commitRollups: [{ oid: "head", state }],
+          mergeQueueEnabled: true,
+        }),
+        context: context(1),
+        pendingHistory: "include",
+        allowDraft: false,
+      });
+    const queued = await read("SUCCESS");
+    if (queued.kind !== "open") throw new Error("expected open snapshot");
+    expect(queued.ci).toMatchObject({
+      kind: "ci-clean",
+      github: { kind: "allowed", basis: "merge-queue" },
+    });
+    expect(classifyPr(queued).kind).toBe("ready");
+    const failing = await read("FAILURE");
+    if (failing.kind !== "open") throw new Error("expected open snapshot");
+    expect(failing.ci.kind).toBe("ci-github-rejected");
+  });
+
   it("turns a clean visible list plus GitHub refusal into an explicit CI blocker", async () => {
     const reader = fakeReader({
       facts: { mergeStateStatus: "BLOCKED" },
@@ -1650,6 +1675,35 @@ it("rescans a stack whose order changed on rediscovery", async () => {
   ).toEqual([2, 1]);
 });
 
+it("rediscovers from the next open row when the seed merged after the scan", async () => {
+  const seeds: number[] = [];
+  const verdict = await runSimple({
+    dependencies: {
+      reader: fakeReader(),
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: true,
+    options,
+    rediscover: async (from) => {
+      seeds.push(Number(from.number));
+      if (Number(from.number) === 1)
+        throw new WatcherQueryError({
+          kind: "stack-seed-gone",
+          retryable: false,
+          detail: "PR #1 is no longer open",
+        });
+      return [context(2)];
+    },
+  });
+  expect(seeds).toEqual([1, 2, 2]);
+  expect(
+    verdict.kind === "STATUS" && verdict.rows.map((row) => Number(row.context.number))
+  ).toEqual([2]);
+});
+
 it("keeps a stack conflict when the final revalidation fails", async () => {
   const base = fakeReader();
   let rechecks = 0;
@@ -1686,6 +1740,44 @@ it("keeps a stack conflict when the final revalidation fails", async () => {
     options,
   });
   expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
+it("re-reads a queued sweep's stale blocker row before reporting it", async () => {
+  let now = 0;
+  let row2Read = false;
+  const base = fakeReader();
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      if (Number(pr.number) === 2) row2Read = true;
+      return base.pullRequest(pr);
+    },
+    // #1's check fails when the sweep reads it, then passes on a rerun while
+    // #2 is read.
+    async checksFastPath(pr) {
+      return {
+        kind: "checks",
+        checks:
+          Number(pr.number) === 1 && !row2Read ? [failedCheck()] : [passingCheck()],
+      };
+    },
+  };
+  const verdict = await runQueued({
+    dependencies: {
+      reader,
+      clock: {
+        now: () => now,
+        observedAt: () => "now",
+        sleep: async (seconds) => {
+          now += seconds;
+        },
+      },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    options: { ...options, interval: 60, timeout: 90 },
+  });
+  expect(verdict.kind).toBe("TIMEOUT");
 });
 
 it("times out a queued wait at the deadline without another snapshot", async () => {

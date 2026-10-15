@@ -16,6 +16,12 @@ export function assessGitHubMerge(args: {
   readonly blockExplained: boolean;
   /** Unresolved threads the watcher deliberately parks (they don't block READY). */
   readonly parkedThreads?: boolean;
+  /**
+   * The base requires the merge queue. A ready PR is BLOCKED there until it
+   * is queued, so BLOCKED alone isn't a hidden blocker (`gh pr merge` makes
+   * the same exception).
+   */
+  readonly mergeQueue?: boolean;
 }): T.GitHubMergeAssessment {
   if (args.mergeStateStatus === "BLOCKED") {
     if (args.headRollupState === "ERROR" || args.headRollupState === "FAILURE")
@@ -24,6 +30,13 @@ export function assessGitHubMerge(args: {
         mergeStateStatus: args.mergeStateStatus,
         headRollupState: args.headRollupState,
         cause: "failing-rollup",
+      };
+    if (!args.blockExplained && args.mergeQueue)
+      return {
+        kind: "allowed",
+        basis: "merge-queue",
+        mergeStateStatus: args.mergeStateStatus,
+        headRollupState: args.headRollupState,
       };
     if (!args.blockExplained)
       return {
@@ -67,6 +80,11 @@ async function mergeAssessment(
       headRollupState,
       blockExplained,
       parkedThreads,
+      // Only an otherwise unexplained BLOCKED needs to know.
+      mergeQueue:
+        facts.mergeStateStatus === "BLOCKED" && !blockExplained
+          ? await reader.mergeQueueEnabled(facts.context)
+          : false,
     }),
   };
 }
@@ -966,22 +984,33 @@ export async function runSimple(args: {
     // already found, as with the scan's own reads.
     try {
       let rediscovered = false;
-      if (args.rediscover !== undefined) {
-        const from = rows.find((row) => row.kind === "open")?.context;
-        if (from !== undefined) {
-          const current = await args.rediscover(from);
-          rediscovered = true;
-          const openRows = rows
-            .filter((row) => row.kind === "open")
-            .map((row) => row.context.number);
-          const now = current.map((pr) => pr.number);
-          const changed =
-            now.length !== openRows.length ||
-            now.some((number, index) => number !== openRows[index]);
-          if (changed) {
-            contexts = current;
-            return rescan;
+      const seeds = rows.flatMap((row) => (row.kind === "open" ? [row.context] : []));
+      if (args.rediscover !== undefined && seeds.length > 0) {
+        // A row can merge or close after it was read (auto-merge as CI
+        // settles). Seed from the next open row; if every one has gone, the
+        // cached rows are stale, so read them again.
+        let current: T.NonEmpty<T.PrContext> | null = null;
+        for (const seed of seeds) {
+          try {
+            current = await args.rediscover(seed);
+            break;
+          } catch (error) {
+            if (
+              !(error instanceof WatcherQueryError) ||
+              error.failure.kind !== "stack-seed-gone"
+            )
+              throw error;
           }
+        }
+        if (current === null) return rescan;
+        rediscovered = true;
+        const now = current.map((pr) => pr.number);
+        const changed =
+          now.length !== seeds.length ||
+          now.some((number, index) => number !== seeds[index]?.number);
+        if (changed) {
+          contexts = current;
+          return rescan;
         }
       }
       if (
@@ -1380,11 +1409,38 @@ export async function runQueued(args: {
         },
       };
     }
-    const evaluation = evaluateQueue(
+    let evaluation = evaluateQueue(
       state,
       args.dependencies.clock.now(),
       args.options
     );
+    // A whole-stack sweep reads rows one at a time, so an earlier row's
+    // failure or thread can clear while later rows are read. Re-read a
+    // blocker's row before reporting it, and evaluate again if it changed.
+    // Each row is re-read at most once (the one just read is fresh).
+    const fresh = new Set([snapshot.context.number]);
+    while (evaluation.kind === "blocker" && !fresh.has(evaluation.blocker.pr.number)) {
+      const pr = evaluation.blocker.pr;
+      fresh.add(pr.number);
+      let reread: T.PrSnapshot;
+      try {
+        reread = await readSnapshot({
+          reader: args.dependencies.reader,
+          context: pr,
+          pendingHistory: "omit",
+          allowDraft: args.options.allowDraft,
+          allowNoChecks: args.options.allowNoChecks,
+        });
+      } catch (error) {
+        const conflict =
+          error instanceof WatcherQueryError ? knownConflict(orderedRows(state)) : null;
+        if (conflict !== null)
+          return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+        throw error;
+      }
+      state = { ...state, snapshots: new Map(state.snapshots).set(pr.number, reread) };
+      evaluation = evaluateQueue(state, args.dependencies.clock.now(), args.options);
+    }
     state = evaluation.state;
     switch (evaluation.kind) {
       case "complete":
