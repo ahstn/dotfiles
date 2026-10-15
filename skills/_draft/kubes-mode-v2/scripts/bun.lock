@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@dotfiles/github-yeet-scripts",
+      "name": "@dotfiles/kubes-mode-v2-scripts",
       "dependencies": {
         "commander": "14.0.0",
       },

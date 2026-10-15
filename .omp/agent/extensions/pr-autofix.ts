@@ -1,1 +1,0 @@
-../../../.pi/agent/extensions/pr-autofix.ts

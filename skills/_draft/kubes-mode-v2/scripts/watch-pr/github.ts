@@ -402,11 +402,11 @@ const PERMISSION_CHECKED = new Set(["MEMBER", "COLLABORATOR"]);
 // cannot tell the user's review notes from the agent's replies, and the marker
 // alone can be pasted by anyone. A comment parks its thread only when it has
 // the marker and was written by the `gh` viewer.
-export const AUTOFIX_REPLY_MARKER = "<!-- github-yeet:autofix -->";
+export const AUTOFIX_REPLY_MARKER = "<!-- pr-autofix -->";
 // Ends a reply on a thread the agent fixed and then resolved. Only unresolved
 // threads are read, so seeing it means a reviewer reopened the thread: that is
 // new feedback, not an answer awaiting the reviewer.
-export const AUTOFIX_FIXED_MARKER = "<!-- github-yeet:autofix:fixed -->";
+export const AUTOFIX_FIXED_MARKER = "<!-- pr-autofix:fixed -->";
 export type CommentTrust = (comment: T.ReviewComment) => boolean;
 export const trustedByAssociation: CommentTrust = (comment) =>
   comment.isViewer ||

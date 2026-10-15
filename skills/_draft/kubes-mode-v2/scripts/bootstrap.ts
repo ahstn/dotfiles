@@ -11,7 +11,7 @@ const commanderPackagePath = join(
 );
 const installKeyPath = join(
   nodeModulesDirectory,
-  ".github-yeet-scripts-install-key"
+  ".kubes-mode-v2-scripts-install-key"
 );
 
 function currentInstallKey(): string {
