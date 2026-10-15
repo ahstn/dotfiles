@@ -111,7 +111,7 @@ describe("snapshot query planning", () => {
       "pullRequest",
       "reviewThreads",
       "checksFastPath",
-      "revisions",
+      "recheck",
     ]);
   });
 
@@ -320,8 +320,8 @@ it("re-reads the snapshot when the head moves mid-read", async () => {
       facts += 1;
       return { ...(await base.pullRequest(pr)), headRefOid: facts === 1 ? "a" : "b" };
     },
-    async revisions() {
-      return { headRefOid: heads.shift() ?? "b", baseRefOid: "base" };
+    async recheck(pr) {
+      return { ...(await base.recheck(pr)), headRefOid: heads.shift() ?? "b" };
     },
   };
   const snapshot = await readSnapshot({
@@ -341,7 +341,7 @@ it("keeps a known conflict when the head re-check fails", async () => {
   const snapshot = await readSnapshot({
     reader: {
       ...base,
-      async revisions() {
+      async recheck() {
         throw new WatcherQueryError({
           kind: "command-exit",
           retryable: true,
@@ -600,8 +600,8 @@ it("re-reads the snapshot when the base branch moves mid-read", async () => {
         mergeable: facts === 1 ? "MERGEABLE" : "CONFLICTING",
       };
     },
-    async revisions() {
-      return { headRefOid: "head", baseRefOid: "new-base" };
+    async recheck(pr) {
+      return { ...(await base.recheck(pr)), baseRefOid: "new-base" };
     },
   };
   const snapshot = await readSnapshot({
@@ -615,6 +615,33 @@ it("re-reads the snapshot when the base branch moves mid-read", async () => {
   expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
     "merge-conflicts"
   );
+});
+
+it("re-reads the snapshot when the PR is set to draft mid-read", async () => {
+  const base = fakeReader();
+  let facts = 0;
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      facts += 1;
+      return { ...(await base.pullRequest(pr)), isDraft: facts > 1 };
+    },
+    async recheck(pr) {
+      return { ...(await base.recheck(pr)), isDraft: true };
+    },
+  };
+  const snapshot = await readSnapshot({
+    reader,
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(facts).toBe(2);
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker).toMatchObject({
+    kind: "merge-gate",
+    reason: "draft-pr",
+  });
 });
 
 it("waits while GitHub is still computing mergeability", async () => {

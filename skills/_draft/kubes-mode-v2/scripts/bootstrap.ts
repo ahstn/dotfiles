@@ -49,11 +49,15 @@ function requestedTimeoutMs(argv: readonly string[]): number | null {
 }
 
 /**
- * The watcher's own TIMEOUT verdict (exit 5, reason `startup`), written here
- * because the install ran out of time before the CLI could load. Mirrors
- * render.ts by hand, since commander and the CLI aren't importable yet.
+ * Writes a terminal verdict and exits, for failures before the CLI can load
+ * (commander isn't installed yet). Mirrors cli.ts and render.ts by hand, so
+ * callers always get a last stdout line they can classify.
  */
-function startupTimeout(argv: readonly string[]): never {
+function terminal(
+  argv: readonly string[],
+  verdict: { readonly exitCode: number; readonly [key: string]: unknown },
+  pretty: string
+): never {
   const mode = argv.includes("--queued-stack")
     ? "queued-stack"
     : argv.includes("--stack")
@@ -61,30 +65,52 @@ function startupTimeout(argv: readonly string[]): never {
       : "single";
   process.stdout.write(
     argv.includes("--pretty")
-      ? "TIMEOUT: --timeout ran out installing dependencies\n"
+      ? `${pretty}\n`
       : `${JSON.stringify({
           schemaVersion: 1,
           sequence: 1,
           observedAt: new Date().toISOString(),
           mode,
-          kind: "TIMEOUT",
           terminal: true,
-          exitCode: 5,
-          reason: { kind: "startup" },
+          ...verdict,
         })}\n`
   );
-  process.exit(5);
+  process.exit(verdict.exitCode);
+}
+/** Exit 5, reason `startup`: the install ran out of the --timeout budget. */
+function startupTimeout(argv: readonly string[]): never {
+  return terminal(
+    argv,
+    { kind: "TIMEOUT", exitCode: 5, reason: { kind: "startup" } },
+    "TIMEOUT: --timeout ran out installing dependencies"
+  );
+}
+/** Exit 7: the watcher can't start (old Bun, failed install). Retrying won't help. */
+function startupFailure(argv: readonly string[], detail: string): never {
+  return terminal(
+    argv,
+    {
+      kind: "BLOCKER",
+      exitCode: 7,
+      blocker: {
+        kind: "status-query",
+        failures: 1,
+        failure: { kind: "bootstrap-failed", retryable: false, detail },
+      },
+    },
+    `BLOCKER: status-query\nfailures=1\ndetail=${detail}\naction=fix the watcher's install (see stderr), then rearm`
+  );
 }
 
 export function ensureDependenciesInstalled(): void {
   const startedAt = Date.now();
   const requested = requestedTimeoutMs(process.argv.slice(2));
   const installTimeoutMs = Math.min(INSTALL_TIMEOUT_MS, requested ?? Infinity);
-  if (!Bun.semver.satisfies(Bun.version, `>=${MINIMUM_BUN}`)) {
-    throw new Error(
+  if (!Bun.semver.satisfies(Bun.version, `>=${MINIMUM_BUN}`))
+    startupFailure(
+      process.argv.slice(2),
       `watch-pr needs Bun >= ${MINIMUM_BUN} (found ${Bun.version}); run \`bun upgrade\``
     );
-  }
   const installKey = currentInstallKey();
   if (
     existsSync(commanderPackagePath) &&
@@ -105,17 +131,19 @@ export function ensureDependenciesInstalled(): void {
     startupTimeout(process.argv.slice(2));
   }
   if (result.exitCode !== 0) {
-    process.stdout.write(result.stdout);
+    // stdout is reserved for verdicts, so the installer's log goes to stderr.
+    process.stderr.write(result.stdout);
     process.stderr.write(result.stderr);
-    throw new Error(
+    startupFailure(
+      process.argv.slice(2),
       `bun install --frozen-lockfile exited with status ${result.exitCode}`
     );
   }
-  if (!existsSync(commanderPackagePath)) {
-    throw new Error(
+  if (!existsSync(commanderPackagePath))
+    startupFailure(
+      process.argv.slice(2),
       "bun install --frozen-lockfile completed without installing commander"
     );
-  }
 
   writeFileSync(installKeyPath, `${installKey}\n`);
 

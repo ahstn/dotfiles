@@ -75,9 +75,9 @@ export async function readSnapshot(args: {
     if (facts.state === "CLOSED")
       return { kind: "closed", context: args.context, facts };
     const snapshot = await readOpenOrConflict(args, facts);
-    let now: T.Revisions;
+    let now: T.RecheckFacts;
     try {
-      now = await args.reader.revisions(args.context);
+      now = await args.reader.recheck(args.context);
     } catch (error) {
       // A known conflict or actionable thread outranks a failed
       // lower-priority read.
@@ -90,17 +90,22 @@ export async function readSnapshot(args: {
       throw error;
     }
     // The base matters too: a base-branch update can create a conflict with
-    // no new head commit, leaving the mergeability read at the start stale.
+    // no new head commit. So do the gates: a PR closed, set to draft, or given
+    // changes-requested mid-read would otherwise slip out as READY.
     if (
       now.headRefOid === facts.headRefOid &&
-      now.baseRefOid === facts.baseRefOid
+      now.baseRefOid === facts.baseRefOid &&
+      now.state === facts.state &&
+      now.isDraft === facts.isDraft &&
+      now.reviewDecision === facts.reviewDecision &&
+      now.mergedAt === facts.mergedAt
     )
       return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
         kind: "head-moved",
         retryable: true,
-        detail: `PR head or base kept moving during ${attempt} snapshots (last head ${facts.headRefOid} -> ${now.headRefOid}, base ${facts.baseRefOid} -> ${now.baseRefOid})`,
+        detail: `PR kept changing during ${attempt} snapshots (head ${facts.headRefOid} -> ${now.headRefOid}, base ${facts.baseRefOid} -> ${now.baseRefOid}, state ${facts.state} -> ${now.state})`,
       });
   }
 }

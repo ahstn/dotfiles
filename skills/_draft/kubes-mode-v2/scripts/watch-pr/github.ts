@@ -746,7 +746,7 @@ export class GhGitHubReader implements T.GitHubReader {
       context
     );
   }
-  async revisions(context: T.PrContext): Promise<T.Revisions> {
+  async recheck(context: T.PrContext): Promise<T.RecheckFacts> {
     const object = record(
       await runJson([
         "gh",
@@ -756,13 +756,23 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "headRefOid,baseRefOid",
+        "headRefOid,baseRefOid,state,isDraft,reviewDecision,mergedAt",
       ]),
-      "pull request revisions"
+      "pull request recheck"
     );
+    if (typeof object.isDraft !== "boolean")
+      missing("pull request.isDraft", object.isDraft);
     return {
       headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
       baseRefOid: optionalString(object.baseRefOid, "pull request.baseRefOid"),
+      state: enumValue(
+        object.state,
+        ["OPEN", "CLOSED", "MERGED"] as const,
+        "pull request.state"
+      ),
+      isDraft: object.isDraft,
+      reviewDecision: reviewDecision(object.reviewDecision),
+      mergedAt: optionalString(object.mergedAt, "pull request.mergedAt"),
     };
   }
   async openPullRequests(

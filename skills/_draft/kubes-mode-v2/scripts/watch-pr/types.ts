@@ -52,10 +52,20 @@ export interface PullRequestFacts {
   readonly mergedAt: string | null;
   readonly isDraft: boolean;
 }
-export interface Revisions {
-  readonly headRefOid: string | null;
-  readonly baseRefOid: string | null;
-}
+/**
+ * The PR facts that can change mid-snapshot without the watcher noticing
+ * otherwise: new commits on either side, or a gate (closed, draft,
+ * changes requested) flipping while threads and checks are read.
+ */
+export type RecheckFacts = Pick<
+  PullRequestFacts,
+  | "headRefOid"
+  | "baseRefOid"
+  | "state"
+  | "isDraft"
+  | "reviewDecision"
+  | "mergedAt"
+>;
 export interface OpenPullRequest {
   readonly number: PrNumber;
   readonly headRefName: string;
@@ -288,6 +298,12 @@ export type QueryFailure =
       readonly detail: string;
     }
   | {
+      // Written by bootstrap.ts, before the CLI loads.
+      readonly kind: "bootstrap-failed";
+      readonly retryable: false;
+      readonly detail: string;
+    }
+  | {
       readonly kind: "command-rejected";
       readonly retryable: false;
       readonly detail: string;
@@ -490,7 +506,7 @@ export interface GitHubReader {
   }>;
   pullRequest(context: PrContext): Promise<PullRequestFacts>;
   /** The PR's current head commit; a cheap re-read to detect mid-snapshot pushes. */
-  revisions(context: PrContext): Promise<Revisions>;
+  recheck(context: PrContext): Promise<RecheckFacts>;
   openPullRequests(repository: Repository): Promise<readonly OpenPullRequest[]>;
   checksFastPath(context: PrContext): Promise<ChecksFastPath>;
   checkRollupPage(

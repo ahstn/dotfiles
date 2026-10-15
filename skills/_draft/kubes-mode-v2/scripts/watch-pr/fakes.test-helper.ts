@@ -96,12 +96,11 @@ export function fakeReader(
       calls.push("pullRequest");
       return { ...defaults, ...options.facts, context: requested };
     },
-    async revisions() {
-      calls.push("revisions");
-      return {
-        headRefOid: options.facts?.headRefOid ?? defaults.headRefOid,
-        baseRefOid: options.facts?.baseRefOid ?? defaults.baseRefOid,
-      };
+    async recheck() {
+      calls.push("recheck");
+      const { headRefOid, baseRefOid, state, isDraft, reviewDecision, mergedAt } =
+        { ...defaults, ...options.facts };
+      return { headRefOid, baseRefOid, state, isDraft, reviewDecision, mergedAt };
     },
     async openPullRequests() {
       calls.push("openPullRequests");

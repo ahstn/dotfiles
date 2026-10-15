@@ -127,6 +127,69 @@ it("stops when discovery itself runs past the timeout", async () => {
   });
 });
 
+it("flags unverifiable threads in the pretty status table", () => {
+  const facts = {
+    context: { owner: "o", repo: "r", number: parsePrNumber(1) },
+    mergeable: "MERGEABLE",
+    mergeStateStatus: "CLEAN",
+    reviewDecision: null,
+    headRefOid: "head",
+    baseRefOid: "base",
+    headRefName: "f",
+    baseRefName: "main",
+    state: "OPEN",
+    mergedAt: null,
+    isDraft: false,
+  } as const;
+  const thread = {
+    id: "huge",
+    firstComment: null,
+    historyComplete: false,
+    decidingComment: null,
+    lastAuthorLogin: null,
+    latestCommentAt: null,
+    disposition: "unverifiable",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  } as const;
+  const table = renderPretty({
+    schemaVersion: 1,
+    sequence: 1,
+    observedAt: "now",
+    mode: "single",
+    kind: "STATUS",
+    terminal: true,
+    exitCode: 0,
+    reason: "status-only",
+    rows: [
+      {
+        kind: "open",
+        context: facts.context,
+        facts,
+        threads: [],
+        parkedThreads: [thread],
+        ci: {
+          kind: "ci-clean",
+          source: "gh-pr-checks",
+          all: [passingCheck()],
+          failed: [],
+          pending: [],
+          hadPreviousPassingCi: false,
+          github: {
+            kind: "allowed",
+            basis: "merge-state",
+            mergeStateStatus: "CLEAN",
+            headRollupState: "SUCCESS",
+          },
+        },
+        reviewAutomationRunning: false,
+      },
+    ],
+  });
+  expect(table).toContain("⚠️ 1 too long to verify");
+  expect(table).toContain("⚠️ needs a human");
+});
+
 describe("parseArgs", () => {
   it("uses the specified defaults", () => {
     expect(parseArgs([], silentIo)).toMatchObject({

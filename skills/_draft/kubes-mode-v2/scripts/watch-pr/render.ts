@@ -22,9 +22,15 @@ function ciCell(row: T.PrSnapshot): string {
 function reviewCell(row: T.PrSnapshot): string {
   if (row.kind !== "open") return "\u2014";
   const open = row.threads.length;
-  const parked = row.parkedThreads.length
-    ? `, ${row.parkedThreads.length} parked`
-    : "";
+  // Unverifiable threads block READY (a human has to read them), so they
+  // must not hide inside the harmless "parked" count or behind a ✅.
+  const unverifiable = row.parkedThreads.filter(
+    (thread) => thread.disposition === "unverifiable"
+  ).length;
+  const quietlyParked = row.parkedThreads.length - unverifiable;
+  const parked = quietlyParked ? `, ${quietlyParked} parked` : "";
+  if (unverifiable)
+    return `⚠️ ${unverifiable} too long to verify${open ? `, ${open} open` : ""}${parked}`;
   return row.reviewAutomationRunning
     ? open
       ? `🤖 running, ${open} open${parked}`
@@ -39,6 +45,11 @@ function mergeCell(row: T.PrSnapshot): string {
   if (row.facts.isDraft) return "⏸ draft";
   if (row.facts.reviewDecision === "CHANGES_REQUESTED")
     return "⚠️ changes requested";
+  if (
+    row.kind === "open" &&
+    row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
+  )
+    return "⚠️ needs a human";
   return row.facts.mergeable === "CONFLICTING" ||
     row.facts.mergeStateStatus === "DIRTY" ||
     row.facts.mergeStateStatus === "CONFLICTING"
