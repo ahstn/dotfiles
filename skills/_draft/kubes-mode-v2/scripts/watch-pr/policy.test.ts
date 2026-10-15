@@ -1042,6 +1042,64 @@ it("stops a --stack scan between PRs once the deadline passes", async () => {
   });
 });
 
+it("returns a conflict already read instead of timing out a stack scan", async () => {
+  let now = 0;
+  const base = fakeReader();
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          now += 100;
+          return {
+            ...(await base.pullRequest(pr)),
+            ...(Number(pr.number) === 1
+              ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const }
+              : {}),
+          };
+        },
+        async recheck(pr) {
+          return {
+            ...(await base.recheck(pr)),
+            ...(Number(pr.number) === 1 ? { mergeStateStatus: "DIRTY" as const } : {}),
+          };
+        },
+      },
+      clock: { now: () => now, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2), context(3)],
+    mode: "stack",
+    statusOnly: false,
+    options: { ...options, timeout: 150 },
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
+it("re-reads when a push lands during the final check confirmation", async () => {
+  const base = fakeReader();
+  let facts = 0;
+  let rechecks = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async pullRequest(pr) {
+        facts += 1;
+        return { ...(await base.pullRequest(pr)), headRefOid: facts === 1 ? "old" : "new" };
+      },
+      async recheck(pr) {
+        rechecks += 1;
+        return { ...(await base.recheck(pr)), headRefOid: "new" };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(facts).toBe(2);
+  expect(snapshot.kind === "open" && snapshot.facts.headRefOid).toBe("new");
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

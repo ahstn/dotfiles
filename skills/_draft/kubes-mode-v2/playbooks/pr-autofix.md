@@ -98,7 +98,7 @@ Fixed in abc1234: the empty cursor now returns the first page.
 <!-- pr-autofix:fixed -->
 ```
 
-Just before posting, rerun the watcher with `--status-only` and find this thread by `id` in `rows[0].threads`. If its `latestCommentAt` changed, or it's no longer listed, a trusted reviewer moved on while you worked: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
+Just before posting, rerun the watcher with `--status-only` and find this thread by `id` in the `threads` of the row whose `context.number` is `blocker.pr.number`. In stack modes it may not be the first row. If its `latestCommentAt` changed, or it's no longer listed, a trusted reviewer moved on while you worked: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
 
 Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
 
@@ -120,10 +120,10 @@ For a reply that leaves the thread open, run only the first command.
 
 Exit 4. Each entry in `blocker.ci.failed` has `name`, `link` and `workflow`.
 
-1. Read the failure. For GitHub Actions, take `<run-id>` from the check's link (`.../actions/runs/<run-id>/...`). Look up the job's ID by the check's name with `gh run view <run-id> -R <owner>/<repo> --json jobs --jq '.jobs[] | {name, databaseId}'`; `gh` warns that numbers from browser URLs can 404 with `--job`. Then run `gh run view --job <databaseId> --log-failed -R <owner>/<repo>`. Use `blocker.pr` for `-R`, because a fork checkout resolves `gh` to the fork. For other providers, read what `gh` exposes. If you cannot see the logs, report the link.
+1. Read the failure. For GitHub Actions, take `<run-id>` from the check's link (`.../actions/runs/<run-id>/...`). Look up the run's commit and the job's ID with `gh run view <run-id> -R <owner>/<repo> --json headSha,jobs --jq '{headSha, jobs: [.jobs[] | {name, databaseId}]}'`, matching the job by the check's name; `gh` warns that numbers from browser URLs can 404 with `--job`. Then run `gh run view --job <databaseId> --log-failed -R <owner>/<repo>`. Use `blocker.pr` for `-R`, because a fork checkout resolves `gh` to the fork. For other providers, read what `gh` exposes. If you cannot see the logs, report the link.
 2. Decide whether the failure is caused by this PR's diff.
    - **Caused by the diff.** Reproduce it locally when feasible, fix the root cause, run the same check locally, then commit and push.
-   - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun that one job once, not the whole run: `--failed` would also rerun every other failed job in the run. Using the `<databaseId>` from step 1, run `gh run rerun --job <databaseId> -R <owner>/<repo>`, which also reruns the jobs it depends on. If it fails the same way again, it is not a flake.
+   - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun that one job once, not the whole run: `--failed` would also rerun every other failed job in the run. First confirm the `headSha` from step 1 equals `blocker.headRefOid`. A check's link is supplied by whatever posted it and can point at an older or unrelated run; if it doesn't match, don't rerun anything, and report it. Then, using the `<databaseId>` from step 1, run `gh run rerun --job <databaseId> -R <owner>/<repo>`, which also reruns the jobs it depends on. If it fails the same way again, it is not a flake.
    - **Also fails on the base branch.** Report it. Don't fix unrelated code in this PR.
 3. `kind: "ci-github-rejected"` with no failed checks means GitHub blocks the merge for a reason the check list doesn't show. `github.cause` says why:
    - `failing-rollup`: the commit's checks failed somewhere the list doesn't show.

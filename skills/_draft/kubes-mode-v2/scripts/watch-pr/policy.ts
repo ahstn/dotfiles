@@ -95,8 +95,32 @@ export async function readSnapshot(args: {
     if (facts.state === "CLOSED")
       return { kind: "closed", context: args.context, facts };
     const snapshot = await readOpenOrConflict(args, facts);
+    // Confirming reads come first and the field recheck comes last, so a push
+    // landing during any of them is caught by the final comparison.
     let now: T.RecheckFacts;
+    let confirmed = true;
     try {
+      // Check activity moves none of the recheck fields. Before a clean CI
+      // read can become READY, confirm no check has registered or failed.
+      if (
+        snapshot.kind === "open" &&
+        snapshot.ci.kind === "ci-clean" &&
+        !(
+          await resolveChecks(args.reader, args.context, args.allowNoChecks)
+        ).checks.every(
+          (check) => check.kind !== "pending" && check.kind !== "failed"
+        )
+      )
+        confirmed = false;
+      // BEHIND stays BEHIND when an admin turns strict checks on or off, so
+      // the rule result has to be re-read too.
+      if (
+        snapshot.kind === "open" &&
+        facts.mergeStateStatus === "BEHIND" &&
+        (await args.reader.upToDateRequired(args.context, facts.baseRefName)) !==
+          snapshot.upToDateRequired
+      )
+        confirmed = false;
       now = await args.reader.recheck(args.context);
     } catch (error) {
       // A known conflict or actionable thread outranks a failed
@@ -124,42 +148,15 @@ export async function readSnapshot(args: {
       now.updatedAt === facts.updatedAt &&
       // A ruleset or protection change can flip CLEAN to BLOCKED with nothing
       // else above moving.
-      now.mergeStateStatus === facts.mergeStateStatus
-    ) {
-      // Check activity moves none of the fields above. Before a clean CI read
-      // can become READY, confirm no check has registered or failed since.
-      // BEHIND stays BEHIND when an admin turns strict checks on or off, so
-      // the rule result has to be re-read too.
-      if (
-        snapshot.kind === "open" &&
-        facts.mergeStateStatus === "BEHIND" &&
-        (await args.reader.upToDateRequired(args.context, facts.baseRefName)) !==
-          snapshot.upToDateRequired
-      ) {
-        if (attempt >= HEAD_RACE_ATTEMPTS)
-          throw new WatcherQueryError({
-            kind: "head-moved",
-            retryable: true,
-            detail: `branch rules for ${facts.baseRefName} kept changing during ${attempt} snapshots`,
-          });
-        continue;
-      }
-      if (
-        snapshot.kind !== "open" ||
-        snapshot.ci.kind !== "ci-clean" ||
-        (
-          await resolveChecks(args.reader, args.context, args.allowNoChecks)
-        ).checks.every(
-          (check) => check.kind !== "pending" && check.kind !== "failed"
-        )
-      )
-        return snapshot;
-    }
+      now.mergeStateStatus === facts.mergeStateStatus &&
+      confirmed
+    )
+      return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
         kind: "head-moved",
         retryable: true,
-        detail: `PR kept changing during ${attempt} snapshots (head ${facts.headRefOid} -> ${now.headRefOid}, base ${facts.baseRefOid} -> ${now.baseRefOid}, state ${facts.state} -> ${now.state})`,
+        detail: `PR kept changing during ${attempt} snapshots (head ${facts.headRefOid} -> ${now.headRefOid}, base ${facts.baseRefOid} -> ${now.baseRefOid}, state ${facts.state} -> ${now.state}, checks/rules confirmed: ${confirmed})`,
       });
   }
 }
@@ -826,7 +823,18 @@ export async function runSimple(args: {
       if (
         rows.length > 0 &&
         deadlinePassed(started, args.options, args.dependencies.clock.now())
-      )
+      ) {
+        // Conflicts are the top tier and rows are read bottom-to-top, so a
+        // conflict already seen is the right verdict even for a partial scan;
+        // timing out would discard it on every run of a slow stack.
+        for (const row of rows) {
+          const conflict = conflictBlocker(row);
+          if (conflict !== null)
+            return {
+              kind: "terminal",
+              verdict: blockerVerdict(stamp, conflict),
+            };
+        }
         return {
           kind: "terminal",
           verdict: stamp({
@@ -840,6 +848,7 @@ export async function runSimple(args: {
             },
           }),
         };
+      }
       rows.push(
         await readSnapshot({
           reader: args.dependencies.reader,
