@@ -1269,9 +1269,14 @@ export const NO_CHECKS_CONFIGURED = "(no checks configured)";
  * In another App's suite the newest run of a name wins.
  */
 function latestAttempts(checks: readonly T.Check[]): T.Check[] {
+  // A run still waiting to start is the newest. One that finished without
+  // starting (a startup failure, a cancel) is placed by when it finished.
   const startOf = (check: T.Check): number => {
     const started = Date.parse(check.attempt?.startedAt ?? "");
-    return Number.isNaN(started) ? Infinity : started;
+    if (!Number.isNaN(started)) return started;
+    if (check.kind === "pending" || check.kind === "code-review-gate") return Infinity;
+    const completed = Date.parse(check.completedAt ?? "");
+    return Number.isNaN(completed) ? -Infinity : completed;
   };
   const newest = new Map<
     string,

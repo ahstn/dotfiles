@@ -2042,7 +2042,31 @@ it("settles a snapshot when only untrusted activity moves updatedAt", async () =
   const snapshot = await readSnapshot({
     reader: {
       ...base,
-      // Drive-by comments bump the PR's updatedAt on every read.
+      // A drive-by comment lands after every PR read, bumping updatedAt.
+      async pullRequest(pr) {
+        return { ...(await base.pullRequest(pr)), updatedAt: "before" };
+      },
+      async recheck(pr) {
+        rechecks += 1;
+        return { ...(await base.recheck(pr)), updatedAt: "bumped" };
+      },
+    },
+    context: context(1),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(snapshot.kind === "open" && snapshot.ci.kind).toBe("ci-clean");
+  // The recheck, then one more after re-reading the threads.
+  expect(rechecks).toBe(2);
+});
+
+it("doesn't settle when updatedAt moves again during the thread re-read", async () => {
+  const base = fakeReader();
+  let rechecks = 0;
+  const read = readSnapshot({
+    reader: {
+      ...base,
+      // Comments keep landing, including while the threads are re-read.
       async recheck(pr) {
         rechecks += 1;
         return { ...(await base.recheck(pr)), updatedAt: `bumped-${rechecks}` };
@@ -2052,8 +2076,7 @@ it("settles a snapshot when only untrusted activity moves updatedAt", async () =
     pendingHistory: "include",
     allowDraft: false,
   });
-  expect(snapshot.kind === "open" && snapshot.ci.kind).toBe("ci-clean");
-  expect(rechecks).toBe(1);
+  await expect(read).rejects.toMatchObject({ failure: { kind: "head-moved" } });
 });
 
 it("re-reads a snapshot when updatedAt moved for a trusted comment", async () => {
@@ -2342,6 +2365,40 @@ it("keeps a queued thread blocker when its refresh read fails", async () => {
     options,
   });
   expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("review-threads");
+});
+
+it("emits a new queued wait when a different check is pending", async () => {
+  let now = 0;
+  const waits: string[] = [];
+  const base = fakeReader();
+  await runQueued({
+    dependencies: {
+      reader: {
+        ...base,
+        // One job finishes as another starts: same count, different check.
+        async checksFastPath() {
+          return {
+            kind: "checks",
+            checks: [pendingCheck(now < 120 ? "build" : "deploy")],
+          };
+        },
+      },
+      clock: {
+        now: () => now,
+        observedAt: () => "now",
+        sleep: async (seconds) => {
+          now += seconds;
+        },
+      },
+      emit: (verdict) => {
+        if (verdict.kind === "WAITING" && verdict.reason.kind === "pending-checks")
+          waits.push(verdict.reason.pending.map((check) => check.name).join(","));
+      },
+    },
+    contexts: [context(1)],
+    options: { ...options, interval: 60, timeout: 300 },
+  });
+  expect(waits).toEqual(["build", "deploy"]);
 });
 
 it("times out a queued wait at the deadline without another snapshot", async () => {

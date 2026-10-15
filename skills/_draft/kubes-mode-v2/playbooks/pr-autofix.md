@@ -83,7 +83,7 @@ Exit 3. `blocker.threads` lists only actionable threads. A thread counts when it
 Each thread in the verdict carries `firstComment`, the request, and `decidingComment`, the newest trusted comment, which is what woke you. Act on `decidingComment` when it differs from the first. For the surrounding discussion, this fetches the newest 100 comments:
 
 ```shell
-gh api graphql -F id=<thread-id> -f query='query($id: ID!) { node(id: $id) { ... on PullRequestReviewThread { path line isOutdated comments(last: 100) { nodes { author { login } body createdAt } } } } }'
+gh api graphql -F id=<thread-id> -f query='query($id: ID!) { node(id: $id) { ... on PullRequestReviewThread { path line isOutdated comments(last: 100) { nodes { author { login } body createdAt updatedAt } } } } }'
 ```
 
 Classify each thread and act:
@@ -120,7 +120,7 @@ test "$rc" -eq 0
 
 The last line keeps the API's exit status, so a failed reply isn't masked by a successful cleanup. If it failed, nothing was handled; say so.
 
-For a fixed thread, only after the reply succeeded, check nobody spoke in the meantime. Re-read the thread with the discussion query above. If any comment other than yours is newer than the `decidingComment` you worked from, rerun the `--status-only` check for this PR. Resolve only if this thread's `decidingComment` is now your reply, meaning the newcomer is untrusted. Otherwise a trusted reviewer said something you haven't read: leave the thread open and start again from step 2 with it. Then resolve:
+For a fixed thread, only after the reply succeeded, check nobody spoke in the meantime. Re-read the thread with the discussion query above. If any comment other than yours was posted or edited (`createdAt` or `updatedAt`) after the `decidingComment` you worked from, rerun the `--status-only` check for this PR. Resolve only if this thread's `decidingComment` is now your reply, meaning the newcomer is untrusted. Otherwise a trusted reviewer said something you haven't read: leave the thread open and start again from step 2 with it. Then resolve:
 
 ```shell
 gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'

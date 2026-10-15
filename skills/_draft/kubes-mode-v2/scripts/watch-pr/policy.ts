@@ -280,14 +280,19 @@ async function factsMoved(
   const view = splitThreads(
     await requireWriteAccess(reader, row.context, await reader.reviewThreads(row.context))
   );
-  return (
+  if (
     JSON.stringify(view) !==
     JSON.stringify({ threads: row.threads, parkedThreads: row.parkedThreads })
-  );
+  )
+    return true;
+  // That read takes time (several pages); a trusted comment landing during it
+  // moves the watermark again. Accept only if nothing moved since `now`.
+  return !sameFacts({ ...row.facts, updatedAt: now.updatedAt }, await reader.recheck(row.context));
 }
 /**
  * Whether any row changed since it was read: for a BEHIND row the up-to-date
- * rule flipped, its CI verdict no longer holds (ciMoved), or its facts moved. Per row the facts come last (as in readSnapshot), and the rows are
+ * rule flipped, its CI verdict no longer holds (ciMoved), or its facts moved.
+ * Per row the facts come last (as in readSnapshot), and the rows are
  * checked in order, so every stack verdict rests on reads newer than any
  * change it could miss.
  */
@@ -1470,7 +1475,8 @@ export function evaluateQueue(
       : ({ kind: "pending-checks", pending } as const);
   const key =
     reason.kind === "pending-checks"
-      ? `pending:${frontier.number}:${reason.pending.length}`
+      ? // Names, not a count: one job finishing as another starts is news.
+        `pending:${frontier.number}:${reason.pending.map((check) => check.name).sort().join(",")}`
       : `queue:${frontier.number}:${reason.unmergedCount}`;
   return {
     kind: "waiting",

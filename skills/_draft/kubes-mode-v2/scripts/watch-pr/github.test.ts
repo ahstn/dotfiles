@@ -147,6 +147,41 @@ describe("checks fallback chain", () => {
     expect(read.checks[0]?.workflow).toBe("CI");
   });
 
+  it("places a run that finished without starting by when it finished", async () => {
+    const run = (
+      conclusion: string,
+      startedAt: string | null,
+      completedAt: string,
+      suite: number
+    ) =>
+      mapRollupNode({
+        __typename: "CheckRun",
+        name: "lint",
+        status: "COMPLETED",
+        conclusion,
+        startedAt,
+        completedAt,
+        checkSuite: { databaseId: suite, app: { databaseId: 5 }, workflowRun: null },
+      });
+    const read = await resolveChecks(
+      fakeReader({
+        fastPath: { kind: "unusable", exitCode: 1, stderr: "" },
+        rollupPages: [
+          {
+            checks: [
+              // A startup failure: completed, never started.
+              run("STARTUP_FAILURE", null, "2026-01-01T00:00:00Z", 1),
+              run("SUCCESS", "2026-01-01T00:05:00Z", "2026-01-01T00:06:00Z", 2),
+            ].filter((check) => check !== null),
+            endCursor: null,
+          },
+        ],
+      }),
+      context
+    );
+    expect(read.checks.map((check) => check.kind)).toEqual(["passed"]);
+  });
+
   it("keeps the newest run of a name in another App's rerequested suite", async () => {
     const run = (conclusion: string, startedAt: string) =>
       mapRollupNode({
