@@ -1,0 +1,29 @@
+skills/_draft/kubes-mode-v2/playbooks/pr-autofix.md
+  s_70f26d58e0c223::t_1f94fc26e16719 132,135
+skills/_draft/kubes-mode-v2/scripts/watch-pr/cli.test.ts
+  s_70f26d58e0c223::t_e969a7cfbb39f9 536-549
+skills/_draft/kubes-mode-v2/scripts/watch-pr/cli.ts
+  s_70f26d58e0c223::t_5b1ee83fac2f2f 228-231,234,242,352
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.test.ts
+  s_70f26d58e0c223::t_cfe750495cb29c 1503,1534,1723,1833-2037
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.ts
+  s_70f26d58e0c223::t_cb99dd57a0b459 128,151,166,180,199-200,204-206,208,232-254,278,339-346,368-379,1005-1009,1087,1091-1098,1100,1126-1135,1142-1149
+skills/_draft/kubes-mode-v2/scripts/watch-pr/render.ts
+  s_70f26d58e0c223::t_1818f0148d30d6 71,88-89,100,102-105,110,207-210,215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1fb24a84c600265f61e4f74da2c15b7f54121e1",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
