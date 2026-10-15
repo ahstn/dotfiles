@@ -77,7 +77,7 @@ const MAX_HISTORY_PAGES = 10;
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 export const PR_CHECK_ROLLUP_QUERY =
-  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      workflowRun {\n                        event\n                        workflow {\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 interface CommandResult {
   readonly code: number;
@@ -396,22 +396,32 @@ export function mapRollupNode(value: unknown): T.Check | null {
   const link =
     typeof object.targetUrl === "string" ? object.targetUrl : details.link;
   if (typename === "CheckRun") {
-    // Checks from other Apps have no workflow run; their name is their identity.
     const suite = isRecord(object.checkSuite) ? object.checkSuite : null;
+    const app = suite !== null && isRecord(suite.app) ? suite.app.databaseId : null;
     const run = suite !== null && isRecord(suite.workflowRun) ? suite.workflowRun : null;
-    const event = run !== null && typeof run.event === "string" ? run.event : "";
+    const flow = run !== null && isRecord(run.workflow) ? run.workflow : null;
     const workflow =
-      run !== null && isRecord(run.workflow) && typeof run.workflow.name === "string"
-        ? run.workflow.name
-        : details.workflow;
+      flow !== null && typeof flow.name === "string" ? flow.name : details.workflow;
+    // Names aren't unique: two workflow files can share one, and so can two
+    // Apps' checks. Key attempts by the App's and workflow's IDs, and when
+    // GitHub withholds an ID, don't collapse the check at all.
+    const identity =
+      run === null
+        ? [app]
+        : [app, flow?.databaseId, typeof run.event === "string" ? run.event : null];
+    const known = identity.every((part) => Number.isInteger(part) || typeof part === "string");
     return mapCheckRun(object, {
       ...details,
       link,
       workflow,
-      attempt: {
-        key: ["CheckRun", workflow, event, details.name].join("\0"),
-        startedAt: typeof object.startedAt === "string" ? object.startedAt : null,
-      },
+      ...(known
+        ? {
+            attempt: {
+              key: ["CheckRun", ...identity, details.name].join("\0"),
+              startedAt: typeof object.startedAt === "string" ? object.startedAt : null,
+            },
+          }
+        : {}),
     });
   }
   const state =

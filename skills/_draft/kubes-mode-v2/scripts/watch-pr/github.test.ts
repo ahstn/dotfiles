@@ -61,7 +61,8 @@ describe("checks fallback chain", () => {
       name: string,
       conclusion: string | null,
       startedAt: string | null,
-      event = "pull_request"
+      event = "pull_request",
+      workflowId: number | null = 1
     ) =>
       mapRollupNode({
         __typename: "CheckRun",
@@ -69,7 +70,13 @@ describe("checks fallback chain", () => {
         status: conclusion === null ? "QUEUED" : "COMPLETED",
         conclusion,
         startedAt,
-        checkSuite: { workflowRun: { event, workflow: { name: "CI" } } },
+        checkSuite: {
+          app: { databaseId: 15368 },
+          workflowRun: {
+            event,
+            workflow: { databaseId: workflowId, name: "CI" },
+          },
+        },
       });
     const pages = [
       [
@@ -77,6 +84,9 @@ describe("checks fallback chain", () => {
         run("lint", "FAILURE", "2026-01-01T00:00:00Z"),
         run("build", "FAILURE", "2026-01-01T00:00:00Z"),
         run("push-only", "FAILURE", "2026-01-01T00:00:00Z", "push"),
+        // Another workflow file also named CI, and one whose ID is withheld.
+        run("test", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", 2),
+        run("lint", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", null),
       ],
       [
         run("test", "SUCCESS", "2026-01-01T00:05:00Z"),
@@ -96,10 +106,12 @@ describe("checks fallback chain", () => {
       context
     );
     // A superseded cancel is dropped and a queued rerun supersedes a failure,
-    // but a tie keeps both, and other events are other checks.
+    // but a tie keeps both, and other events or workflows are other checks.
     expect(read.checks.map((check) => [check.name, check.kind])).toEqual([
       ["build", "failed"],
       ["push-only", "failed"],
+      ["test", "failed"],
+      ["lint", "failed"],
       ["test", "passed"],
       ["lint", "pending"],
       ["build", "passed"],
