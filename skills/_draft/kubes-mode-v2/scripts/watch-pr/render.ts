@@ -50,6 +50,7 @@ function mergeCell(row: T.PrSnapshot): string {
     row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
   )
     return "⚠️ needs a human";
+  if (row.facts.mergeStateStatus === "BEHIND") return "⚠️ behind base";
   return row.facts.mergeable === "CONFLICTING" ||
     row.facts.mergeStateStatus === "DIRTY" ||
     row.facts.mergeStateStatus === "CONFLICTING"
@@ -95,7 +96,9 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
         `pr=${blocker.pr.number}`,
         `mergeable=${blocker.facts.mergeable}`,
         `mergeStateStatus=${blocker.facts.mergeStateStatus}`,
-        "action=resolve merge conflicts before waiting for CI",
+        blocker.facts.mergeStateStatus === "BEHIND"
+          ? "action=merge the base branch to bring the PR up to date"
+          : "action=resolve merge conflicts before waiting for CI",
       ].join("\n");
     case "review-threads":
       return [

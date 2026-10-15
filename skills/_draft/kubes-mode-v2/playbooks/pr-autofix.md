@@ -16,7 +16,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 | Exit | Verdict | Do |
 | --- | --- | --- |
 | 0 | `READY`, or the PR merged | Report and stop. |
-| 2 | Merge conflicts | [Conflicts](#conflicts) |
+| 2 | Merge conflicts, or behind the base where branch protection requires up to date | [Conflicts](#conflicts) |
 | 3 | Actionable review threads | [Review threads](#review-threads) |
 | 4 | Failing checks | [Failing checks](#failing-checks) |
 | 5 | Timeout | `reason.kind` `pending-checks` (or a stack reason): rerun the watcher. `startup` (installing the watcher's dependencies ran out of time) or `discovery` (finding the PR did): rerun once, and if it repeats, report it like 7. `status-unavailable`: GitHub kept failing, so report it like 7. |
@@ -60,7 +60,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 
 ## Conflicts
 
-Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.facts` has `baseRefName` and `headRefName`.
+Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.facts` has `baseRefName` and `headRefName`. If `blocker.facts.mergeStateStatus` is `BEHIND`, there's no conflict; the branch only has to be brought up to date. The same steps apply, and the merge goes through cleanly.
 
 1. Fetch the base branch from the PR's base repository, not `origin`, which is the fork in a fork checkout. Run `base=$(gh pr view <number> -R <owner>/<repo> --json baseRefName -q .baseRefName) && git fetch "https://github.com/<owner>/<repo>.git" "refs/heads/$base" && git merge FETCH_HEAD`. Merge, don't rebase, so no force-push is needed.
 2. Resolve each conflict by keeping the intent of both sides. Run the affected tests.
@@ -101,10 +101,16 @@ Fixed in abc1234: the empty cursor now returns the first page.
 Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
 
 ```shell
-gh api graphql -F threadId=<thread-id> -F "body=@<reply-file>" -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }' &&
-  gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
+{
+  gh api graphql -F threadId=<thread-id> -F "body=@<reply-file>" -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }' &&
+    gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
+}
+rc=$?
 rm -- "<reply-file>"
+test "$rc" -eq 0
 ```
+
+The last line keeps the block's exit status the API's, so a failed reply or resolve isn't masked by a successful cleanup. Check it before telling anyone the thread was handled.
 
 For a reply that leaves the thread open, run only the first command.
 

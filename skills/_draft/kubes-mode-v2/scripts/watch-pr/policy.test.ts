@@ -777,6 +777,19 @@ it("refuses READY when GitHub blocks the merge for no visible reason", async () 
   expect(decision.blocker.ci.kind).toBe("ci-github-rejected");
 });
 
+it("blocks a green PR that GitHub reports as behind its base", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({ facts: { mergeStateStatus: "BEHIND" } }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
+    "merge-conflicts"
+  );
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

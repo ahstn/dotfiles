@@ -412,8 +412,12 @@ async function readCi(
     ),
   };
 }
+// BEHIND is reported when branch protection requires the branch to be up to
+// date with its base: GitHub won't merge it, even with green checks. The fix
+// is the same as for a conflict (merge the base, push), so it shares exit 2.
 const conflictBlocker = (row: T.PrSnapshot): T.MergeBlocker | null =>
-  row.kind === "open" && isConflicted(row.facts)
+  row.kind === "open" &&
+  (isConflicted(row.facts) || row.facts.mergeStateStatus === "BEHIND")
     ? { kind: "merge-conflicts", pr: row.context, facts: row.facts }
     : null;
 function threadBlocker(row: T.PrSnapshot): T.MergeBlocker | null {
