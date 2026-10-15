@@ -166,24 +166,32 @@ function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
   );
 }
 /**
- * Whether any row but the last (just validated) changed while later rows were
- * read: its facts moved, or, for a BEHIND row, the up-to-date rule flipped.
- * Stack verdicts (READY, and the status-only rows the playbook checks right
- * before resolving a thread) must not rest on a stale earlier row.
+ * Whether any row changed since it was read: for a BEHIND row the up-to-date
+ * rule flipped, a clean CI read gained a pending or failed check, or its facts
+ * moved. Per row the facts come last (as in readSnapshot), and the rows are
+ * checked in order, so every stack verdict rests on reads newer than any
+ * change it could miss.
  */
-async function earlierRowsMoved(
+async function rowsMoved(
   reader: T.GitHubReader,
-  rows: readonly T.PrSnapshot[]
+  rows: readonly T.PrSnapshot[],
+  allowNoChecks: boolean | undefined
 ): Promise<boolean> {
-  for (const row of rows.slice(0, -1)) {
-    // Rule first, facts last (as in readSnapshot), so a push or comment
-    // landing during the rule lookup is caught by the facts comparison.
+  for (const row of rows) {
     if (
       row.kind === "open" &&
       row.facts.mergeStateStatus === "BEHIND" &&
       row.upToDateRequired !== undefined &&
       (await reader.upToDateRequired(row.context, row.facts.baseRefName)) !==
         row.upToDateRequired
+    )
+      return true;
+    if (
+      row.kind === "open" &&
+      row.ci.kind === "ci-clean" &&
+      (await resolveChecks(reader, row.context, allowNoChecks)).checks.some(
+        (check) => check.kind === "pending" || check.kind === "failed"
+      )
     )
       return true;
     if (!sameFacts(row.facts, await reader.recheck(row.context))) return true;
@@ -936,7 +944,34 @@ export async function runSimple(args: {
           },
         }),
     };
-    if (args.statusOnly && (await earlierRowsMoved(args.dependencies.reader, rows)))
+    // --stack: membership first. A PR that joined or left the connected
+    // stack mid-watch changes what the verdict covers (merged rows naturally
+    // leave the open-PR graph, so only open rows count).
+    let rediscovered = false;
+    if (args.rediscover !== undefined) {
+      const from = rows.find((row) => row.kind === "open")?.context;
+      if (from !== undefined) {
+        const current = await args.rediscover(from);
+        rediscovered = true;
+        const now = new Set(current.map((pr) => pr.number));
+        const known = new Set(contexts.map((pr) => pr.number));
+        const joined = current.some((pr) => !known.has(pr.number));
+        const left = rows.some(
+          (row) => row.kind === "open" && !now.has(row.context.number)
+        );
+        if (joined || left) {
+          contexts = current;
+          return rescan;
+        }
+      }
+    }
+    // Then every row again, last row last: each was validated as it was
+    // read, but any of them can change while the others (or the open-PR
+    // graph) are read.
+    if (
+      (rows.length > 1 || rediscovered) &&
+      (await rowsMoved(args.dependencies.reader, rows, args.options.allowNoChecks))
+    )
       return rescan;
     if (args.statusOnly)
       return {
@@ -983,24 +1018,6 @@ export async function runSimple(args: {
     // Each row was validated as it was read, but earlier rows can change
     // while later ones are read. Before calling a whole stack READY, check
     // them again; if any moved, scan again.
-    // Rediscovery first, row revalidation last, so nothing that lands on a
-    // row while the open-PR graph is read slips past the final comparison.
-    if (decision.kind === "clear" && args.rediscover !== undefined) {
-      const from = rows.find((row) => row.kind === "open")?.context;
-      if (from !== undefined) {
-        const known = new Set(contexts.map((pr) => pr.number));
-        const current = await args.rediscover(from);
-        if (current.some((pr) => !known.has(pr.number))) {
-          contexts = current;
-          return rescan;
-        }
-      }
-    }
-    if (
-      decision.kind === "clear" &&
-      (await earlierRowsMoved(args.dependencies.reader, rows))
-    )
-      return rescan;
     if (decision.kind === "clear")
       return {
         kind: "terminal",

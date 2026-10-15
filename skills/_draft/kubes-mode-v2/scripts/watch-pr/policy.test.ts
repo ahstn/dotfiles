@@ -1521,6 +1521,108 @@ it("scans a PR that joined the stack before declaring it READY", async () => {
   expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
 });
 
+it("drops a PR that left the stack before returning its blocker", async () => {
+  const base = fakeReader();
+  const conflicted = (pr: PrContext) => Number(pr.number) === 2;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          return {
+            ...(await base.pullRequest(pr)),
+            ...(conflicted(pr)
+              ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const }
+              : {}),
+          };
+        },
+        async recheck(pr) {
+          return {
+            ...(await base.recheck(pr)),
+            ...(conflicted(pr) ? { mergeStateStatus: "DIRTY" as const } : {}),
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+    // #2 was retargeted away; the stack is now #1 alone.
+    rediscover: async () => [context(1)],
+  });
+  expect(verdict.kind).toBe("READY");
+});
+
+it("rescans a stack when the last row changed during revalidation", async () => {
+  const base = fakeReader();
+  let lastRowRechecks = 0;
+  let scans = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 1) scans += 1;
+          return base.pullRequest(pr);
+        },
+        async recheck(pr) {
+          const facts = await base.recheck(pr);
+          if (Number(pr.number) !== 2) return facts;
+          lastRowRechecks += 1;
+          return lastRowRechecks === 2 ? { ...facts, updatedAt: "moved" } : facts;
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(scans).toBe(2);
+  expect(verdict.kind).toBe("READY");
+});
+
+it("rescans a stack when an earlier clean row gains a pending check", async () => {
+  const base = fakeReader();
+  let row1CheckReads = 0;
+  let scans = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 1) scans += 1;
+          return base.pullRequest(pr);
+        },
+        async checksFastPath(pr) {
+          if (Number(pr.number) !== 1)
+            return { kind: "checks", checks: [passingCheck()] };
+          row1CheckReads += 1;
+          // Clean for its own snapshot and confirmation; a workflow starts
+          // while row 2 is read, then finishes green.
+          return {
+            kind: "checks",
+            checks: row1CheckReads === 3 ? [pendingCheck("late")] : [passingCheck()],
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(scans).toBe(2);
+  expect(verdict.kind).toBe("READY");
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;
