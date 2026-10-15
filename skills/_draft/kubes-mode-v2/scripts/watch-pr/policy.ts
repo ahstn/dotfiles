@@ -422,19 +422,23 @@ async function readCi(
     else if (pending !== null)
       ci = { ...base, kind: "ci-pending", failed: [], pending };
     else if (
-      rollup !== null &&
-      rollup !== "SUCCESS" &&
-      !gateHoldsRollup
+      !gateHoldsRollup &&
+      ((rollup !== null && rollup !== "SUCCESS") ||
+        facts.mergeStateStatus === "UNSTABLE")
     ) {
       // The check list and the rollup are separate reads of the same commit,
       // so a retry or new workflow between them can leave a passing list next
-      // to a pending or failing rollup. Wait for a poll where they agree
-      // rather than call it clean.
+      // to a pending or failing rollup. UNSTABLE (mergeable, but a commit
+      // status isn't passing) says the same from the PR's side. Wait for a
+      // poll where they agree rather than call it clean.
       const disagreement: T.PendingCheck = {
         kind: "pending",
         name: ROLLUP_DISAGREES,
-        reportedState: rollup,
-        description: "checks passed but the commit rollup has not",
+        reportedState: rollup ?? facts.mergeStateStatus,
+        description:
+          facts.mergeStateStatus === "UNSTABLE"
+            ? "checks passed but GitHub reports the merge state as UNSTABLE"
+            : "checks passed but the commit rollup has not",
         link: "",
         workflow: "",
       };

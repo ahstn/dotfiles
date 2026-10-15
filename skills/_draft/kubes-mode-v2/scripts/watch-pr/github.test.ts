@@ -354,6 +354,11 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
                 reply("me", "OWNER", `Fixed in abc1234.\n${AUTOFIX_FIXED_MARKER}`)
               ),
               thread(
+                "quotes-the-marker",
+                comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
+                reply("me", "OWNER", `Why does ${AUTOFIX_REPLY_MARKER} park a thread? Please fix this too.`)
+              ),
+              thread(
                 "drive-by",
                 comment({ __typename: "User", login: "rando" }, "CONTRIBUTOR")
               ),
@@ -374,6 +379,7 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     "reviewer-follow-up": "actionable",
     "edited-after-answer": "actionable",
     "reopened-after-fix": "actionable",
+    "quotes-the-marker": "actionable",
     "drive-by": "untrusted",
   });
   const followUp = threads.find((t) => t.id === "reviewer-follow-up");

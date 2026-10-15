@@ -1049,6 +1049,16 @@ it("returns a known thread blocker for a BEHIND PR whose CI read failed", async 
   expect(decision.kind === "blocker" && decision.blocker.kind).toBe("review-threads");
 });
 
+it("waits while GitHub reports UNSTABLE despite a green check read", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({ facts: { mergeStateStatus: "UNSTABLE" } }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

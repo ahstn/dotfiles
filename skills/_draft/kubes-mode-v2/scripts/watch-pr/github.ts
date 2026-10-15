@@ -480,6 +480,8 @@ export const AUTOFIX_REPLY_MARKER = "<!-- pr-autofix -->";
 // threads are read, so seeing it means a reviewer reopened the thread: that is
 // new feedback, not an answer awaiting the reviewer.
 export const AUTOFIX_FIXED_MARKER = "<!-- pr-autofix:fixed -->";
+const endsWithMarker = (body: string, marker: string): boolean =>
+  body.trimEnd().endsWith(marker);
 export type CommentTrust = (comment: T.ReviewComment) => boolean;
 export const trustedByAssociation: CommentTrust = (comment) =>
   comment.isViewer ||
@@ -523,9 +525,9 @@ export function decideThread(
   return {
     ...thread,
     disposition:
-      decisive.isViewer &&
-      decisive.body.includes(AUTOFIX_REPLY_MARKER) &&
-      !decisive.body.includes(AUTOFIX_FIXED_MARKER)
+      // Only as the final line, as the playbook writes it: a comment of yours
+      // that just quotes or discusses the marker is still feedback.
+      decisive.isViewer && endsWithMarker(decisive.body, AUTOFIX_REPLY_MARKER)
         ? "awaiting-reviewer"
         : "actionable",
     decidingComment: decisive,
