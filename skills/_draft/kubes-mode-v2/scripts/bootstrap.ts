@@ -32,8 +32,26 @@ const INSTALL_TIMEOUT_MS = 120_000;
 // The restarted watcher reads this to charge the install against --timeout.
 export const STARTED_AT_ENV = "WATCH_PR_STARTED_AT";
 
+/**
+ * The --timeout the watcher was given, in ms, read before commander is
+ * installed so the install itself can't outlast a short deadline. Null when
+ * absent, 0 or malformed; the CLI validates it properly later.
+ */
+function requestedTimeoutMs(argv: readonly string[]): number | null {
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    const value = arg === "--timeout" ? argv[i + 1] : arg.startsWith("--timeout=") ? arg.slice(10) : undefined;
+    if (value === undefined) continue;
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : null;
+  }
+  return null;
+}
+
 export function ensureDependenciesInstalled(): void {
   const startedAt = Date.now();
+  const requested = requestedTimeoutMs(process.argv.slice(2));
+  const installTimeoutMs = Math.min(INSTALL_TIMEOUT_MS, requested ?? Infinity);
   if (!Bun.semver.satisfies(Bun.version, `>=${MINIMUM_BUN}`)) {
     throw new Error(
       `watch-pr needs Bun >= ${MINIMUM_BUN} (found ${Bun.version}); run \`bun upgrade\``
@@ -50,11 +68,11 @@ export function ensureDependenciesInstalled(): void {
 
   const result = Bun.spawnSync(
     [process.execPath, "install", "--frozen-lockfile"],
-    { cwd: scriptsDirectory, timeout: INSTALL_TIMEOUT_MS }
+    { cwd: scriptsDirectory, timeout: installTimeoutMs }
   );
   if (result.exitCode === null || result.signalCode) {
     throw new Error(
-      `bun install --frozen-lockfile did not finish within ${INSTALL_TIMEOUT_MS / 1_000}s`
+      `bun install --frozen-lockfile did not finish within ${installTimeoutMs / 1_000}s`
     );
   }
   if (result.exitCode !== 0) {

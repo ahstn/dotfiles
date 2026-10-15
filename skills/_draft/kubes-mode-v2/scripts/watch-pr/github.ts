@@ -1002,17 +1002,34 @@ export async function requireWriteAccess(
     for (const comment of [thread.firstComment, ...thread.recentComments])
       if (comment !== null && needsCheck(comment)) logins.add(comment.authorLogin);
   const readOnly = new Set<string>();
+  let lookupFailure: unknown = null;
   await Promise.all(
     [...logins].map(async (login) => {
-      if ((await reader.permission(context, login)) !== true)
+      try {
+        if ((await reader.permission(context, login)) !== true)
+          readOnly.add(login);
+      } catch (error) {
+        // Not trusted while unknown; whether that can stand is decided below.
         readOnly.add(login);
+        lookupFailure ??= error;
+      }
     })
   );
   if (readOnly.size === 0) return threads;
   const trusted: CommentTrust = (comment) =>
     trustedByAssociation(comment) &&
     !(needsCheck(comment) && readOnly.has(comment.authorLogin));
-  return threads.map((thread) => decideThread(thread, trusted));
+  const decided = threads.map((thread) => decideThread(thread, trusted));
+  // A failed lookup only blocks the result when it could change it. If some
+  // thread is actionable on trust that needed no failed lookup, report it
+  // (threads outrank everything but conflicts, so this can't end in READY);
+  // otherwise retry rather than let a failed lookup park real feedback.
+  if (
+    lookupFailure !== null &&
+    !decided.some((thread) => thread.disposition === "actionable")
+  )
+    throw lookupFailure;
+  return decided;
 }
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 export async function resolveChecks(

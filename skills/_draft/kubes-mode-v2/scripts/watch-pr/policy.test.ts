@@ -426,6 +426,72 @@ it("reports actionable threads even when the checks can't be read", async () => 
   );
 });
 
+it("waits when the check list failed but the rollup has since passed", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      fastPath: { kind: "checks", checks: [failedCheck()] },
+      commitRollups: [{ oid: "head", state: "SUCCESS" }],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
+it("reports owner threads when another reviewer's lookup fails", async () => {
+  const comment = (login: string, authorAssociation: string) => ({
+    authorLogin: login,
+    body: "fix",
+    path: null,
+    line: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    activityAt: "2026-01-01T00:00:00Z",
+    authorAssociation,
+    authorIsBot: false,
+    isViewer: false,
+  });
+  const thread = (id: string, login: string, association: string): ReviewThread => ({
+    id,
+    firstComment: comment(login, association),
+    recentComments: [],
+    historyComplete: true,
+    decidingComment: null,
+    lastAuthorLogin: null,
+    latestCommentAt: null,
+    disposition: "actionable",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  });
+  const outage = new WatcherQueryError({
+    kind: "command-exit",
+    retryable: true,
+    code: 1,
+    detail: "502",
+  });
+  const read = (threads: readonly ReviewThread[]) => {
+    const base = fakeReader({ threads });
+    return readSnapshot({
+      reader: {
+        ...base,
+        async permission() {
+          throw outage;
+        },
+      },
+      context: context(9),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+  };
+  const snapshot = await read([
+    thread("owner", "boss", "OWNER"),
+    thread("member", "m", "MEMBER"),
+  ]);
+  if (snapshot.kind !== "open") throw new Error("expected open");
+  expect(snapshot.threads.map((t) => t.id)).toEqual(["owner"]);
+  await expect(read([thread("member", "m", "MEMBER")])).rejects.toBe(outage);
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

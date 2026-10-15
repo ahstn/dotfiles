@@ -245,7 +245,26 @@ async function readCi(
       all: checks.checks,
       hadPreviousPassingCi: merge.hadPreviousPassingCi,
     };
-    if (failed !== null)
+    if (failed !== null && merge.github.headRollupState === "SUCCESS") {
+      // The inverse race of ROLLUP_DISAGREES: a failed check was rerun and
+      // went green between the two reads. Poll again rather than send the
+      // agent after a failure that no longer exists.
+      const disagreement: T.PendingCheck = {
+        kind: "pending",
+        name: ROLLUP_DISAGREES,
+        reportedState: "SUCCESS",
+        description: "checks failed but the commit rollup has since passed",
+        link: "",
+        workflow: "",
+      };
+      ci = {
+        ...base,
+        all: [...base.all, disagreement],
+        kind: "ci-pending",
+        failed: [],
+        pending: [disagreement],
+      };
+    } else if (failed !== null)
       ci = {
         ...base,
         kind: "ci-failing",
