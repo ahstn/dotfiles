@@ -299,14 +299,25 @@ async function readCi(
         failed: [],
         pending: [disagreement],
       };
-    } else if (failed !== null)
+    } else if (failed !== null) {
+      // When the fresh read was taken it is the current truth: report its
+      // failures, not the first read's, which may have recovered meanwhile.
+      const current =
+        fresh === null
+          ? failed
+          : (nonEmpty(
+              fresh.filter(
+                (check): check is T.FailedCheck => check.kind === "failed"
+              )
+            ) ?? failed);
       ci = {
-        ...base,
+        ...(fresh === null ? base : { ...base, all: nonEmpty(fresh) ?? base.all }),
         kind: "ci-failing",
-        failed,
+        failed: current,
         pending: pending ?? [],
         github: merge.github,
       };
+    }
     else if (merge.github.kind === "refused")
       ci = {
         ...base,
@@ -1161,7 +1172,15 @@ export async function runQueued(args: {
           );
         return {
           kind: "sleep",
-          seconds: args.options.interval,
+          // Wake for the next whole-stack sweep if it's due before the next
+          // frontier poll, so a long --interval can't postpone it.
+          seconds: Math.max(
+            0,
+            Math.min(
+              args.options.interval,
+              evaluation.state.nextSweepAt - args.dependencies.clock.now()
+            )
+          ),
           // Without this the poll loop would wake at the deadline and read
           // another snapshot (or a whole sweep) before evaluateQueue times out.
           onDeadline: () =>

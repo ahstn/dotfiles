@@ -644,6 +644,41 @@ it("re-reads the snapshot when the PR is set to draft mid-read", async () => {
   });
 });
 
+it("reports the fresh read's failures when the first read's recovered", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Code Review Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks:
+            reads === 1
+              ? [failedCheck("a"), passingCheck("b"), gate]
+              : [passingCheck("a"), failedCheck("b"), gate],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  if (decision.kind !== "blocker" || decision.blocker.kind !== "failing-checks")
+    throw new Error("expected failing checks");
+  expect(decision.blocker.ci.failed.map((check) => check.name)).toEqual(["b"]);
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
@@ -783,6 +818,30 @@ it("times out a queued wait at the deadline without another snapshot", async () 
   expect(verdict.kind).toBe("TIMEOUT");
   expect(now).toBeLessThanOrEqual(90);
   expect(reads).toBe(2);
+});
+
+it("wakes a queued watch for its next sweep before a long poll interval", async () => {
+  const sleeps: number[] = [];
+  const running = runQueued({
+    dependencies: {
+      reader: fakeReader({
+        fastPath: { kind: "checks", checks: [pendingCheck()] },
+      }),
+      clock: {
+        now: () => sleeps.reduce((sum, s) => sum + s, 0),
+        observedAt: () => "now",
+        sleep: async (seconds) => {
+          sleeps.push(seconds);
+          throw new Error("stop after first sleep");
+        },
+      },
+      emit: () => {},
+    },
+    contexts: [context(1)],
+    options: { ...options, interval: 600, sweepInterval: 60, timeout: 0 },
+  });
+  await expect(running).rejects.toThrow("stop after first sleep");
+  expect(sleeps[0]).toBeLessThanOrEqual(60);
 });
 
 describe("queued-stack cadence", () => {

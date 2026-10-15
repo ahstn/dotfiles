@@ -1,6 +1,6 @@
 # PR autofix
 
-Watch an open PR and fix what blocks it (merge conflicts, review threads, failing checks) until it is ready, like Claude Desktop's auto-fix. Asking to watch, babysit or autofix a PR authorizes commits and pushes to that PR's branch, replies to its threads, and one rerun of a failed CI job per check when it looks flaky (see Failing checks). It authorizes nothing else: no new PR, no merge, no force-push, no other workflow runs.
+Watch an open PR and fix what blocks it (merge conflicts, review threads, failing checks) until it is ready, like Claude Desktop's auto-fix. Asking to watch, babysit or autofix a PR authorizes commits and pushes to that PR's branch, replies to its threads, and one rerun of the single flaky job behind a failed check, plus the jobs it depends on (see Failing checks). It authorizes nothing else: no new PR, no merge, no force-push, no other workflow runs.
 
 `scripts/watch-pr/watch-pr` (relative to this skill) does the watching. It needs `gh` and Bun >= 1.3.2, and installs its own dependencies on first run. Run it from the PR's checkout:
 
@@ -19,7 +19,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 | 2 | Merge conflicts | [Conflicts](#conflicts) |
 | 3 | Actionable review threads | [Review threads](#review-threads) |
 | 4 | Failing checks | [Failing checks](#failing-checks) |
-| 5 | Timeout | `reason.kind` `pending-checks` (or a stack reason): rerun the watcher. `status-unavailable`: GitHub kept failing, so report it like 7. |
+| 5 | Timeout | `reason.kind` `pending-checks` (or a stack reason): rerun the watcher. `startup` (installing the watcher's dependencies ran out of time) or `discovery` (finding the PR did): rerun once, and if it repeats, report it like 7. `status-unavailable`: GitHub kept failing, so report it like 7. |
 | 6 | Merge gate: changes requested, PR closed, or a review thread too long to read in full | Report. A human has to act. |
 | 7 | GitHub query failed | Check `gh auth status` and the PR number, then report. |
 | 64 | Bad arguments | Fix the command. |
@@ -85,7 +85,7 @@ Classify each thread and act:
 | Wrong | Reply with the evidence, such as a file and line, a test, or a doc. Leave it unresolved for the reviewer. |
 | Unclear or architectural | Ask the user. Don't reply or resolve yet. |
 
-For each reply, create a fresh file outside the repository with `mktemp "${TMPDIR:-/tmp}/pr-autofix-reply.XXXXXX"` (this form works with both GNU and BSD `mktemp`), and write the body to that path with your file-writing tool. Never put the body inline in a shell string, so review text cannot be interpolated by the shell. Delete that exact file after posting: nothing is left to commit by accident, and concurrent sessions never share a path.
+For each reply, create a fresh file outside the repository with `mktemp /tmp/pr-autofix-reply.XXXXXX` (this form works with both GNU and BSD `mktemp`), and write the body to that path with your file-writing tool. A fixed `/tmp` prefix keeps the path free of spaces and shell metacharacters, which a custom `TMPDIR` might add; quote it anyway, as below. Never put the body inline in a shell string, so review text cannot be interpolated by the shell. Delete that exact file after posting: nothing is left to commit by accident, and concurrent sessions never share a path.
 
 The last line of every reply must be one of two markers. Without one, the watcher treats your own reply as new feedback. A marker only counts on a comment written by the authenticated `gh` user, so a pasted copy from anyone else is ignored.
 
@@ -101,9 +101,9 @@ Fixed in abc1234: the empty cursor now returns the first page.
 Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
 
 ```shell
-gh api graphql -F threadId=<thread-id> -F body=@<reply-file> -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }' &&
+gh api graphql -F threadId=<thread-id> -F "body=@<reply-file>" -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }' &&
   gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
-rm <reply-file>
+rm -- "<reply-file>"
 ```
 
 For a reply that leaves the thread open, run only the first command.
@@ -115,6 +115,6 @@ Exit 4. Each entry in `blocker.ci.failed` has `name`, `link` and `workflow`.
 1. Read the failure. For GitHub Actions, the link looks like `.../actions/runs/<run-id>/job/<job-id>`. Run `gh run view --job <job-id> --log-failed -R <owner>/<repo>`, using `blocker.pr`, because a fork checkout resolves `gh` to the fork. For other providers, read what `gh` exposes. If you cannot see the logs, report the link.
 2. Decide whether the failure is caused by this PR's diff.
    - **Caused by the diff.** Reproduce it locally when feasible, fix the root cause, run the same check locally, then commit and push.
-   - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun once with `gh run rerun <run-id> --failed -R <owner>/<repo>`. If it fails the same way again, it is not a flake.
+   - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun that one job once, not the whole run: `--failed` would also rerun every other failed job in the run. Find its job ID with `gh run view <run-id> -R <owner>/<repo> --json jobs --jq '.jobs[] | {name, databaseId}'`, matching the check's name. Don't use the number from a browser `/jobs/<n>` URL; `gh` says that one 404s. Then run `gh run rerun --job <databaseId> -R <owner>/<repo>`, which also reruns the jobs it depends on. If it fails the same way again, it is not a flake.
    - **Also fails on the base branch.** Report it. Don't fix unrelated code in this PR.
 3. `kind: "ci-github-rejected"` with no failed checks means GitHub reports a failing rollup that the check list doesn't show, for example a missing required check. Report it.
