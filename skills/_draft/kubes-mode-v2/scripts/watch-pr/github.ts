@@ -1119,9 +1119,16 @@ export class GhGitHubReader implements T.GitHubReader {
       "api",
       `repos/${context.owner}/${context.repo}/collaborators/${login}/permission`,
       "--jq",
-      ".permission",
+      '[.permission, .role_name // ""] | @tsv',
     ]);
-    if (result.code === 0) return WRITE_PERMISSIONS.has(result.stdout.trim());
+    // `permission` is the legacy field (maintain reads as write, custom
+    // roles as their base); `role_name` names maintain outright. Either
+    // showing write access is enough.
+    if (result.code === 0)
+      return result.stdout
+        .trim()
+        .split("\t")
+        .some((role) => WRITE_PERMISSIONS.has(role));
     // 403 is GitHub refusing to say (the caller lacks push access, as in a
     // fork); anything else is a failed read, which must retry rather than
     // fall through to trusting the commenter.
@@ -1249,7 +1256,7 @@ export class GhGitHubReader implements T.GitHubReader {
 // needs verified write access to count as trusted. GitHub only answers this
 // for callers with push access, so where it won't (a fork contributor), those
 // comments are untrusted and only the owner, Apps and the viewer count.
-const WRITE_PERMISSIONS = new Set(["admin", "write"]);
+const WRITE_PERMISSIONS = new Set(["admin", "maintain", "write"]);
 const needsPermissionCheck = (
   comment: T.ReviewComment
 ): comment is T.ReviewComment & { readonly authorLogin: string } =>
