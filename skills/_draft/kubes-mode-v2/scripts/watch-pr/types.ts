@@ -44,11 +44,17 @@ export interface PullRequestFacts {
   readonly mergeStateStatus: MergeStateStatus;
   readonly reviewDecision: ReviewDecision;
   readonly headRefOid: string | null;
+  /** The base branch's tip; a move there can change mergeability with no new head. */
+  readonly baseRefOid: string | null;
   readonly headRefName: string;
   readonly baseRefName: string;
   readonly state: "OPEN" | "CLOSED" | "MERGED";
   readonly mergedAt: string | null;
   readonly isDraft: boolean;
+}
+export interface Revisions {
+  readonly headRefOid: string | null;
+  readonly baseRefOid: string | null;
 }
 export interface OpenPullRequest {
   readonly number: PrNumber;
@@ -484,7 +490,7 @@ export interface GitHubReader {
   }>;
   pullRequest(context: PrContext): Promise<PullRequestFacts>;
   /** The PR's current head commit; a cheap re-read to detect mid-snapshot pushes. */
-  headRefOid(context: PrContext): Promise<string | null>;
+  revisions(context: PrContext): Promise<Revisions>;
   openPullRequests(repository: Repository): Promise<readonly OpenPullRequest[]>;
   checksFastPath(context: PrContext): Promise<ChecksFastPath>;
   checkRollupPage(

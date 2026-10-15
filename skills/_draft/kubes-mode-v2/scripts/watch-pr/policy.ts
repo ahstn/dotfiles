@@ -65,9 +65,9 @@ export async function readSnapshot(args: {
   readonly allowDraft: boolean;
   readonly allowNoChecks?: boolean;
 }): Promise<T.PrSnapshot> {
-  // Threads and checks are read against whatever head is current when each
-  // query runs, so a push mid-snapshot could pair one revision's mergeability
-  // with another's checks. Re-read the head and start over if it moved.
+  // Threads and checks are read against whatever is current when each query
+  // runs, so a push (or a base update) mid-snapshot could pair one revision's
+  // mergeability with another's checks. Re-read both and start over if either moved.
   for (let attempt = 1; ; attempt += 1) {
     const facts = await args.reader.pullRequest(args.context);
     if (facts.state === "MERGED" || facts.mergedAt !== null)
@@ -75,9 +75,9 @@ export async function readSnapshot(args: {
     if (facts.state === "CLOSED")
       return { kind: "closed", context: args.context, facts };
     const snapshot = await readOpenOrConflict(args, facts);
-    let head: string | null;
+    let now: T.Revisions;
     try {
-      head = await args.reader.headRefOid(args.context);
+      now = await args.reader.revisions(args.context);
     } catch (error) {
       // A known conflict or actionable thread outranks a failed
       // lower-priority read.
@@ -89,12 +89,18 @@ export async function readSnapshot(args: {
         return snapshot;
       throw error;
     }
-    if (head === facts.headRefOid) return snapshot;
+    // The base matters too: a base-branch update can create a conflict with
+    // no new head commit, leaving the mergeability read at the start stale.
+    if (
+      now.headRefOid === facts.headRefOid &&
+      now.baseRefOid === facts.baseRefOid
+    )
+      return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
         kind: "head-moved",
         retryable: true,
-        detail: `PR head kept moving during ${attempt} snapshots (last ${facts.headRefOid} -> ${head})`,
+        detail: `PR head or base kept moving during ${attempt} snapshots (last head ${facts.headRefOid} -> ${now.headRefOid}, base ${facts.baseRefOid} -> ${now.baseRefOid})`,
       });
   }
 }
@@ -250,19 +256,25 @@ async function readCi(
     // commit rollup still counts it as PENDING. Only discount that when a
     // fresh read, taken after the rollup, shows the gate is the sole thing
     // outstanding: a workflow that started between the reads must still count.
+    const rollupPending = rollup === "PENDING" || rollup === "EXPECTED";
+    const gatePresent = checks.checks.some(
+      (check) => check.kind === "code-review-gate"
+    );
+    const fresh =
+      rollupPending && gatePresent
+        ? (await resolveChecks(args.reader, args.context, args.allowNoChecks))
+            .checks
+        : null;
     const gateHoldsRollup =
-      (rollup === "PENDING" || rollup === "EXPECTED") &&
-      checks.checks.some((check) => check.kind === "code-review-gate") &&
-      (
-        await resolveChecks(args.reader, args.context, args.allowNoChecks)
-      ).checks.every(
-        (check) => check.kind !== "pending" && check.kind !== "failed"
-      );
-    if (
-      failed !== null &&
-      (rollup === "SUCCESS" ||
-        ((rollup === "PENDING" || rollup === "EXPECTED") && !gateHoldsRollup))
-    ) {
+      fresh !== null &&
+      fresh.every((check) => check.kind !== "pending" && check.kind !== "failed");
+    // With the gate holding the rollup at PENDING, only the fresh read can say
+    // whether the earlier failure still stands.
+    const failureGone =
+      rollup === "SUCCESS" ||
+      (rollupPending &&
+        (fresh === null || !fresh.some((check) => check.kind === "failed")));
+    if (failed !== null && failureGone) {
       // The inverse race of ROLLUP_DISAGREES: a failed check was rerun
       // between the two reads. A failure would keep the rollup at FAILURE, so
       // PENDING or SUCCESS means the rerun is running or already green. Poll

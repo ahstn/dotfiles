@@ -146,6 +146,7 @@ describe("closed enum parsing", () => {
     mergeStateStatus: "CLEAN",
     reviewDecision: "APPROVED",
     headRefOid: "head",
+    baseRefOid: "base",
     headRefName: "feature",
     baseRefName: "main",
     state: "OPEN",

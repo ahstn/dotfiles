@@ -111,7 +111,7 @@ describe("snapshot query planning", () => {
       "pullRequest",
       "reviewThreads",
       "checksFastPath",
-      "headRefOid",
+      "revisions",
     ]);
   });
 
@@ -320,8 +320,8 @@ it("re-reads the snapshot when the head moves mid-read", async () => {
       facts += 1;
       return { ...(await base.pullRequest(pr)), headRefOid: facts === 1 ? "a" : "b" };
     },
-    async headRefOid() {
-      return heads.shift() ?? "b";
+    async revisions() {
+      return { headRefOid: heads.shift() ?? "b", baseRefOid: "base" };
     },
   };
   const snapshot = await readSnapshot({
@@ -341,7 +341,7 @@ it("keeps a known conflict when the head re-check fails", async () => {
   const snapshot = await readSnapshot({
     reader: {
       ...base,
-      async headRefOid() {
+      async revisions() {
         throw new WatcherQueryError({
           kind: "command-exit",
           retryable: true,
@@ -556,6 +556,65 @@ it("still waits when a workflow starts behind the review gate", async () => {
   });
   expect(reads).toBe(2);
   expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
+it("waits when a failure next to the review gate has since gone green", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Code Review Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks: reads === 1 ? [failedCheck(), gate] : [passingCheck(), gate],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
+it("re-reads the snapshot when the base branch moves mid-read", async () => {
+  const base = fakeReader();
+  let facts = 0;
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      facts += 1;
+      return {
+        ...(await base.pullRequest(pr)),
+        baseRefOid: facts === 1 ? "old-base" : "new-base",
+        mergeable: facts === 1 ? "MERGEABLE" : "CONFLICTING",
+      };
+    },
+    async revisions() {
+      return { headRefOid: "head", baseRefOid: "new-base" };
+    },
+  };
+  const snapshot = await readSnapshot({
+    reader,
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(facts).toBe(2);
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
+    "merge-conflicts"
+  );
 });
 
 it("waits while GitHub is still computing mergeability", async () => {

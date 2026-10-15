@@ -226,6 +226,7 @@ describe("rendering", () => {
           mergeStateStatus: "CLEAN",
           reviewDecision: "APPROVED",
           headRefOid: "head",
+          baseRefOid: "base",
           headRefName: "feature",
           baseRefName: "main",
           state: "MERGED",

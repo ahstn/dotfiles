@@ -655,6 +655,8 @@ export function parsePullRequest(
     ),
     reviewDecision: reviewDecision(object.reviewDecision),
     headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
+    baseRefOid:
+      typeof object.baseRefOid === "string" ? object.baseRefOid : null,
     headRefName: string(object.headRefName, "pull request.headRefName"),
     baseRefName: string(object.baseRefName, "pull request.baseRefName"),
     state: enumValue(
@@ -739,12 +741,12 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "mergeable,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,state,mergedAt,isDraft",
+        "mergeable,mergeStateStatus,reviewDecision,headRefOid,baseRefOid,headRefName,baseRefName,state,mergedAt,isDraft",
       ]),
       context
     );
   }
-  async headRefOid(context: T.PrContext): Promise<string | null> {
+  async revisions(context: T.PrContext): Promise<T.Revisions> {
     const object = record(
       await runJson([
         "gh",
@@ -754,11 +756,14 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "headRefOid",
+        "headRefOid,baseRefOid",
       ]),
-      "pull request head"
+      "pull request revisions"
     );
-    return optionalString(object.headRefOid, "pull request.headRefOid");
+    return {
+      headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
+      baseRefOid: optionalString(object.baseRefOid, "pull request.baseRefOid"),
+    };
   }
   async openPullRequests(
     repository: T.Repository
@@ -953,7 +958,10 @@ export class GhGitHubReader implements T.GitHubReader {
     // 403 is GitHub refusing to say (the caller lacks push access, as in a
     // fork); anything else is a failed read, which must retry rather than
     // fall through to trusting the commenter.
-    if (/HTTP 403/.test(result.stderr)) return null;
+    // Rate limits also arrive as 403 (or 429) but clear up; treating them as
+    // "won't say" would drop real reviewers' feedback, so they retry instead.
+    if (/HTTP 403/.test(result.stderr) && !/rate limit/i.test(result.stderr))
+      return null;
     throw new WatcherQueryError({
       kind: "command-exit",
       retryable: true,

@@ -71,6 +71,7 @@ export function fakeReader(
     mergeStateStatus: "CLEAN",
     reviewDecision: "APPROVED",
     headRefOid: "head",
+    baseRefOid: "base",
     headRefName: "feature",
     baseRefName: "main",
     state: "OPEN",
@@ -95,9 +96,12 @@ export function fakeReader(
       calls.push("pullRequest");
       return { ...defaults, ...options.facts, context: requested };
     },
-    async headRefOid() {
-      calls.push("headRefOid");
-      return options.facts?.headRefOid ?? defaults.headRefOid;
+    async revisions() {
+      calls.push("revisions");
+      return {
+        headRefOid: options.facts?.headRefOid ?? defaults.headRefOid,
+        baseRefOid: options.facts?.baseRefOid ?? defaults.baseRefOid,
+      };
     },
     async openPullRequests() {
       calls.push("openPullRequests");
