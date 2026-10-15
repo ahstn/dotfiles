@@ -125,4 +125,9 @@ Exit 4. Each entry in `blocker.ci.failed` has `name`, `link` and `workflow`.
    - **Caused by the diff.** Reproduce it locally when feasible, fix the root cause, run the same check locally, then commit and push.
    - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun that one job once, not the whole run: `--failed` would also rerun every other failed job in the run. Using the `<databaseId>` from step 1, run `gh run rerun --job <databaseId> -R <owner>/<repo>`, which also reruns the jobs it depends on. If it fails the same way again, it is not a flake.
    - **Also fails on the base branch.** Report it. Don't fix unrelated code in this PR.
-3. `kind: "ci-github-rejected"` with no failed checks means GitHub blocks the merge for a reason the check list doesn't show. `github.cause` is `failing-rollup` (the commit's checks failed somewhere the list doesn't show) or `unexplained-block` (for example a required check that never reported, or a signed-commit rule). Report it; a human has to act.
+3. `kind: "ci-github-rejected"` with no failed checks means GitHub blocks the merge for a reason the check list doesn't show. `github.cause` says why:
+   - `failing-rollup`: the commit's checks failed somewhere the list doesn't show.
+   - `open-conversations`: threads left open for a reviewer (or from untrusted authors) are unresolved, and the repo requires conversation resolution.
+   - `unexplained-block`: for example a required check that never reported, or a signed-commit rule.
+
+   Report it; a human has to act.

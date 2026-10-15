@@ -14,6 +14,8 @@ export function assessGitHubMerge(args: {
    * unresolved thread. Without one, BLOCKED is a hidden blocker, not READY.
    */
   readonly blockExplained: boolean;
+  /** Unresolved threads the watcher deliberately parks (they don't block READY). */
+  readonly parkedThreads?: boolean;
 }): T.GitHubMergeAssessment {
   if (args.mergeStateStatus === "BLOCKED") {
     if (args.headRollupState === "ERROR" || args.headRollupState === "FAILURE")
@@ -28,7 +30,7 @@ export function assessGitHubMerge(args: {
         kind: "refused",
         mergeStateStatus: args.mergeStateStatus,
         headRollupState: args.headRollupState,
-        cause: "unexplained-block",
+        cause: args.parkedThreads ? "open-conversations" : "unexplained-block",
       };
     return {
       kind: "allowed",
@@ -47,7 +49,8 @@ export function assessGitHubMerge(args: {
 async function mergeAssessment(
   reader: T.GitHubReader,
   facts: T.PullRequestFacts,
-  blockExplained: boolean
+  blockExplained: boolean,
+  parkedThreads: boolean
 ) {
   const commits = await reader.commitRollups(facts.context);
   const headRollupState =
@@ -63,6 +66,7 @@ async function mergeAssessment(
       mergeStateStatus: facts.mergeStateStatus,
       headRollupState,
       blockExplained,
+      parkedThreads,
     }),
   };
 }
@@ -124,6 +128,22 @@ export async function readSnapshot(args: {
     ) {
       // Check activity moves none of the fields above. Before a clean CI read
       // can become READY, confirm no check has registered or failed since.
+      // BEHIND stays BEHIND when an admin turns strict checks on or off, so
+      // the rule result has to be re-read too.
+      if (
+        snapshot.kind === "open" &&
+        facts.mergeStateStatus === "BEHIND" &&
+        (await args.reader.upToDateRequired(args.context, facts.baseRefName)) !==
+          snapshot.upToDateRequired
+      ) {
+        if (attempt >= HEAD_RACE_ATTEMPTS)
+          throw new WatcherQueryError({
+            kind: "head-moved",
+            retryable: true,
+            detail: `branch rules for ${facts.baseRefName} kept changing during ${attempt} snapshots`,
+          });
+        continue;
+      }
       if (
         snapshot.kind !== "open" ||
         snapshot.ci.kind !== "ci-clean" ||
@@ -214,7 +234,15 @@ async function readOpenSnapshot(
     const { ci, reviewAutomationRunning } = await readCi(
       args,
       facts,
-      summaries.length
+      {
+        blocking:
+          threads.length +
+          parkedThreads.filter((thread) => thread.disposition === "unverifiable")
+            .length,
+        parked: parkedThreads.filter(
+          (thread) => thread.disposition !== "unverifiable"
+        ).length,
+      }
     );
     return {
       kind: "open",
@@ -252,7 +280,9 @@ async function readOpenSnapshot(
 async function readCi(
   args: Parameters<typeof readSnapshot>[0],
   facts: T.PullRequestFacts,
-  unresolvedThreads: number
+  // Threads that themselves stop READY (actionable or unverifiable) explain a
+  // BLOCKED state; parked ones don't, since READY would still go out.
+  threadCounts: { readonly blocking: number; readonly parked: number }
 ): Promise<{ readonly ci: T.CiState; readonly reviewAutomationRunning: boolean }> {
   const checks = await resolveChecks(
     args.reader,
@@ -304,10 +334,11 @@ async function readCi(
       facts,
       facts.reviewDecision === "REVIEW_REQUIRED" ||
         facts.reviewDecision === "CHANGES_REQUESTED" ||
-        unresolvedThreads > 0 ||
+        threadCounts.blocking > 0 ||
         checks.checks.some(
           (check) => check.kind === "pending" || check.kind === "code-review-gate"
-        )
+        ),
+      threadCounts.parked > 0
     );
     const base = {
       source: checks.source,

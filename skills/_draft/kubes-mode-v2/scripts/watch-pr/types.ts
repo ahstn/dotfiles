@@ -174,12 +174,15 @@ export interface GitHubMergeRefusal {
   readonly mergeStateStatus: "BLOCKED";
   readonly headRollupState: RollupState;
   /**
-   * `failing-rollup`: the commit's checks failed. `unexplained-block`:
+   * `failing-rollup`: the commit's checks failed. `open-conversations`:
+   * nothing else explains it, but threads left for a reviewer (or from
+   * untrusted authors) are still unresolved, which blocks merging when the
+   * repo requires conversation resolution. `unexplained-block`:
    * GitHub blocks the merge for nothing the watcher can see (no pending check,
    * no review owed, no open thread), such as a required check that never
    * reported.
    */
-  readonly cause: "failing-rollup" | "unexplained-block";
+  readonly cause: "failing-rollup" | "open-conversations" | "unexplained-block";
 }
 export type GitHubMergeAllowed =
   | {

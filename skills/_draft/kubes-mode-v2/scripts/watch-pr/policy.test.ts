@@ -881,6 +881,59 @@ it("re-reads when the merge state changes mid-read", async () => {
   expect(classifyPr(snapshot).kind).toBe("blocker");
 });
 
+it("re-reads when the up-to-date rule changes mid-read on a BEHIND PR", async () => {
+  const base = fakeReader({ facts: { mergeStateStatus: "BEHIND" } });
+  let ruleReads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async upToDateRequired() {
+        ruleReads += 1;
+        return ruleReads > 1;
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(ruleReads).toBeGreaterThanOrEqual(3);
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
+    "merge-conflicts"
+  );
+});
+
+it("names open conversations when only parked threads could explain BLOCKED", async () => {
+  const parked: ReviewThread = {
+    id: "answered",
+    firstComment: null,
+    recentComments: [],
+    historyComplete: true,
+    decidingComment: null,
+    lastAuthorLogin: null,
+    latestCommentAt: null,
+    disposition: "awaiting-reviewer",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  };
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeStateStatus: "BLOCKED", reviewDecision: "APPROVED" },
+      threads: [parked],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  if (decision.kind !== "blocker" || decision.blocker.kind !== "failing-checks")
+    throw new Error("expected a CI blocker");
+  expect(decision.blocker.ci).toMatchObject({
+    kind: "ci-github-rejected",
+    github: { cause: "open-conversations" },
+  });
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
