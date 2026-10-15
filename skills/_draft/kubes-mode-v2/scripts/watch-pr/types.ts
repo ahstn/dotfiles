@@ -46,6 +46,8 @@ export interface PullRequestFacts {
   readonly headRefOid: string | null;
   /** The base branch's tip; a move there can change mergeability with no new head. */
   readonly baseRefOid: string | null;
+  /** Moves on new or edited review comments too, so it watermarks the thread read. */
+  readonly updatedAt: string | null;
   readonly headRefName: string;
   readonly baseRefName: string;
   readonly state: "OPEN" | "CLOSED" | "MERGED";
@@ -65,6 +67,7 @@ export type RecheckFacts = Pick<
   | "isDraft"
   | "reviewDecision"
   | "mergedAt"
+  | "updatedAt"
 >;
 export interface OpenPullRequest {
   readonly number: PrNumber;
@@ -168,7 +171,14 @@ export interface CommitRollup {
 export interface GitHubMergeRefusal {
   readonly kind: "refused";
   readonly mergeStateStatus: "BLOCKED";
-  readonly headRollupState: "ERROR" | "FAILURE";
+  readonly headRollupState: RollupState;
+  /**
+   * `failing-rollup`: the commit's checks failed. `unexplained-block`:
+   * GitHub blocks the merge for nothing the watcher can see (no pending check,
+   * no review owed, no open thread), such as a required check that never
+   * reported.
+   */
+  readonly cause: "failing-rollup" | "unexplained-block";
 }
 export type GitHubMergeAllowed =
   | {

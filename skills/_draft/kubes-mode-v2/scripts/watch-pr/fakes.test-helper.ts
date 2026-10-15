@@ -72,6 +72,7 @@ export function fakeReader(
     reviewDecision: "APPROVED",
     headRefOid: "head",
     baseRefOid: "base",
+    updatedAt: "t",
     headRefName: "feature",
     baseRefName: "main",
     state: "OPEN",
@@ -98,9 +99,24 @@ export function fakeReader(
     },
     async recheck() {
       calls.push("recheck");
-      const { headRefOid, baseRefOid, state, isDraft, reviewDecision, mergedAt } =
-        { ...defaults, ...options.facts };
-      return { headRefOid, baseRefOid, state, isDraft, reviewDecision, mergedAt };
+      const {
+        headRefOid,
+        baseRefOid,
+        state,
+        isDraft,
+        reviewDecision,
+        mergedAt,
+        updatedAt,
+      } = { ...defaults, ...options.facts };
+      return {
+        headRefOid,
+        baseRefOid,
+        state,
+        isDraft,
+        reviewDecision,
+        mergedAt,
+        updatedAt,
+      };
     },
     async openPullRequests() {
       calls.push("openPullRequests");

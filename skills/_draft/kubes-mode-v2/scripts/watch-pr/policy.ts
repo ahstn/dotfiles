@@ -8,6 +8,12 @@ import { nonEmpty } from "./types.ts";
 export function assessGitHubMerge(args: {
   readonly mergeStateStatus: T.MergeStateStatus;
   readonly headRollupState: T.RollupState;
+  /**
+   * Whether something the watcher already handles explains a BLOCKED state:
+   * a review still owed, a pending check (the review gate included), or an
+   * unresolved thread. Without one, BLOCKED is a hidden blocker, not READY.
+   */
+  readonly blockExplained: boolean;
 }): T.GitHubMergeAssessment {
   if (args.mergeStateStatus === "BLOCKED") {
     if (args.headRollupState === "ERROR" || args.headRollupState === "FAILURE")
@@ -15,6 +21,14 @@ export function assessGitHubMerge(args: {
         kind: "refused",
         mergeStateStatus: args.mergeStateStatus,
         headRollupState: args.headRollupState,
+        cause: "failing-rollup",
+      };
+    if (!args.blockExplained)
+      return {
+        kind: "refused",
+        mergeStateStatus: args.mergeStateStatus,
+        headRollupState: args.headRollupState,
+        cause: "unexplained-block",
       };
     return {
       kind: "allowed",
@@ -32,7 +46,8 @@ export function assessGitHubMerge(args: {
 }
 async function mergeAssessment(
   reader: T.GitHubReader,
-  facts: T.PullRequestFacts
+  facts: T.PullRequestFacts,
+  blockExplained: boolean
 ) {
   const commits = await reader.commitRollups(facts.context);
   const headRollupState =
@@ -47,6 +62,7 @@ async function mergeAssessment(
     github: assessGitHubMerge({
       mergeStateStatus: facts.mergeStateStatus,
       headRollupState,
+      blockExplained,
     }),
   };
 }
@@ -98,7 +114,10 @@ export async function readSnapshot(args: {
       now.state === facts.state &&
       now.isDraft === facts.isDraft &&
       now.reviewDecision === facts.reviewDecision &&
-      now.mergedAt === facts.mergedAt
+      now.mergedAt === facts.mergedAt &&
+      // A review comment posted or edited after the thread read changes no
+      // field above; updatedAt catches it before a stale READY goes out.
+      now.updatedAt === facts.updatedAt
     )
       return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
@@ -177,7 +196,11 @@ async function readOpenSnapshot(
     (thread) => thread.disposition !== "actionable"
   );
   try {
-    const { ci, reviewAutomationRunning } = await readCi(args, facts);
+    const { ci, reviewAutomationRunning } = await readCi(
+      args,
+      facts,
+      summaries.length
+    );
     return {
       kind: "open",
       context: args.context,
@@ -205,7 +228,8 @@ async function readOpenSnapshot(
 }
 async function readCi(
   args: Parameters<typeof readSnapshot>[0],
-  facts: T.PullRequestFacts
+  facts: T.PullRequestFacts,
+  unresolvedThreads: number
 ): Promise<{ readonly ci: T.CiState; readonly reviewAutomationRunning: boolean }> {
   const checks = await resolveChecks(
     args.reader,
@@ -250,7 +274,16 @@ async function readCi(
       hadPreviousPassingCi: false,
     };
   else {
-    const merge = await mergeAssessment(args.reader, facts);
+    const merge = await mergeAssessment(
+      args.reader,
+      facts,
+      facts.reviewDecision === "REVIEW_REQUIRED" ||
+        facts.reviewDecision === "CHANGES_REQUESTED" ||
+        unresolvedThreads > 0 ||
+        checks.checks.some(
+          (check) => check.kind === "pending" || check.kind === "code-review-gate"
+        )
+    );
     const base = {
       source: checks.source,
       all: checks.checks,
@@ -1082,11 +1115,14 @@ export async function runQueued(args: {
     if (state.work !== null) {
       // A large or slow stack can cross --timeout mid-sweep; stop between
       // PRs rather than reading the rest.
-      const next =
-        state.work.kind === "whole-stack-sweep"
-          ? state.work.remaining[0]
-          : state.work.frontier;
       const snapshotState = state;
+      // The lowest PR not known to be merged, in queue order. During the first
+      // sweep state.frontier isn't set yet, and the next unread PR isn't the
+      // frontier when one below it was already read and is still open.
+      const lowestUnmerged =
+        state.queue.find(
+          (pr) => snapshotState.snapshots.get(pr.number)?.kind !== "merged"
+        ) ?? state.queue[0];
       return {
         kind: "continue",
         onDeadline: () =>
@@ -1096,7 +1132,7 @@ export async function runQueued(args: {
             exitCode: 5,
             reason: {
               kind: "queued-stack",
-              frontier: snapshotState.frontier ?? next,
+              frontier: snapshotState.frontier ?? lowestUnmerged,
               unmergedCount: snapshotState.queue.filter(
                 (pr) => snapshotState.snapshots.get(pr.number)?.kind !== "merged"
               ).length,

@@ -657,6 +657,7 @@ export function parsePullRequest(
     headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
     baseRefOid:
       typeof object.baseRefOid === "string" ? object.baseRefOid : null,
+    updatedAt: typeof object.updatedAt === "string" ? object.updatedAt : null,
     headRefName: string(object.headRefName, "pull request.headRefName"),
     baseRefName: string(object.baseRefName, "pull request.baseRefName"),
     state: enumValue(
@@ -741,7 +742,7 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "mergeable,mergeStateStatus,reviewDecision,headRefOid,baseRefOid,headRefName,baseRefName,state,mergedAt,isDraft",
+        "mergeable,mergeStateStatus,reviewDecision,headRefOid,baseRefOid,headRefName,baseRefName,state,mergedAt,isDraft,updatedAt",
       ]),
       context
     );
@@ -756,7 +757,7 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "headRefOid,baseRefOid,state,isDraft,reviewDecision,mergedAt",
+        "headRefOid,baseRefOid,state,isDraft,reviewDecision,mergedAt,updatedAt",
       ]),
       "pull request recheck"
     );
@@ -773,6 +774,7 @@ export class GhGitHubReader implements T.GitHubReader {
       isDraft: object.isDraft,
       reviewDecision: reviewDecision(object.reviewDecision),
       mergedAt: optionalString(object.mergedAt, "pull request.mergedAt"),
+      updatedAt: optionalString(object.updatedAt, "pull request.updatedAt"),
     };
   }
   async openPullRequests(
@@ -972,6 +974,9 @@ export class GhGitHubReader implements T.GitHubReader {
     // "won't say" would drop real reviewers' feedback, so they retry instead.
     if (/HTTP 403/.test(result.stderr) && !/rate limit/i.test(result.stderr))
       return null;
+    // 404: the author is no longer a collaborator (or the account is gone).
+    // That's a definite "no write access", not a failed read to retry.
+    if (/HTTP 404/.test(result.stderr)) return false;
     throw new WatcherQueryError({
       kind: "command-exit",
       retryable: true,

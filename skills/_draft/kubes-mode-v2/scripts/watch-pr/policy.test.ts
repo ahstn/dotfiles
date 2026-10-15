@@ -51,10 +51,14 @@ describe("readiness truth table", () => {
       PullRequestFacts["mergeStateStatus"],
       RollupState,
       "allowed" | "refused",
+      boolean?,
     ][] = [
       ["BLOCKED", "FAILURE", "refused"],
       ["BLOCKED", "ERROR", "refused"],
       ["BLOCKED", "PENDING", "allowed"],
+      // A required check that never reported: BLOCKED, nothing to explain it.
+      ["BLOCKED", "SUCCESS", "refused", false],
+      ["BLOCKED", "PENDING", "refused", false],
       ["UNSTABLE", "FAILURE", "allowed"],
       ["UNKNOWN", "ERROR", "allowed"],
       ["UNKNOWN", "EXPECTED", "allowed"],
@@ -64,9 +68,10 @@ describe("readiness truth table", () => {
       ["UNKNOWN", null, "allowed"],
       ["CLEAN", "SUCCESS", "allowed"],
     ];
-    for (const [mergeStateStatus, headRollupState, expected] of cases) {
+    for (const [mergeStateStatus, headRollupState, expected, blockExplained = true] of cases) {
       expect(
-        assessGitHubMerge({ mergeStateStatus, headRollupState }).kind
+        assessGitHubMerge({ mergeStateStatus, headRollupState, blockExplained })
+          .kind
       ).toBe(expected);
     }
   });
@@ -706,6 +711,72 @@ it("names the current failure when a different check fails between reads", async
   expect(decision.blocker.ci.failed.map((check) => check.name)).toEqual(["b"]);
 });
 
+it("re-reads when a review comment lands mid-read (updatedAt moves)", async () => {
+  const base = fakeReader();
+  let facts = 0;
+  let threadReads = 0;
+  const comment: ReviewThread = {
+    id: "late",
+    firstComment: {
+      authorLogin: "boss",
+      body: "one more thing",
+      path: null,
+      line: null,
+      createdAt: "2026-01-01T00:00:00Z",
+      activityAt: "2026-01-01T00:00:00Z",
+      authorAssociation: "OWNER",
+      authorIsBot: false,
+      isViewer: false,
+    },
+    recentComments: [],
+    historyComplete: true,
+    decidingComment: null,
+    lastAuthorLogin: null,
+    latestCommentAt: null,
+    disposition: "actionable",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  };
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      facts += 1;
+      return { ...(await base.pullRequest(pr)), updatedAt: facts === 1 ? "t1" : "t2" };
+    },
+    async reviewThreads() {
+      threadReads += 1;
+      return threadReads === 1 ? [] : [comment];
+    },
+    async recheck(pr) {
+      return { ...(await base.recheck(pr)), updatedAt: "t2" };
+    },
+  };
+  const snapshot = await readSnapshot({
+    reader,
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(facts).toBe(2);
+  expect(classifyPr(snapshot).kind).toBe("blocker");
+});
+
+it("refuses READY when GitHub blocks the merge for no visible reason", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeStateStatus: "BLOCKED", reviewDecision: "APPROVED" },
+      commitRollups: [{ oid: "head", state: "SUCCESS" }],
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  if (decision.kind !== "blocker" || decision.blocker.kind !== "failing-checks")
+    throw new Error("expected a CI blocker");
+  expect(decision.blocker.ci.kind).toBe("ci-github-rejected");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
@@ -869,6 +940,30 @@ it("wakes a queued watch for its next sweep before a long poll interval", async 
   });
   await expect(running).rejects.toThrow("stop after first sleep");
   expect(sleeps[0]).toBeLessThanOrEqual(60);
+});
+
+it("reports the lowest unmerged PR as the frontier on a mid-sweep timeout", async () => {
+  let now = 0;
+  const base = fakeReader();
+  const verdict = await runQueued({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          now += 100;
+          return base.pullRequest(pr);
+        },
+      },
+      clock: { now: () => now, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2), context(3)],
+    options: { ...options, timeout: 150 },
+  });
+  expect(verdict.kind === "TIMEOUT" && verdict.reason).toMatchObject({
+    kind: "queued-stack",
+    frontier: { number: 1 },
+  });
 });
 
 describe("queued-stack cadence", () => {
