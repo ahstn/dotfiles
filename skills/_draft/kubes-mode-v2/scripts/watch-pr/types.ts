@@ -254,7 +254,10 @@ export interface ReadyPr {
     readonly ci: CiClean;
     readonly gate: {
       readonly state: "OPEN";
-      readonly reviewDecision: Exclude<ReviewDecision, "CHANGES_REQUESTED">;
+      readonly reviewDecision: Exclude<
+        ReviewDecision,
+        "CHANGES_REQUESTED" | "REVIEW_REQUIRED"
+      >;
       readonly draft: "not-draft" | "draft-allowed";
     };
   };
@@ -269,7 +272,8 @@ export type MergeGateReason =
   | "draft-pr"
   | "changes-requested"
   | "unverifiable-thread"
-  | "behind-base";
+  | "behind-base"
+  | "review-required";
 export type MergeBlocker =
   | {
       readonly kind: "merge-conflicts";

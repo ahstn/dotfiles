@@ -6,8 +6,16 @@ import type * as T from "./types.ts";
 const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 export const safe = (text: string): string =>
   text.replace(UNSAFE, (char) => `\\u{${char.codePointAt(0)?.toString(16)}}`);
+// JSON.stringify escapes C0 controls but passes C1 controls and bidi
+// overrides through, which can visually reorder a pasted verdict. These can
+// only occur inside JSON strings, so \uXXXX escapes keep it valid and
+// round-trip to the same text.
+const JSON_UNSAFE = /[\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 export const renderJson = (verdict: T.WatcherVerdict): string =>
-  `${JSON.stringify(verdict)}\n`;
+  `${JSON.stringify(verdict).replace(
+    JSON_UNSAFE,
+    (char) => `\\u${(char.codePointAt(0) ?? 0).toString(16).padStart(4, "0")}`
+  )}\n`;
 function ciCell(row: T.PrSnapshot): string {
   if (row.kind !== "open") return "\u2014";
   const was = row.ci.hadPreviousPassingCi ? ", was ✅" : "";
@@ -141,7 +149,9 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
             ? "mark the PR ready for review before waiting for the merge queue"
             : blocker.reason === "unverifiable-thread"
               ? "a review thread is too long to read in full; check it on GitHub"
-              : blocker.reason === "behind-base"
+              : blocker.reason === "review-required"
+                ? "the PR needs an approving review before it can merge"
+                : blocker.reason === "behind-base"
                 ? "the PR is behind its base and GitHub won't say whether that blocks merging; check the branch rules"
               : "resolve the changes-requested review before waiting for the merge queue";
       return [

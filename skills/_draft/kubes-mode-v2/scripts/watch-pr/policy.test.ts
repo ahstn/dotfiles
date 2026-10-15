@@ -1109,6 +1109,30 @@ it("retries when an unverified reply ties the decider's timestamp", async () => 
   ).rejects.toBe(outage);
 });
 
+it("gates a green PR that still needs an approving review", async () => {
+  const ready = await readSnapshot({
+    reader: fakeReader({ facts: { reviewDecision: "REVIEW_REQUIRED" } }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(ready);
+  expect(decision.kind === "blocker" && decision.blocker).toMatchObject({
+    kind: "merge-gate",
+    reason: "review-required",
+  });
+  const pending = await readSnapshot({
+    reader: fakeReader({
+      facts: { reviewDecision: "REVIEW_REQUIRED" },
+      fastPath: { kind: "checks", checks: [pendingCheck()] },
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(pending).kind).toBe("waiting");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
@@ -1273,6 +1297,74 @@ it("re-reads when a push lands during the final check confirmation", async () =>
   });
   expect(facts).toBe(2);
   expect(snapshot.kind === "open" && snapshot.facts.headRefOid).toBe("new");
+});
+
+it("keeps a stack conflict when a later PR's read fails", async () => {
+  const base = fakeReader();
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 2)
+            throw new WatcherQueryError({
+              kind: "command-rejected",
+              retryable: false,
+              code: 1,
+              detail: "HTTP 404",
+            });
+          return {
+            ...(await base.pullRequest(pr)),
+            mergeable: "CONFLICTING" as const,
+            mergeStateStatus: "DIRTY" as const,
+          };
+        },
+        async recheck(pr) {
+          return { ...(await base.recheck(pr)), mergeStateStatus: "DIRTY" as const };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
+it("rescans a stack when an earlier row changed before READY", async () => {
+  const base = fakeReader();
+  let firstRowRechecks = 0;
+  let scans = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 1) scans += 1;
+          return base.pullRequest(pr);
+        },
+        async recheck(pr) {
+          const facts = await base.recheck(pr);
+          if (Number(pr.number) !== 1) return facts;
+          firstRowRechecks += 1;
+          // The revalidation after the first scan (2nd recheck of row 1)
+          // sees a new comment; later reads agree.
+          return firstRowRechecks === 2 ? { ...facts, updatedAt: "moved" } : facts;
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(scans).toBe(2);
+  expect(verdict.kind).toBe("READY");
 });
 
 it("times out a queued wait at the deadline without another snapshot", async () => {

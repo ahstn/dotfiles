@@ -139,22 +139,7 @@ export async function readSnapshot(args: {
     // The base matters too: a base-branch update can create a conflict with
     // no new head commit. So do the gates: a PR closed, set to draft, or given
     // changes-requested mid-read would otherwise slip out as READY.
-    if (
-      now.headRefOid === facts.headRefOid &&
-      now.baseRefOid === facts.baseRefOid &&
-      now.state === facts.state &&
-      now.isDraft === facts.isDraft &&
-      now.reviewDecision === facts.reviewDecision &&
-      now.mergedAt === facts.mergedAt &&
-      // A review comment posted or edited after the thread read changes no
-      // field above; updatedAt catches it before a stale READY goes out.
-      now.updatedAt === facts.updatedAt &&
-      // A ruleset or protection change can flip CLEAN to BLOCKED with nothing
-      // else above moving.
-      now.mergeStateStatus === facts.mergeStateStatus &&
-      confirmed
-    )
-      return snapshot;
+    if (sameFacts(facts, now) && confirmed) return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
         kind: "head-moved",
@@ -162,6 +147,31 @@ export async function readSnapshot(args: {
         detail: `PR kept changing during ${attempt} snapshots (head ${facts.headRefOid} -> ${now.headRefOid}, base ${facts.baseRefOid} -> ${now.baseRefOid}, state ${facts.state} -> ${now.state}, checks/rules confirmed: ${confirmed})`,
       });
   }
+}
+/** Whether nothing a snapshot depends on moved between two fact reads. */
+function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
+  return (
+    now.headRefOid === facts.headRefOid &&
+    now.baseRefOid === facts.baseRefOid &&
+    now.state === facts.state &&
+    now.isDraft === facts.isDraft &&
+    now.reviewDecision === facts.reviewDecision &&
+    now.mergedAt === facts.mergedAt &&
+    // A review comment posted or edited after the thread read changes no
+    // field above; updatedAt catches it before a stale READY goes out.
+    now.updatedAt === facts.updatedAt &&
+    // A ruleset or protection change can flip CLEAN to BLOCKED with nothing
+    // else above moving.
+    now.mergeStateStatus === facts.mergeStateStatus
+  );
+}
+/** The first conflict among rows already read; the top-tier verdict. */
+function knownConflict(rows: readonly T.PrSnapshot[]): T.MergeBlocker | null {
+  for (const row of rows) {
+    const conflict = conflictBlocker(row);
+    if (conflict !== null) return conflict;
+  }
+  return null;
 }
 // Back-to-back pushes are the only way to lose this race repeatedly; three
 // tries absorbs a push-and-fixup, then the poll loop's backoff takes over.
@@ -512,18 +522,24 @@ function gateReason(
     row.upToDateRequired === null
   )
     return "behind-base";
-  return row.kind === "open" &&
+  if (
+    row.kind === "open" &&
     row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
-    ? "unverifiable-thread"
-    : null;
+  )
+    return "unverifiable-thread";
+  // A required approval is a human's job, not the agent's, and GitHub won't
+  // merge without it: a gate, not READY.
+  return row.facts.reviewDecision === "REVIEW_REQUIRED" ? "review-required" : null;
 }
 function gateBlocker(
   row: T.PrSnapshot,
   allowDraft: boolean
 ): T.MergeBlocker | null {
   const reason = gateReason(row, allowDraft);
+  // Like a draft, a missing approval waits for CI to settle first, so a CI
+  // failure still reaches the agent before the watch hands over to a human.
   return reason === null ||
-    (reason === "draft-pr" &&
+    ((reason === "draft-pr" || reason === "review-required") &&
       row.kind === "open" &&
       row.ci.kind === "ci-pending")
     ? null
@@ -548,7 +564,11 @@ function readyContribution(
   )
     return null;
   const reviewDecision = row.facts.reviewDecision;
-  if (reviewDecision === "CHANGES_REQUESTED") return null;
+  if (
+    reviewDecision === "CHANGES_REQUESTED" ||
+    reviewDecision === "REVIEW_REQUIRED"
+  )
+    return null;
   return {
     kind: "ready-pr",
     context: row.context,
@@ -831,14 +851,9 @@ export async function runSimple(args: {
         // Conflicts are the top tier and rows are read bottom-to-top, so a
         // conflict already seen is the right verdict even for a partial scan;
         // timing out would discard it on every run of a slow stack.
-        for (const row of rows) {
-          const conflict = conflictBlocker(row);
-          if (conflict !== null)
-            return {
-              kind: "terminal",
-              verdict: blockerVerdict(stamp, conflict),
-            };
-        }
+        const conflict = knownConflict(rows);
+        if (conflict !== null)
+          return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
         return {
           kind: "terminal",
           verdict: stamp({
@@ -853,15 +868,25 @@ export async function runSimple(args: {
           }),
         };
       }
-      rows.push(
-        await readSnapshot({
-          reader: args.dependencies.reader,
-          context,
-          pendingHistory: "include",
-          allowDraft: args.options.allowDraft,
-          allowNoChecks: args.options.allowNoChecks,
-        })
-      );
+      try {
+        rows.push(
+          await readSnapshot({
+            reader: args.dependencies.reader,
+            context,
+            pendingHistory: "include",
+            allowDraft: args.options.allowDraft,
+            allowNoChecks: args.options.allowNoChecks,
+          })
+        );
+      } catch (error) {
+        // Same rule as the deadline: a later PR's failed read must not hide
+        // a conflict already found lower in the stack.
+        const conflict =
+          error instanceof WatcherQueryError ? knownConflict(rows) : null;
+        if (conflict !== null)
+          return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+        throw error;
+      }
     }
     const complete = nonEmpty(rows);
     if (complete === null) throw new Error("watch context cannot be empty");
@@ -907,6 +932,29 @@ export async function runSimple(args: {
           args.mode
         ),
       };
+    // Each row was validated as it was read, but earlier rows can change
+    // while later ones are read. Before calling a whole stack READY, re-check
+    // every row but the last (just validated); if any moved, scan again.
+    if (decision.kind === "clear" && rows.length > 1) {
+      for (const row of rows.slice(0, -1)) {
+        const now = await args.dependencies.reader.recheck(row.context);
+        if (!sameFacts(row.facts, now))
+          return {
+            kind: "continue",
+            onDeadline: () =>
+              stamp({
+                kind: "TIMEOUT",
+                terminal: true,
+                exitCode: 5,
+                reason: {
+                  kind: "stack-scan",
+                  read: rows.length,
+                  total: args.contexts.length,
+                },
+              }),
+          };
+      }
+    }
     if (decision.kind === "clear")
       return {
         kind: "terminal",

@@ -191,6 +191,24 @@ it("flags unverifiable threads in the pretty status table", () => {
   expect(table).toContain("⚠️ needs a human");
 });
 
+it("escapes bidi and C1 characters in JSON output, keeping it valid", () => {
+  const verdict = {
+    schemaVersion: 1,
+    sequence: 1,
+    observedAt: "now",
+    mode: "single",
+    kind: "RETRY",
+    terminal: false,
+    failure: { kind: "json-parse", retryable: true, detail: "a\u202eb\u0085c" },
+    consecutiveFailures: 1,
+    retryInSeconds: 60,
+  } as const;
+  const line = renderJson(verdict);
+  expect(line).not.toMatch(/[\u202e\u0085]/);
+  expect(line).toContain("a\\u202eb\\u0085c");
+  expect(JSON.parse(line).failure.detail).toBe("a\u202eb\u0085c");
+});
+
 it("escapes control and bidi characters in pretty output", () => {
   expect(safe("ok\u001b[2Jhidden\u202eevil")).toBe("ok\\u{1b}[2Jhidden\\u{202e}evil");
   expect(safe("plain review text")).toBe("plain review text");

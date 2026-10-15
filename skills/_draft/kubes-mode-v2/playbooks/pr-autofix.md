@@ -21,7 +21,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 | 3 | Actionable review threads | [Review threads](#review-threads) |
 | 4 | Failing checks | [Failing checks](#failing-checks) |
 | 5 | Timeout | `reason.kind` `pending-checks` (or a stack reason): rerun the watcher. `startup` (installing the watcher's dependencies ran out of time) or `discovery` (finding the PR did): rerun once, and if it repeats, report it like 7. `status-unavailable`: GitHub kept failing, so report it like 7. |
-| 6 | Merge gate: changes requested, PR closed, or a review thread too long to read in full | Report. A human has to act. |
+| 6 | Merge gate: changes requested, approval still required, PR closed, behind a base whose rules can't be read, or a review thread too long to read in full | Report. A human has to act. |
 | 7 | GitHub query failed | Check `gh auth status` and the PR number, then report. |
 | 64 | Bad arguments | Fix the command. |
 
@@ -99,7 +99,7 @@ Fixed in abc1234: the empty cursor now returns the first page.
 <!-- pr-autofix:fixed -->
 ```
 
-Just before posting, rerun the watcher with `--status-only` and find this thread by `id` in the `threads` of the row whose `context.number` is `blocker.pr.number`. In stack modes it may not be the first row. If its `latestCommentAt` changed, or it's no longer listed, a trusted reviewer moved on while you worked: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
+Just before posting, rerun the watcher with `--status-only` and find this thread by `id` in the `threads` of the row whose `context.number` is `blocker.pr.number`. In stack modes it may not be the first row. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. The watcher applies the trust rules, so untrusted replies don't trigger this.
 
 Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
 
