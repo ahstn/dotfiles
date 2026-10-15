@@ -171,6 +171,8 @@ export interface CheckDetails {
   readonly attempt?: {
     readonly key: string;
     readonly suite: string;
+    /** Whether the suite is an Actions run, whose same-name runs are jobs. */
+    readonly jobs: boolean;
     /** For a job in a rerun workflow run: the run and the job's ID. */
     readonly rerunOf?: { readonly run: number; readonly job: number };
     readonly startedAt: string | null;

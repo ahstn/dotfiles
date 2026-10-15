@@ -120,13 +120,13 @@ test "$rc" -eq 0
 
 The last line keeps the API's exit status, so a failed reply isn't masked by a successful cleanup. If it failed, nothing was handled; say so.
 
-For a fixed thread, only after the reply succeeded, resolve it:
+For a fixed thread, only after the reply succeeded, check nobody spoke in the meantime. Re-read the thread with the discussion query above. If any comment other than yours is newer than the `decidingComment` you worked from, rerun the `--status-only` check for this PR. Resolve only if this thread's `decidingComment` is now your reply, meaning the newcomer is untrusted. Otherwise a trusted reviewer said something you haven't read: leave the thread open and start again from step 2 with it. Then resolve:
 
 ```shell
 gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
 ```
 
-If resolving fails, re-read the thread with the discussion query above before retrying. A reviewer may have posted while the request hung, and resolving would bury that. Retry once, and only if the thread's newest comment is still your reply. Otherwise, or if the retry fails too, stop and report the thread as replied but unresolved. Don't run the watcher again: it reads a fixed marker on an unresolved thread as a reopened thread, and would send you to fix it twice.
+If resolving fails, make the same check again before retrying: a reviewer may have posted while the request hung, and resolving would bury that. Retry once, and only if the check passes. Otherwise, or if the retry fails too, stop and report the thread as replied but unresolved. Don't run the watcher again: it reads a fixed marker on an unresolved thread as a reopened thread, and would send you to fix it twice.
 
 For a reply that leaves the thread open, don't resolve.
 

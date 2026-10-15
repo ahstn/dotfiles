@@ -147,6 +147,34 @@ describe("checks fallback chain", () => {
     expect(read.checks[0]?.workflow).toBe("CI");
   });
 
+  it("keeps the newest run of a name in another App's rerequested suite", async () => {
+    const run = (conclusion: string, startedAt: string) =>
+      mapRollupNode({
+        __typename: "CheckRun",
+        name: "lint",
+        status: "COMPLETED",
+        conclusion,
+        startedAt,
+        checkSuite: { databaseId: 77, app: { databaseId: 5 }, workflowRun: null },
+      });
+    const read = await resolveChecks(
+      fakeReader({
+        fastPath: { kind: "unusable", exitCode: 1, stderr: "" },
+        rollupPages: [
+          {
+            checks: [
+              run("FAILURE", "2026-01-01T00:00:00Z"),
+              run("SUCCESS", "2026-01-01T00:05:00Z"),
+            ].filter((check) => check !== null),
+            endCursor: null,
+          },
+        ],
+      }),
+      context
+    );
+    expect(read.checks.map((check) => check.kind)).toEqual(["passed"]);
+  });
+
   it("falls back when valid fast-path JSON represented an empty list", async () => {
     const reader = fakeReader({
       fastPath: { kind: "checks", checks: [] },

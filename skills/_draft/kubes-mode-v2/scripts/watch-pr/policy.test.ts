@@ -259,6 +259,31 @@ describe("readiness truth table", () => {
     });
   });
 
+  it("reports a check that turns up failing behind a GitHub refusal", async () => {
+    let checkReads = 0;
+    const base = fakeReader({
+      facts: { mergeStateStatus: "BLOCKED" },
+      commitRollups: [{ oid: "head", state: "FAILURE" }],
+    });
+    const snapshot = await readSnapshot({
+      reader: {
+        ...base,
+        async checksFastPath() {
+          checkReads += 1;
+          return {
+            kind: "checks",
+            checks: [checkReads === 1 ? passingCheck("unit") : failedCheck("unit")],
+          };
+        },
+      },
+      context: context(1),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+    expect(snapshot.ci.kind).toBe("ci-failing");
+  });
+
   it("reports a parked conversation on a merge-queue base", () => {
     expect(
       assessGitHubMerge({

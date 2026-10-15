@@ -409,7 +409,9 @@ export function mapRollupNode(value: unknown): T.Check | null {
     // GitHub withholds an ID, don't collapse the check at all. Jobs in one
     // suite (workflow run) can share a name too, so the suite says which
     // attempt a run belongs to. An Actions run past its first attempt holds
-    // every attempt's jobs, so resolveChecks asks which are the latest.
+    // every attempt's jobs, so resolveChecks asks which are the latest. Other
+    // Apps' suites have no jobs, and a rerequest adds runs to the same suite;
+    // there the newest run of a name is current, as for required checks.
     const identity =
       run === null
         ? [app]
@@ -427,6 +429,7 @@ export function mapRollupNode(value: unknown): T.Check | null {
             attempt: {
               key: ["CheckRun", ...identity, details.name].join("\0"),
               suite: String(suiteId),
+              jobs: run !== null,
               ...(run !== null &&
               typeof run.runAttempt === "number" &&
               run.runAttempt > 1 &&
@@ -454,6 +457,7 @@ export function mapRollupNode(value: unknown): T.Check | null {
       key: ["StatusContext", details.name].join("\0"),
       // Each status post stands alone; the newest one for a context wins.
       suite: typeof object.createdAt === "string" ? object.createdAt : "",
+      jobs: false,
       startedAt: typeof object.createdAt === "string" ? object.createdAt : null,
     },
   };
@@ -1260,15 +1264,19 @@ export const NO_CHECKS_CONFIGURED = "(no checks configured)";
  * sits beside the rerun that passed. Keep each check's newest suite, as
  * `gh pr checks` keeps the newest attempt. A queued attempt (not started)
  * counts as newest, and ties are all kept. Same-name runs left in the newest
- * suite are distinct jobs (resolveChecks has already dropped earlier
+ * Actions suite are distinct jobs (resolveChecks has already dropped earlier
  * attempts' jobs), so they are all kept and no failure is hidden by a guess.
+ * In another App's suite the newest run of a name wins.
  */
 function latestAttempts(checks: readonly T.Check[]): T.Check[] {
   const startOf = (check: T.Check): number => {
     const started = Date.parse(check.attempt?.startedAt ?? "");
     return Number.isNaN(started) ? Infinity : started;
   };
-  const newest = new Map<string, { readonly start: number; readonly suite: string }>();
+  const newest = new Map<
+    string,
+    { readonly start: number; readonly suite: string; readonly jobs: boolean }
+  >();
   for (const check of checks) {
     if (check.attempt === undefined) continue;
     const current = newest.get(check.attempt.key);
@@ -1276,6 +1284,7 @@ function latestAttempts(checks: readonly T.Check[]): T.Check[] {
       newest.set(check.attempt.key, {
         start: startOf(check),
         suite: check.attempt.suite,
+        jobs: check.attempt.jobs,
       });
   }
   return checks
@@ -1284,7 +1293,7 @@ function latestAttempts(checks: readonly T.Check[]): T.Check[] {
       const latest = newest.get(check.attempt.key);
       return (
         latest === undefined ||
-        check.attempt.suite === latest.suite ||
+        (latest.jobs && check.attempt.suite === latest.suite) ||
         startOf(check) === latest.start
       );
     })

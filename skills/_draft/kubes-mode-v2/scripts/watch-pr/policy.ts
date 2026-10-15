@@ -213,6 +213,21 @@ async function ciMoved(
     return names(checks) !== names(row.ci.failed);
   }
   if (row.ci.kind === "ci-github-rejected") {
+    // A refusal reports no failed check; one that has since shown up failing
+    // is actionable instead, and a change in what's pending changes the wait.
+    const checks = (await resolveChecks(reader, row.context, allowNoChecks))
+      .checks;
+    const pendingNames = (pending: readonly T.Check[]) =>
+      pending
+        .filter((check) => check.kind === "pending" && check.name !== MERGEABILITY_PENDING)
+        .map((check) => check.name)
+        .sort()
+        .join("\0");
+    if (
+      checks.some((check) => check.kind === "failed") ||
+      pendingNames(checks) !== pendingNames(row.ci.pending)
+    )
+      return true;
     // GitHub's refusal rests on the head rollup and, for an unexplained
     // BLOCKED, on the merge queue being off. Either can change with no fact
     // moving (BLOCKED stays BLOCKED).
