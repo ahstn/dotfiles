@@ -1203,8 +1203,16 @@ export async function runQueued(args: {
         ) ?? state.queue[0];
       return {
         kind: "continue",
-        onDeadline: () =>
-          stamp({
+        onDeadline: () => {
+          // As in runSimple: a conflict already read is the top-tier verdict
+          // even for a partial sweep, and timing out would hide it on every
+          // run of a stack that never finishes a sweep in time.
+          for (const pr of snapshotState.queue) {
+            const row = snapshotState.snapshots.get(pr.number);
+            const conflict = row === undefined ? null : conflictBlocker(row);
+            if (conflict !== null) return blockerVerdict(stamp, conflict);
+          }
+          return stamp({
             kind: "TIMEOUT",
             terminal: true,
             exitCode: 5,
@@ -1215,7 +1223,8 @@ export async function runQueued(args: {
                 (pr) => snapshotState.snapshots.get(pr.number)?.kind !== "merged"
               ).length,
             },
-          }),
+          });
+        },
       };
     }
     const evaluation = evaluateQueue(

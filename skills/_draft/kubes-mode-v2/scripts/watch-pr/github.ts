@@ -756,7 +756,16 @@ export class GhGitHubReader implements T.GitHubReader {
     // Rulesets are readable with plain read access.
     let rulesStrict = false;
     let rulesKnown = false;
-    const rules = await run(["gh", "api", `${repo}/rules/branches/${branch}`]);
+    // --paginate: the endpoint returns 30 rules a page, and a merge-queue or
+    // strict rule on a later page must not be missed. One line per rule.
+    const rules = await run([
+      "gh",
+      "api",
+      "--paginate",
+      `${repo}/rules/branches/${branch}`,
+      "--jq",
+      ".[] | [.type, (.parameters.strict_required_status_checks_policy // false)] | @tsv",
+    ]);
     // Only a definite "can't see this" (403/404) may become null, which ends
     // the watch at a human gate. Anything else (5xx, 429, rate limits, a
     // network blip) retries like any other failed read.
@@ -772,24 +781,13 @@ export class GhGitHubReader implements T.GitHubReader {
     };
     if (rules.code !== 0 && !settledNo(rules)) retry(rules, "branch rules lookup");
     if (rules.code === 0) {
-      try {
-        const list = JSON.parse(rules.stdout) as unknown;
-        if (Array.isArray(list)) {
-          rulesKnown = true;
-          for (const rule of list) {
-            if (!isRecord(rule)) continue;
-            // A merge queue brings PRs up to date itself; authors needn't.
-            if (rule.type === "merge_queue") return false;
-            if (
-              rule.type === "required_status_checks" &&
-              isRecord(rule.parameters) &&
-              rule.parameters.strict_required_status_checks_policy === true
-            )
-              rulesStrict = true;
-          }
-        }
-      } catch {
-        rulesKnown = false;
+      rulesKnown = true;
+      for (const line of rules.stdout.split("\n")) {
+        const [type, strict] = line.split("\t");
+        // A merge queue brings PRs up to date itself; authors needn't.
+        if (type === "merge_queue") return false;
+        if (type === "required_status_checks" && strict === "true")
+          rulesStrict = true;
       }
     }
     if (rulesStrict) return true;

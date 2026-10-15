@@ -258,6 +258,7 @@ describe("parseArgs", () => {
       ["--stack", "--queued-stack"],
       ["--stack-prs", "1,2"],
       ["--queued-stack", "--stack-prs", "1,1"],
+      ["--queued-stack"],
       ["--owner", "other", "--repo", "project"],
       ["--owner", "other", "--pr", "1"],
     ];

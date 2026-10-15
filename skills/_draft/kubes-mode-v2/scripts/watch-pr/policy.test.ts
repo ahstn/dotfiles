@@ -1181,6 +1181,39 @@ it("reports the lowest unmerged PR as the frontier on a mid-sweep timeout", asyn
   });
 });
 
+it("returns a conflict already read instead of timing out a queued sweep", async () => {
+  let now = 0;
+  const base = fakeReader();
+  const conflicting = (pr: PrContext) => Number(pr.number) === 1;
+  const verdict = await runQueued({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          now += 100;
+          return {
+            ...(await base.pullRequest(pr)),
+            ...(conflicting(pr)
+              ? { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const }
+              : {}),
+          };
+        },
+        async recheck(pr) {
+          return {
+            ...(await base.recheck(pr)),
+            ...(conflicting(pr) ? { mergeStateStatus: "DIRTY" as const } : {}),
+          };
+        },
+      },
+      clock: { now: () => now, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2), context(3)],
+    options: { ...options, timeout: 50 },
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
 describe("queued-stack cadence", () => {
   async function openSnapshot(pr: PrContext) {
     return readSnapshot({

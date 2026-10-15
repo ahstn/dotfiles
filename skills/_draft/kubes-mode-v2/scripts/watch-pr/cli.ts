@@ -102,7 +102,7 @@ export function parseArgs(
     )
     .option(
       "--queued-stack",
-      "watch the captured stack until all PRs merge",
+      "watch a frozen stack (--stack-prs) until all PRs merge",
       false
     )
     .option(
@@ -141,6 +141,13 @@ export function parseArgs(
   const raw = program.opts<RawOptions>();
   if (raw.stackPrs !== undefined && !raw.queuedStack)
     program.error("error: --stack-prs requires --queued-stack");
+  // Each run would otherwise rediscover the stack from its seed PR, and once
+  // that PR merges it leaves the open-PR graph: a rearmed watcher would see
+  // only the merged seed and report COMPLETE with PRs above it still open.
+  if (raw.queuedStack && raw.stackPrs === undefined)
+    program.error(
+      "error: --queued-stack needs a frozen --stack-prs <n,...> (bottom to top); capture it once from `--stack --status-only` and pass the same list on every run"
+    );
   // Without a number, the PR comes from the checkout's branch, which belongs to
   // the checkout's repository; pairing it with another repository would watch
   // an unrelated PR that happens to share the number.
