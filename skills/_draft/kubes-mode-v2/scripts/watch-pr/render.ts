@@ -3,14 +3,15 @@ import type * as T from "./types.ts";
 // bodies, paths, check names) could rewrite or reorder the terminal around
 // them, making untrusted text pass for watcher output. Show them as escapes.
 // The JSON renderer already escapes control bytes.
-const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g;
 export const safe = (text: string): string =>
   text.replace(UNSAFE, (char) => `\\u{${char.codePointAt(0)?.toString(16)}}`);
-// JSON.stringify escapes C0 controls but passes C1 controls and bidi
-// overrides through, which can visually reorder a pasted verdict. These can
-// only occur inside JSON strings, so \uXXXX escapes keep it valid and
-// round-trip to the same text.
-const JSON_UNSAFE = /[\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+// JSON.stringify escapes C0 controls but passes C1 controls, bidi
+// overrides and the U+2028/U+2029 line separators through, which can
+// visually reorder or split a pasted verdict. These can only occur inside
+// JSON strings, so \uXXXX escapes keep it valid and round-trip to the same
+// text.
+const JSON_UNSAFE = /[\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g;
 export const renderJson = (verdict: T.WatcherVerdict): string =>
   `${JSON.stringify(verdict).replace(
     JSON_UNSAFE,

@@ -243,7 +243,7 @@ it("shows a missing approval in the pretty status table", () => {
   expect(table).toContain("⏳ needs approval");
 });
 
-it("escapes bidi and C1 characters in JSON output, keeping it valid", () => {
+it("escapes bidi, C1 and line-separator characters in JSON output, keeping it valid", () => {
   const verdict = {
     schemaVersion: 1,
     sequence: 1,
@@ -251,14 +251,15 @@ it("escapes bidi and C1 characters in JSON output, keeping it valid", () => {
     mode: "single",
     kind: "RETRY",
     terminal: false,
-    failure: { kind: "json-parse", retryable: true, detail: "a\u202eb\u0085c" },
+    failure: { kind: "json-parse", retryable: true, detail: "a\u202eb\u0085c\u2028d\u2029e" },
     consecutiveFailures: 1,
     retryInSeconds: 60,
   } as const;
   const line = renderJson(verdict);
-  expect(line).not.toMatch(/[\u202e\u0085]/);
-  expect(line).toContain("a\\u202eb\\u0085c");
-  expect(JSON.parse(line).failure.detail).toBe("a\u202eb\u0085c");
+  expect(line).not.toMatch(/[\u202e\u0085\u2028\u2029]/);
+  expect(line).toContain("a\\u202eb\\u0085c\\u2028d\\u2029e");
+  expect(JSON.parse(line).failure.detail).toBe("a\u202eb\u0085c\u2028d\u2029e");
+  expect(safe("x\u2028y\u2029z")).toBe("x\\u{2028}y\\u{2029}z");
 });
 
 it("renders a merged READY scope as merged and names a rejection's cause", () => {

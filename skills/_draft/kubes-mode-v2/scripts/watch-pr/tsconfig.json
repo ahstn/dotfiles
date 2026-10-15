@@ -9,5 +9,5 @@
     "target": "esnext",
     "types": ["bun-types"]
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "../bootstrap.ts", "../bootstrap.test.ts"]
 }
