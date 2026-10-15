@@ -168,6 +168,8 @@ export function renderPretty(verdict: T.WatcherVerdict): string {
         return "TIMEOUT: checks still pending\n";
       if (verdict.reason.kind === "status-unavailable")
         return "TIMEOUT: GitHub status remained unavailable\n";
+      if (verdict.reason.kind === "startup")
+        return "TIMEOUT: --timeout ran out installing dependencies\n";
       if (verdict.reason.kind === "discovery")
         return "TIMEOUT: --timeout ran out while resolving the PR\n";
       if (verdict.reason.kind === "stack-scan")

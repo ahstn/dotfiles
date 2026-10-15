@@ -174,9 +174,16 @@ export interface CliRuntime {
   readonly clock: WatchClock;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
+  /** Seconds already spent before main() (a first-run dependency install). */
+  readonly spentBeforeStart?: number;
 }
 function realRuntime(): CliRuntime {
+  const startedAt = Number(process.env.WATCH_PR_STARTED_AT);
   return {
+    spentBeforeStart:
+      Number.isFinite(startedAt) && startedAt > 0
+        ? Math.max(0, (Date.now() - startedAt) / 1_000)
+        : 0,
     reader: new GhGitHubReader(),
     clock: {
       now: () => performance.now() / 1_000,
@@ -221,12 +228,24 @@ export async function main(
   // one transient `gh` failure at startup doesn't end the watch.
   const stamp = verdictFactory(runtime.clock, options.mode);
   const started = runtime.clock.now();
-  setWatchDeadline(
+  const { maxQueryErrors, interval } = options.polling;
+  // --timeout covers the whole command, including a first-run install that
+  // happened before this process started.
+  const timeout =
     options.polling.timeout > 0
-      ? Date.now() + options.polling.timeout * 1_000
-      : null
-  );
-  const { timeout, maxQueryErrors, interval } = options.polling;
+      ? options.polling.timeout - (runtime.spentBeforeStart ?? 0)
+      : 0;
+  if (options.polling.timeout > 0 && timeout <= 0) {
+    const verdict = stamp({
+      kind: "TIMEOUT",
+      terminal: true,
+      exitCode: 5,
+      reason: { kind: "startup" },
+    });
+    runtime.stdout(render(verdict));
+    return verdict.exitCode;
+  }
+  setWatchDeadline(timeout > 0 ? Date.now() + timeout * 1_000 : null);
   let contexts: T.NonEmpty<T.PrContext> | null = null;
   for (let failures = 1; contexts === null; failures += 1) {
     try {

@@ -282,6 +282,11 @@ export type QueryFailure =
       readonly detail: string;
     }
   | {
+      readonly kind: "command-missing";
+      readonly retryable: false;
+      readonly detail: string;
+    }
+  | {
       readonly kind: "ambiguous-stack";
       readonly retryable: false;
       readonly detail: string;
@@ -421,6 +426,7 @@ export type TimeoutVerdict = Terminal<"TIMEOUT", 5> & {
         readonly unmergedCount: number;
       }
     | { readonly kind: "discovery" }
+    | { readonly kind: "startup" }
     | {
         readonly kind: "stack-scan";
         readonly read: number;

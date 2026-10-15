@@ -153,11 +153,29 @@ function run(argv: readonly [string, ...string[]]): Promise<CommandResult> {
     child.stderr.on("data", (chunk: string) => {
       stderr += chunk;
     });
-    child.on("error", (error) => {
+    // A spawn failure must surface as a WatcherQueryError, which the poll
+    // loop and discovery handle, not a raw Error that crashes the CLI. A
+    // missing gh won't appear by retrying; anything else (EAGAIN, EMFILE)
+    // may, so it settles as a failed command and takes the retry path.
+    child.on("error", (error: NodeJS.ErrnoException) => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(error);
+      if (error.code === "ENOENT") {
+        settled = true;
+        clearTimeout(timer);
+        reject(
+          new WatcherQueryError({
+            kind: "command-missing",
+            retryable: false,
+            detail: `${argv[0]} not found on PATH; install it and run \`gh auth login\``,
+          })
+        );
+        return;
+      }
+      settle({
+        code: -1,
+        stdout: "",
+        stderr: `could not start ${argv[0]}: ${error.message}`,
+      });
     });
     child.on("close", (code) => settle({ code: code ?? -1, stdout, stderr }));
   });
