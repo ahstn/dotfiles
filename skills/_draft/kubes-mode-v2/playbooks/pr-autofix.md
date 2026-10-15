@@ -126,7 +126,7 @@ For a fixed thread, only after the reply succeeded, resolve it:
 gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
 ```
 
-If resolving fails, retry this command once. If it fails again, stop and report the thread as replied but unresolved. Don't run the watcher again: it reads a fixed marker on an unresolved thread as a reopened thread, and would send you to fix it twice.
+If resolving fails, re-read the thread with the discussion query above before retrying. A reviewer may have posted while the request hung, and resolving would bury that. Retry once, and only if the thread's newest comment is still your reply. Otherwise, or if the retry fails too, stop and report the thread as replied but unresolved. Don't run the watcher again: it reads a fixed marker on an unresolved thread as a reopened thread, and would send you to fix it twice.
 
 For a reply that leaves the thread open, don't resolve.
 

@@ -66,10 +66,12 @@ describe("checks fallback chain", () => {
       event = "pull_request",
       workflowId: number | null = 1,
       suite = (suites += 1),
-      runAttempt = 1
+      runAttempt = 1,
+      job = 0
     ) =>
       mapRollupNode({
         __typename: "CheckRun",
+        databaseId: job,
         name,
         status: conclusion === null ? "QUEUED" : "COMPLETED",
         conclusion,
@@ -78,6 +80,7 @@ describe("checks fallback chain", () => {
           databaseId: suite,
           app: { databaseId: 15368 },
           workflowRun: {
+            databaseId: suite,
             event,
             runAttempt,
             workflow: { databaseId: workflowId, name: "CI" },
@@ -96,7 +99,7 @@ describe("checks fallback chain", () => {
         // Two jobs of one workflow run that share a display name.
         run("matrix", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", 1, 99),
         // A rerun inside one workflow run (attempt 2) supersedes attempt 1.
-        run("flaky", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", 1, 98, 2),
+        run("flaky", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", 1, 98, 2, 1001),
       ],
       [
         run("test", "SUCCESS", "2026-01-01T00:05:00Z"),
@@ -104,7 +107,10 @@ describe("checks fallback chain", () => {
         run("build", "SUCCESS", "2026-01-01T00:00:00Z"),
         run("push-only", "SUCCESS", "2026-01-01T00:05:00Z"),
         run("matrix", "SUCCESS", "2026-01-01T00:01:00Z", "pull_request", 1, 99),
-        run("flaky", "SUCCESS", "2026-01-01T00:03:00Z", "pull_request", 1, 98, 2),
+        run("flaky", "SUCCESS", "2026-01-01T00:03:00Z", "pull_request", 1, 98, 2, 1002),
+        // Two distinct same-name jobs in that rerun attempt are both kept.
+        run("twin", "FAILURE", "2026-01-01T00:04:00Z", "pull_request", 1, 98, 2, 1003),
+        run("twin", "SUCCESS", "2026-01-01T00:05:00Z", "pull_request", 1, 98, 2, 1004),
       ],
     ].map((checks, index) => ({
       checks: checks.filter((check) => check !== null),
@@ -114,13 +120,14 @@ describe("checks fallback chain", () => {
       fakeReader({
         fastPath: { kind: "unusable", exitCode: 1, stderr: "" },
         rollupPages: pages,
+        latestAttemptJobs: { 98: [1002, 1003, 1004] },
       }),
       context
     );
     // A superseded cancel is dropped and a queued rerun supersedes a failure,
     // but a tie keeps both, other events or workflows are other checks, and
-    // same-name jobs of a first-attempt run are all kept, but a rerun
-    // attempt in the same run supersedes the old one.
+    // same-name jobs of one attempt are all kept, but a rerun attempt in the
+    // same run supersedes the old one's jobs.
     expect(read.checks.map((check) => [check.name, check.kind])).toEqual([
       ["build", "failed"],
       ["push-only", "failed"],
@@ -133,6 +140,8 @@ describe("checks fallback chain", () => {
       ["push-only", "passed"],
       ["matrix", "passed"],
       ["flaky", "passed"],
+      ["twin", "failed"],
+      ["twin", "passed"],
     ]);
     expect(read.checks.every((check) => check.attempt === undefined)).toBe(true);
     expect(read.checks[0]?.workflow).toBe("CI");

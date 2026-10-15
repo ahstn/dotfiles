@@ -20,6 +20,7 @@ export interface FakeReaderOptions {
   readonly upToDateRequired?: boolean | null;
   readonly commitRollups?: readonly CommitRollup[];
   readonly mergeQueueEnabled?: boolean;
+  readonly latestAttemptJobs?: Readonly<Record<number, readonly number[]>>;
   readonly openPullRequests?: readonly OpenPullRequest[];
   readonly current?: PrContext;
   readonly checkoutParent?: { readonly owner: string; readonly repo: string };
@@ -148,6 +149,10 @@ export function fakeReader(
       calls.push(`permission:${login}`);
       const writers = options.writers ?? {};
       return login in writers ? (writers[login] ?? null) : true;
+    },
+    async latestAttemptJobs(_requested, run) {
+      calls.push(`latestAttemptJobs:${run}`);
+      return new Set(options.latestAttemptJobs?.[run] ?? []);
     },
     async mergeQueueEnabled() {
       calls.push("mergeQueueEnabled");

@@ -79,7 +79,7 @@ export const PR_COMMIT_STATUS_QUERY =
 export const PR_MERGE_QUEUE_QUERY =
   "query PrMergeQueue($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { isMergeQueueEnabled } } }";
 export const PR_CHECK_ROLLUP_QUERY =
-  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      databaseId\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        runAttempt\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    databaseId\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      databaseId\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        databaseId\n                        event\n                        runAttempt\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 interface CommandResult {
   readonly code: number;
@@ -408,8 +408,8 @@ export function mapRollupNode(value: unknown): T.Check | null {
     // Apps' checks. Key attempts by the App's and workflow's IDs, and when
     // GitHub withholds an ID, don't collapse the check at all. Jobs in one
     // suite (workflow run) can share a name too, so the suite says which
-    // attempt a run belongs to. But a suite can also hold reruns: an Actions
-    // run past its first attempt, or another App's rerequested suite.
+    // attempt a run belongs to. An Actions run past its first attempt holds
+    // every attempt's jobs, so resolveChecks asks which are the latest.
     const identity =
       run === null
         ? [app]
@@ -427,9 +427,18 @@ export function mapRollupNode(value: unknown): T.Check | null {
             attempt: {
               key: ["CheckRun", ...identity, details.name].join("\0"),
               suite: String(suiteId),
-              rerun:
-                run === null ||
-                (typeof run.runAttempt === "number" && run.runAttempt > 1),
+              ...(run !== null &&
+              typeof run.runAttempt === "number" &&
+              run.runAttempt > 1 &&
+              Number.isInteger(run.databaseId) &&
+              Number.isInteger(object.databaseId)
+                ? {
+                    rerunOf: {
+                      run: Number(run.databaseId),
+                      job: Number(object.databaseId),
+                    },
+                  }
+                : {}),
               startedAt: typeof object.startedAt === "string" ? object.startedAt : null,
             },
           }
@@ -445,7 +454,6 @@ export function mapRollupNode(value: unknown): T.Check | null {
       key: ["StatusContext", details.name].join("\0"),
       // Each status post stands alone; the newest one for a context wins.
       suite: typeof object.createdAt === "string" ? object.createdAt : "",
-      rerun: false,
       startedAt: typeof object.createdAt === "string" ? object.createdAt : null,
     },
   };
@@ -1111,6 +1119,27 @@ export class GhGitHubReader implements T.GitHubReader {
         `permission lookup for ${login} exited ${result.code}`,
     });
   }
+  async latestAttemptJobs(
+    context: T.PrContext,
+    run: number
+  ): Promise<ReadonlySet<number>> {
+    const result = await runJson([
+      "gh",
+      "api",
+      "--paginate",
+      "--slurp",
+      `repos/${context.owner}/${context.repo}/actions/runs/${run}/jobs?filter=latest&per_page=100`,
+    ]);
+    const ids = new Set<number>();
+    for (const page of list(result, "run jobs pages"))
+      for (const job of list(record(page, "run jobs page").jobs, "run jobs"))
+      {
+        const id = record(job, "run job").id;
+        if (typeof id !== "number" || !Number.isInteger(id)) missing("run job.id", id);
+        ids.add(id);
+      }
+    return ids;
+  }
   async mergeQueueEnabled(context: T.PrContext): Promise<boolean> {
     const value = await runJson(graphqlArgs(PR_MERGE_QUEUE_QUERY, context));
     const enabled = at(value, [
@@ -1228,22 +1257,18 @@ export async function requireWriteAccess(
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 /**
  * The rollup lists every attempt of a check on the commit, so a cancelled run
- * sits beside the rerun that passed. Keep each check's newest attempt, as
- * `gh pr checks` does. A queued attempt (not started) counts as newest, and
- * ties are all kept. Same-name runs in the newest suite are distinct jobs
- * when the suite can't hold reruns (an Actions run on its first attempt), so
- * they are all kept and no failure is hidden by a guess; otherwise the
- * newest start wins there too.
+ * sits beside the rerun that passed. Keep each check's newest suite, as
+ * `gh pr checks` keeps the newest attempt. A queued attempt (not started)
+ * counts as newest, and ties are all kept. Same-name runs left in the newest
+ * suite are distinct jobs (resolveChecks has already dropped earlier
+ * attempts' jobs), so they are all kept and no failure is hidden by a guess.
  */
 function latestAttempts(checks: readonly T.Check[]): T.Check[] {
   const startOf = (check: T.Check): number => {
     const started = Date.parse(check.attempt?.startedAt ?? "");
     return Number.isNaN(started) ? Infinity : started;
   };
-  const newest = new Map<
-    string,
-    { readonly start: number; readonly suite: string; readonly rerun: boolean }
-  >();
+  const newest = new Map<string, { readonly start: number; readonly suite: string }>();
   for (const check of checks) {
     if (check.attempt === undefined) continue;
     const current = newest.get(check.attempt.key);
@@ -1251,7 +1276,6 @@ function latestAttempts(checks: readonly T.Check[]): T.Check[] {
       newest.set(check.attempt.key, {
         start: startOf(check),
         suite: check.attempt.suite,
-        rerun: check.attempt.rerun,
       });
   }
   return checks
@@ -1260,11 +1284,33 @@ function latestAttempts(checks: readonly T.Check[]): T.Check[] {
       const latest = newest.get(check.attempt.key);
       return (
         latest === undefined ||
-        startOf(check) === latest.start ||
-        (check.attempt.suite === latest.suite && !latest.rerun)
+        check.attempt.suite === latest.suite ||
+        startOf(check) === latest.start
       );
     })
     .map(({ attempt: _attempt, ...check }) => check as T.Check);
+}
+/**
+ * Drops jobs from earlier attempts of rerun workflow runs. GitHub lists the
+ * latest attempt's jobs by ID, which tells a rerun from a distinct job that
+ * shares its name.
+ */
+async function latestRunJobs(
+  reader: T.GitHubReader,
+  context: T.PrContext,
+  checks: readonly T.Check[]
+): Promise<T.Check[]> {
+  const runs = new Set(
+    checks.flatMap((check) =>
+      check.attempt?.rerunOf === undefined ? [] : [check.attempt.rerunOf.run]
+    )
+  );
+  const latest = new Map<number, ReadonlySet<number>>();
+  for (const run of runs) latest.set(run, await reader.latestAttemptJobs(context, run));
+  return checks.filter((check) => {
+    const rerun = check.attempt?.rerunOf;
+    return rerun === undefined || latest.get(rerun.run)?.has(rerun.job) !== false;
+  });
 }
 export async function resolveChecks(
   reader: T.GitHubReader,
@@ -1281,7 +1327,9 @@ export async function resolveChecks(
     checks.push(...page.checks);
     after = page.endCursor;
   } while (after !== null);
-  const fallback = nonEmpty(latestAttempts(checks));
+  const fallback = nonEmpty(
+    latestAttempts(await latestRunJobs(reader, context, checks))
+  );
   if (fallback !== null) return { source: "graphql-rollup", checks: fallback };
   // A repo without CI reports no checks forever, which is otherwise
   // indistinguishable from checks that have not registered yet. The caller

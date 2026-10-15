@@ -520,9 +520,23 @@ async function readCi(
         threadCounts.parked > 0
       );
     } catch (error) {
-      // The rollup only refines a verdict; a failure the checks already show
-      // is the blocker without it. Confirm it with a fresh read, as below,
-      // and report that rather than let a failed rollup read end in exit 7.
+      // The rollup only refines a verdict. A pending check already proves the
+      // PR isn't ready, so keep waiting on it rather than let a failed rollup
+      // read end in exit 7.
+      if (error instanceof WatcherQueryError && failed === null && pending !== null)
+        return {
+          ci: {
+            kind: "ci-pending",
+            source: checks.source,
+            all: checks.checks,
+            failed: [],
+            pending,
+            hadPreviousPassingCi: false,
+          },
+          reviewAutomationRunning: automationRunning(checks.checks),
+        };
+      // A failure the checks already show is the blocker without it. Confirm
+      // it with a fresh read, as below, and report that.
       if (!(error instanceof WatcherQueryError) || failed === null) throw error;
       const fresh = (
         await resolveChecks(args.reader, args.context, args.allowNoChecks)

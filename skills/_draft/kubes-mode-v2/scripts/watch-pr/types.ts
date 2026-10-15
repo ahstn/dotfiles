@@ -171,8 +171,8 @@ export interface CheckDetails {
   readonly attempt?: {
     readonly key: string;
     readonly suite: string;
-    /** Whether the suite can hold reruns of a check, not only distinct jobs. */
-    readonly rerun: boolean;
+    /** For a job in a rerun workflow run: the run and the job's ID. */
+    readonly rerunOf?: { readonly run: number; readonly job: number };
     readonly startedAt: string | null;
   };
 }
@@ -590,6 +590,8 @@ export interface GitHubReader {
    */
   permission(context: PrContext, login: string): Promise<boolean | null>;
   commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
+  /** IDs of the jobs in a workflow run's latest attempt. */
+  latestAttemptJobs(context: PrContext, run: number): Promise<ReadonlySet<number>>;
   /** Whether the PR's base branch merges through GitHub's merge queue. */
   mergeQueueEnabled(context: PrContext): Promise<boolean>;
 }
