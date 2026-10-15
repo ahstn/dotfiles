@@ -7,6 +7,7 @@ import { join } from "node:path";
 /**
  * `/autofix [pr] [--no-checks] | off | status` — Claude Desktop style PR auto-fix.
  * Without a number, the current branch's PR is resolved once, when autofix starts.
+ * The checkout must be on the PR's branch, at start and at every wake.
  *
  * Runs the github-yeet skill's `watch-pr` in the background and wakes the agent
  * with the verdict when the PR has conflicts, actionable review threads or
@@ -37,6 +38,8 @@ const WATCHER_CANDIDATES = [
 interface Watch {
   readonly cwd: string;
   readonly pr: number;
+  /** The agent commits and pushes in cwd, so it must stay on this branch. */
+  readonly headRefName: string;
   readonly allowNoChecks: boolean;
   child: ChildProcess | null;
   timer: ReturnType<typeof setTimeout> | null;
@@ -52,14 +55,28 @@ interface Verdict {
   readonly scope?: { kind: string; pr?: { kind: string } };
 }
 
-function branchPr(cwd: string): Promise<number | null> {
+function output(command: string, args: string[], cwd: string): Promise<string | null> {
   return new Promise((resolve) =>
-    execFile("gh", ["pr", "view", "--json", "number", "--jq", ".number"], { cwd }, (error, stdout) => {
-      const number = Number(stdout.trim());
-      resolve(error || !Number.isInteger(number) || number <= 0 ? null : number);
-    }),
+    execFile(command, args, { cwd }, (error, stdout) => resolve(error ? null : stdout.trim())),
   );
 }
+
+/** The PR (given, or the current branch's) and the branch it lives on. */
+async function prHead(cwd: string, pr: number | null): Promise<{ number: number; headRefName: string } | null> {
+  const args = ["pr", "view", ...(pr === null ? [] : [String(pr)]), "--json", "number,headRefName"];
+  const json = await output("gh", args, cwd);
+  if (json === null) return null;
+  try {
+    const value = JSON.parse(json) as { number?: unknown; headRefName?: unknown };
+    return typeof value.number === "number" && typeof value.headRefName === "string"
+      ? { number: value.number, headRefName: value.headRefName }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const currentBranch = (cwd: string) => output("git", ["branch", "--show-current"], cwd);
 
 function findWatcher(): string | null {
   for (const candidate of WATCHER_CANDIDATES) if (candidate && existsSync(candidate)) return candidate;
@@ -198,7 +215,15 @@ export default function (pi: ExtensionAPI) {
         current.wakes += 1;
         current.awaitingAgent = true;
         status(`${tag}: agent fixing (${current.wakes}/${MAX_WAKES})`);
-        pi.sendUserMessage(wakeMessage(current, verdict), { deliverAs: "followUp" });
+        // The agent fixes and pushes whatever is checked out. If that has
+        // moved off the PR's branch since /autofix started, a wake would land
+        // the fix on the wrong branch, so stop instead.
+        void currentBranch(current.cwd).then((branch) => {
+          if (watch !== current) return;
+          if (branch !== current.headRefName)
+            return stop(`checkout is on ${branch || "a detached HEAD"}, not PR #${current.pr}'s branch ${current.headRefName}`);
+          pi.sendUserMessage(wakeMessage(current, verdict), { deliverAs: "followUp" });
+        });
         return;
       }
       case 5:
@@ -245,12 +270,24 @@ export default function (pi: ExtensionAPI) {
       const prArg = words.find((word) => /^#?\d+$/.test(word));
       // Pin the number now: the watcher reruns for as long as autofix is on,
       // and resolving the branch each time would follow a checkout to another PR.
-      const pr = prArg ? Number(prArg.replace("#", "")) : await branchPr(ctx.cwd);
-      if (pr === null) return notify("autofix: this branch has no PR; pass a number, e.g. /autofix 123", "error");
+      const head = await prHead(ctx.cwd, prArg ? Number(prArg.replace("#", "")) : null);
+      if (head === null)
+        return notify(
+          prArg ? `autofix: could not read PR ${prArg}` : "autofix: this branch has no PR; pass a number, e.g. /autofix 123",
+          "error",
+        );
+      const branch = await currentBranch(ctx.cwd);
+      if (branch !== head.headRefName)
+        return notify(
+          `autofix: check out PR #${head.number}'s branch ${head.headRefName} first (on ${branch || "a detached HEAD"}); the fix is committed and pushed from here`,
+          "error",
+        );
+      const pr = head.number;
       stop();
       watch = {
         cwd: ctx.cwd,
         pr,
+        headRefName: head.headRefName,
         allowNoChecks: words.includes("--no-checks"),
         child: null,
         timer: null,

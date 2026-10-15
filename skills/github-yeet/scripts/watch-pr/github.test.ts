@@ -350,6 +350,8 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     "edited-after-answer": "actionable",
     "drive-by": "untrusted",
   });
+  const followUp = threads.find((t) => t.id === "reviewer-follow-up");
+  expect(followUp?.decidingComment?.body).toBe("still wrong");
   const outsider = threads.find((t) => t.id === "outsider-after-answer");
   const flooded = parseReviewThreads({
     data: {

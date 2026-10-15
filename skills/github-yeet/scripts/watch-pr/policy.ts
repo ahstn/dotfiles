@@ -74,7 +74,16 @@ export async function readSnapshot(args: {
     if (facts.state === "CLOSED")
       return { kind: "closed", context: args.context, facts };
     const snapshot = await readOpenOrConflict(args, facts);
-    const head = await args.reader.headRefOid(args.context);
+    let head: string | null;
+    try {
+      head = await args.reader.headRefOid(args.context);
+    } catch (error) {
+      // Same rule as readOpenOrConflict: a known conflict outranks a failed
+      // lower-priority read.
+      if (error instanceof WatcherQueryError && isConflicted(facts))
+        return snapshot;
+      throw error;
+    }
     if (head === facts.headRefOid) return snapshot;
     if (attempt >= HEAD_RACE_ATTEMPTS)
       throw new WatcherQueryError({
@@ -475,7 +484,7 @@ type StepResult<V> =
       readonly seconds: number;
       readonly onDeadline?: () => V;
     }
-  | { readonly kind: "continue" };
+  | { readonly kind: "continue"; readonly onDeadline?: () => V };
 async function pollUntilTerminal<V>(args: {
   readonly dependencies: RunDependencies;
   readonly options: T.PollingOptions;
@@ -534,6 +543,12 @@ async function pollUntilTerminal<V>(args: {
       continue;
     }
     if (result.kind === "terminal") return result.verdict;
+    if (
+      result.kind === "continue" &&
+      result.onDeadline !== undefined &&
+      deadlinePassed(started, args.options, args.dependencies.clock.now())
+    )
+      return result.onDeadline();
     if (result.kind === "sleep") {
       if (
         result.onDeadline !== undefined &&
@@ -905,7 +920,31 @@ export async function runQueued(args: {
           rows: applied.completedSweepRows,
         })
       );
-    if (state.work !== null) return { kind: "continue" };
+    if (state.work !== null) {
+      // A large or slow stack can cross --timeout mid-sweep; stop between
+      // PRs rather than reading the rest.
+      const next =
+        state.work.kind === "whole-stack-sweep"
+          ? state.work.remaining[0]
+          : state.work.frontier;
+      const snapshotState = state;
+      return {
+        kind: "continue",
+        onDeadline: () =>
+          stamp({
+            kind: "TIMEOUT",
+            terminal: true,
+            exitCode: 5,
+            reason: {
+              kind: "queued-stack",
+              frontier: snapshotState.frontier ?? next,
+              unmergedCount: snapshotState.queue.filter(
+                (pr) => snapshotState.snapshots.get(pr.number)?.kind !== "merged"
+              ).length,
+            },
+          }),
+      };
+    }
     const evaluation = evaluateQueue(
       state,
       args.dependencies.clock.now(),

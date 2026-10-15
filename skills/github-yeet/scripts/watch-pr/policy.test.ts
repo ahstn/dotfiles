@@ -160,6 +160,7 @@ it("blocks on actionable threads only; parked threads still allow READY", async 
     firstComment: null,
     recentComments: [],
     historyComplete: true,
+    decidingComment: null,
     lastAuthorLogin: null,
     latestCommentAt: null,
     disposition,
@@ -200,6 +201,7 @@ it("demotes threads from read-only members and collaborators", async () => {
     },
     recentComments: [],
     historyComplete: true,
+    decidingComment: null,
     lastAuthorLogin: login,
     latestCommentAt: "now",
     disposition: "actionable",
@@ -274,6 +276,7 @@ it("skips replies from read-only members when deciding a thread", async () => {
             ),
           ],
           historyComplete: true,
+          decidingComment: null,
           lastAuthorLogin: "lurker",
           latestCommentAt: "lurker",
           disposition: "actionable",
@@ -331,6 +334,32 @@ it("re-reads the snapshot when the head moves mid-read", async () => {
   });
   expect(facts).toBe(2);
   expect(snapshot.kind === "open" && snapshot.facts.headRefOid).toBe("b");
+});
+
+it("keeps a known conflict when the head re-check fails", async () => {
+  const base = fakeReader({
+    facts: { mergeable: "CONFLICTING", mergeStateStatus: "DIRTY" },
+  });
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async headRefOid() {
+        throw new WatcherQueryError({
+          kind: "command-exit",
+          retryable: true,
+          code: 1,
+          detail: "outage",
+        });
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
+    "merge-conflicts"
+  );
 });
 
 it("waits while GitHub is still computing mergeability", async () => {

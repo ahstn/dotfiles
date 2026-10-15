@@ -258,18 +258,38 @@ export async function main(
         })
       );
       await runtime.clock.sleep(retryInSeconds);
+      if (timeout > 0 && runtime.clock.now() - started >= timeout) {
+        const verdict = stamp({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "status-unavailable", failure: error.failure },
+        });
+        runtime.stdout(render(verdict));
+        return verdict.exitCode;
+      }
     }
   }
+  // Polling gets only what discovery left of --timeout, so retries at startup
+  // can't stretch the run to nearly twice the limit. (0 means "no timeout",
+  // hence the floor.)
+  const polling: T.PollingOptions =
+    timeout > 0
+      ? {
+          ...options.polling,
+          timeout: Math.max(timeout - (runtime.clock.now() - started), 0.001),
+        }
+      : options.polling;
   const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
   const verdict =
     options.mode === "queued-stack" && !options.statusOnly
-      ? await runQueued({ dependencies, contexts, options: options.polling })
+      ? await runQueued({ dependencies, contexts, options: polling })
       : await runSimple({
           dependencies,
           contexts,
           mode: options.mode,
           statusOnly: options.statusOnly,
-          options: options.polling,
+          options: polling,
         });
   runtime.stdout(render(verdict));
   return verdict.exitCode;

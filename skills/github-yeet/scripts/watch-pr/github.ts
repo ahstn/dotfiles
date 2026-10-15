@@ -421,6 +421,7 @@ export function decideThread(
     return {
       ...thread,
       disposition: "untrusted",
+      decidingComment: first,
       lastAuthorLogin: first?.authorLogin ?? null,
       latestCommentAt: first?.activityAt ?? null,
     };
@@ -433,6 +434,7 @@ export function decideThread(
     return {
       ...thread,
       disposition: "awaiting-reviewer",
+      decidingComment: null,
       lastAuthorLogin: null,
       latestCommentAt: null,
     };
@@ -447,6 +449,7 @@ export function decideThread(
       decisive.isViewer && decisive.body.includes(AUTOFIX_REPLY_MARKER)
         ? "awaiting-reviewer"
         : "actionable",
+    decidingComment: decisive,
     lastAuthorLogin: decisive.authorLogin,
     latestCommentAt: decisive.activityAt,
   };
@@ -541,6 +544,7 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
           firstComment,
           recentComments,
           historyComplete,
+          decidingComment: null,
           lastAuthorLogin: null,
           latestCommentAt: null,
           disposition: "actionable",

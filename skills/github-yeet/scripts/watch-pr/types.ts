@@ -90,6 +90,11 @@ export interface ReviewThread {
   readonly recentComments: readonly ReviewComment[];
   /** False when older comments exist that were not read. */
   readonly historyComplete: boolean;
+  /**
+   * The trusted comment that decided the disposition, which is what woke the
+   * agent. It may sit far back in a long thread, so verdicts carry it.
+   */
+  readonly decidingComment: ReviewComment | null;
   /** Author of the newest trusted comment, which decided the disposition. */
   readonly lastAuthorLogin: string | null;
   /** When that comment was posted or last edited. */

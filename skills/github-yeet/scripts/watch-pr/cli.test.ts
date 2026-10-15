@@ -62,6 +62,44 @@ it("retries a transient failure while resolving the PR", async () => {
   expect(JSON.parse(harness.stdout[0] ?? "{}").kind).toBe("RETRY");
 });
 
+it("gives polling only the timeout left after discovery retries", async () => {
+  const base = fakeReader({
+    fastPath: { kind: "checks", checks: [] },
+    rollupPages: [],
+  });
+  let now = 0;
+  let failures = 2;
+  const reader: GitHubReader = {
+    ...base,
+    async currentPr(pr) {
+      if (failures-- > 0)
+        throw new WatcherQueryError({
+          kind: "command-exit",
+          retryable: true,
+          code: 1,
+          detail: "502",
+        });
+      return base.currentPr(pr);
+    },
+    async checksFastPath() {
+      return { kind: "checks", checks: [{ ...passingCheck(), kind: "pending" }] };
+    },
+  };
+  const harness = testRuntime(reader);
+  const runtime: CliRuntime = {
+    ...harness.runtime,
+    clock: {
+      ...harness.runtime.clock,
+      now: () => now,
+      sleep: async (s) => {
+        now += s;
+      },
+    },
+  };
+  expect(await main(["--pr", "1", "--timeout", "240"], runtime)).toBe(5);
+  expect(now).toBeLessThanOrEqual(240);
+});
+
 describe("parseArgs", () => {
   it("uses the specified defaults", () => {
     expect(parseArgs([], silentIo)).toMatchObject({
