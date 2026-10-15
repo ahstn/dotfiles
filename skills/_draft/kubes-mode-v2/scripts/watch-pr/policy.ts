@@ -410,17 +410,43 @@ async function readCi(
       hadPreviousPassingCi: false,
     };
   else {
-    const merge = await mergeAssessment(
-      args.reader,
-      facts,
-      facts.reviewDecision === "REVIEW_REQUIRED" ||
-        facts.reviewDecision === "CHANGES_REQUESTED" ||
-        threadCounts.blocking > 0 ||
-        // Not an opted-out check: its name can't prove it's GitHub's only
-        // reason to block, so it mustn't hide another rule behind READY.
-        checks.checks.some((check) => check.kind === "pending"),
-      threadCounts.parked > 0
-    );
+    let merge: Awaited<ReturnType<typeof mergeAssessment>>;
+    try {
+      merge = await mergeAssessment(
+        args.reader,
+        facts,
+        facts.reviewDecision === "REVIEW_REQUIRED" ||
+          facts.reviewDecision === "CHANGES_REQUESTED" ||
+          threadCounts.blocking > 0 ||
+          // Not an opted-out check: its name can't prove it's GitHub's only
+          // reason to block, so it mustn't hide another rule behind READY.
+          checks.checks.some((check) => check.kind === "pending"),
+        threadCounts.parked > 0
+      );
+    } catch (error) {
+      // The rollup only refines a verdict; a failure the checks already show
+      // is the blocker without it. Confirm it with a fresh read, as below,
+      // and report that rather than let a failed rollup read end in exit 7.
+      if (!(error instanceof WatcherQueryError) || failed === null) throw error;
+      const fresh = (
+        await resolveChecks(args.reader, args.context, args.allowNoChecks)
+      ).checks;
+      const current = nonEmpty(
+        fresh.filter((check): check is T.FailedCheck => check.kind === "failed")
+      );
+      if (current === null) throw error;
+      ci = {
+        kind: "ci-failing",
+        source: checks.source,
+        all: fresh,
+        // Unknown without the rollup, so don't suggest a flake.
+        hadPreviousPassingCi: false,
+        failed: current,
+        pending: pending ?? [],
+        github: null,
+      };
+      return { ci, reviewAutomationRunning: automationRunning(checks.checks) };
+    }
     const base = {
       source: checks.source,
       all: checks.checks,
@@ -539,17 +565,14 @@ async function readCi(
         github: merge.github,
       };
   }
-  return {
-    ci,
-    reviewAutomationRunning: checks.checks.some(
-      (check) =>
-        check.kind === "pending" &&
-        AUTOMATION_TOKENS.some((token) =>
-          check.name.toLowerCase().includes(token)
-        )
-    ),
-  };
+  return { ci, reviewAutomationRunning: automationRunning(checks.checks) };
 }
+const automationRunning = (checks: readonly T.Check[]): boolean =>
+  checks.some(
+    (check) =>
+      check.kind === "pending" &&
+      AUTOMATION_TOKENS.some((token) => check.name.toLowerCase().includes(token))
+  );
 // BEHIND is reported when branch protection requires the branch to be up to
 // date with its base: GitHub won't merge it, even with green checks. The fix
 // is the same as for a conflict (merge the base, push), so it shares exit 2.

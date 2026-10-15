@@ -241,7 +241,8 @@ export type CiFailing = CiBase & {
   readonly kind: "ci-failing";
   readonly failed: NonEmpty<FailedCheck>;
   readonly pending: readonly PendingCheck[];
-  readonly github: GitHubMergeAssessment;
+  /** null when the commit rollup couldn't be read; the failures stand anyway. */
+  readonly github: GitHubMergeAssessment | null;
 };
 export type CiGithubRejected = CiBase & {
   readonly kind: "ci-github-rejected";

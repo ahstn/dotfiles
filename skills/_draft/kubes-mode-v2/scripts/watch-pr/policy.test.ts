@@ -76,6 +76,38 @@ describe("readiness truth table", () => {
     }
   });
 
+  it("keeps a confirmed check failure when the rollup read fails", async () => {
+    const base = fakeReader({
+      fastPath: { kind: "checks", checks: [failedCheck("unit")] },
+    });
+    const snapshot = await readSnapshot({
+      reader: {
+        ...base,
+        async commitRollups() {
+          throw new WatcherQueryError({
+            kind: "command-exit",
+            retryable: true,
+            code: 1,
+            detail: "GraphQL unavailable",
+          });
+        },
+      },
+      context: context(1),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+    expect(snapshot.ci).toMatchObject({
+      kind: "ci-failing",
+      github: null,
+      hadPreviousPassingCi: false,
+    });
+    expect(classifyPr(snapshot)).toMatchObject({
+      kind: "blocker",
+      blocker: { kind: "failing-checks" },
+    });
+  });
+
   it("lets a merge-queue base's BLOCKED through, but not a failing rollup", async () => {
     const read = (state: "SUCCESS" | "FAILURE") =>
       readSnapshot({
