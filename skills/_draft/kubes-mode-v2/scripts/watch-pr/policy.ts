@@ -126,16 +126,12 @@ export async function readSnapshot(args: {
     let now: T.RecheckFacts;
     let confirmed = true;
     try {
-      // Check activity moves none of the recheck fields. Before a clean CI
-      // read can become READY, confirm no check has registered or failed.
+      // Before a clean CI read can become READY, confirm it (see ciMoved).
+      // A failing read was already confirmed after the rollup in readCi.
       if (
         snapshot.kind === "open" &&
         snapshot.ci.kind === "ci-clean" &&
-        !(
-          await resolveChecks(args.reader, args.context, args.allowNoChecks)
-        ).checks.every(
-          (check) => check.kind !== "pending" && check.kind !== "failed"
-        )
+        (await ciMoved(args.reader, snapshot, args.allowNoChecks))
       )
         confirmed = false;
       // BEHIND stays BEHIND when an admin turns strict checks on or off, so
@@ -174,6 +170,42 @@ export async function readSnapshot(args: {
       });
   }
 }
+/**
+ * Whether a row's CI verdict still holds on a fresh read. Check activity and
+ * merge-queue settings move none of the recheck fields, so before a verdict
+ * rests on them: a clean read must have gained no pending or failed check and
+ * (when the merge queue explained BLOCKED) the queue must still be on, and a
+ * failing read must still fail the same checks.
+ */
+async function ciMoved(
+  reader: T.GitHubReader,
+  row: T.PrSnapshot,
+  allowNoChecks: boolean | undefined
+): Promise<boolean> {
+  if (row.kind !== "open") return false;
+  if (row.ci.kind === "ci-clean") {
+    const checks = (await resolveChecks(reader, row.context, allowNoChecks))
+      .checks;
+    if (checks.some((check) => check.kind === "pending" || check.kind === "failed"))
+      return true;
+    return (
+      row.ci.github.basis === "merge-queue" &&
+      !(await reader.mergeQueueEnabled(row.context))
+    );
+  }
+  if (row.ci.kind === "ci-failing") {
+    const names = (checks: readonly T.Check[]) =>
+      checks
+        .filter((check) => check.kind === "failed")
+        .map((check) => check.name)
+        .sort()
+        .join("\0");
+    const checks = (await resolveChecks(reader, row.context, allowNoChecks))
+      .checks;
+    return names(checks) !== names(row.ci.failed);
+  }
+  return false;
+}
 /** Whether nothing a snapshot depends on moved between two fact reads. */
 function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
   return (
@@ -193,8 +225,7 @@ function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
 }
 /**
  * Whether any row changed since it was read: for a BEHIND row the up-to-date
- * rule flipped, a clean CI read gained a pending or failed check, or its facts
- * moved. Per row the facts come last (as in readSnapshot), and the rows are
+ * rule flipped, its CI verdict no longer holds (ciMoved), or its facts moved. Per row the facts come last (as in readSnapshot), and the rows are
  * checked in order, so every stack verdict rests on reads newer than any
  * change it could miss.
  */
@@ -212,14 +243,9 @@ async function rowsMoved(
         row.upToDateRequired
     )
       return true;
-    if (
-      row.kind === "open" &&
-      row.ci.kind === "ci-clean" &&
-      (await resolveChecks(reader, row.context, allowNoChecks)).checks.some(
-        (check) => check.kind === "pending" || check.kind === "failed"
-      )
-    )
-      return true;
+    // Failing rows too: a check on an early row can recover while later
+    // rows are read, and the stack verdict must not send the agent after it.
+    if (await ciMoved(reader, row, allowNoChecks)) return true;
     if (!sameFacts(row.facts, await reader.recheck(row.context))) return true;
   }
   return false;
@@ -1036,7 +1062,10 @@ export async function runSimple(args: {
         if (current === null) return rescan;
         rediscovered = true;
         const now = current.map((pr) => pr.number);
+        // A row that closed before it was read has left the open stack too,
+        // though the open rows may still match.
         const changed =
+          rows.some((row) => row.kind === "closed") ||
           now.length !== seeds.length ||
           now.some((number, index) => number !== seeds[index]?.number);
         if (changed) {

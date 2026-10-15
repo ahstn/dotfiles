@@ -182,6 +182,33 @@ describe("readiness truth table", () => {
     }
   });
 
+  it("re-reads merge-queue policy before calling a BLOCKED PR clean", async () => {
+    let lookups = 0;
+    const base = fakeReader({
+      facts: { mergeStateStatus: "BLOCKED" },
+      fastPath: { kind: "checks", checks: [passingCheck()] },
+      commitRollups: [{ oid: "head", state: "SUCCESS" }],
+    });
+    const snapshot = await readSnapshot({
+      reader: {
+        ...base,
+        // An admin turns the queue off right after the first lookup.
+        async mergeQueueEnabled() {
+          lookups += 1;
+          return lookups === 1;
+        },
+      },
+      context: context(1),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+    expect(snapshot.ci).toMatchObject({
+      kind: "ci-github-rejected",
+      github: { cause: "unexplained-block" },
+    });
+  });
+
   it("reports a parked conversation on a merge-queue base", () => {
     expect(
       assessGitHubMerge({
@@ -1741,6 +1768,65 @@ it("rescans a stack when an earlier clean row gains a pending check", async () =
     options,
   });
   expect(scans).toBe(2);
+  expect(verdict.kind).toBe("READY");
+});
+
+it("rescans a stack when an earlier failing row recovers", async () => {
+  const base = fakeReader();
+  let row1CheckReads = 0;
+  let scans = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          if (Number(pr.number) === 1) scans += 1;
+          return base.pullRequest(pr);
+        },
+        async checksFastPath(pr) {
+          if (Number(pr.number) !== 1)
+            return { kind: "checks", checks: [passingCheck()] };
+          row1CheckReads += 1;
+          // Failing for its own snapshot and that read's confirmation; a
+          // rerun passes while row 2 is read.
+          return {
+            kind: "checks",
+            checks: row1CheckReads <= 2 ? [failedCheck()] : [passingCheck()],
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(scans).toBe(2);
+  expect(verdict.kind).toBe("READY");
+});
+
+it("drops a row that closed before it was read from the stack", async () => {
+  const base = fakeReader();
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async pullRequest(pr) {
+          const facts = await base.pullRequest(pr);
+          return Number(pr.number) === 2 ? { ...facts, state: "CLOSED" as const } : facts;
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2), context(3)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+    rediscover: async () => [context(1), context(3)],
+  });
   expect(verdict.kind).toBe("READY");
 });
 

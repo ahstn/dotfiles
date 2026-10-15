@@ -71,6 +71,20 @@ function reviewCell(row: T.PrSnapshot): string {
 function mergeCell(row: T.PrSnapshot): string {
   if (row.kind === "merged") return "✅ merged";
   if (row.kind === "closed") return "❌ closed";
+  // Conflicts (and a required update) outrank the human gates below, as in
+  // the classifier: they are the exit-2 work to do first.
+  if (
+    row.facts.mergeable === "CONFLICTING" ||
+    row.facts.mergeStateStatus === "DIRTY" ||
+    row.facts.mergeStateStatus === "CONFLICTING"
+  )
+    return "⚠️ conflict";
+  if (
+    row.kind === "open" &&
+    row.facts.mergeStateStatus === "BEHIND" &&
+    row.upToDateRequired === true
+  )
+    return "⚠️ behind base";
   if (row.facts.isDraft) return "⏸ draft";
   if (row.facts.reviewDecision === "CHANGES_REQUESTED")
     return "⚠️ changes requested";
@@ -82,11 +96,7 @@ function mergeCell(row: T.PrSnapshot): string {
     return "⚠️ needs a human";
   if (row.facts.mergeStateStatus === "BEHIND" && row.kind === "open")
     return row.upToDateRequired === false ? "✅ (behind, not required)" : "⚠️ behind base";
-  return row.facts.mergeable === "CONFLICTING" ||
-    row.facts.mergeStateStatus === "DIRTY" ||
-    row.facts.mergeStateStatus === "CONFLICTING"
-    ? "⚠️ conflict"
-    : "✅";
+  return "✅";
 }
 export function renderStatusTable(rows: T.NonEmpty<T.PrSnapshot>): string {
   const lines = ["| PR | CI | Review | Merge |", "| --- | --- | --- | --- |"];
