@@ -1,0 +1,27 @@
+.pi/agent/extensions/pr-autofix.ts
+  s_70f26d58e0c223::t_b6c5f50075c67b 27-28,152-158,172-173
+skills/github-yeet/scripts/watch-pr/cli.test.ts
+  s_70f26d58e0c223::t_3a0b8a4cf36b66 4,36-64
+skills/github-yeet/scripts/watch-pr/cli.ts
+  s_70f26d58e0c223::t_33897c96ac1af8 15,205,212,216,218-261
+skills/github-yeet/scripts/watch-pr/policy.test.ts
+  s_70f26d58e0c223::t_43c942fca1dd32 416-448
+skills/github-yeet/scripts/watch-pr/policy.ts
+  s_70f26d58e0c223::t_5e29b065ff5005 967-983
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c946dbeda8df4debb14513652c4bfa9eabb0f8e2",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
