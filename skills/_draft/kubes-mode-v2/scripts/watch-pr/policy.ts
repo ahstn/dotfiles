@@ -247,10 +247,17 @@ async function readCi(
     };
     const rollup = merge.github.headRollupState;
     // The owner-approval gate is left out of pending on purpose, but the
-    // commit rollup still counts it as PENDING; that alone isn't disagreement.
+    // commit rollup still counts it as PENDING. Only discount that when a
+    // fresh read, taken after the rollup, shows the gate is the sole thing
+    // outstanding: a workflow that started between the reads must still count.
     const gateHoldsRollup =
       (rollup === "PENDING" || rollup === "EXPECTED") &&
-      checks.checks.some((check) => check.kind === "code-review-gate");
+      checks.checks.some((check) => check.kind === "code-review-gate") &&
+      (
+        await resolveChecks(args.reader, args.context, args.allowNoChecks)
+      ).checks.every(
+        (check) => check.kind !== "pending" && check.kind !== "failed"
+      );
     if (
       failed !== null &&
       (rollup === "SUCCESS" ||

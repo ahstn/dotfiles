@@ -527,6 +527,37 @@ it("does not wait on the ignored review gate through the rollup", async () => {
   expect(classifyPr(snapshot).kind).toBe("ready");
 });
 
+it("still waits when a workflow starts behind the review gate", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Code Review Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks:
+            reads === 1 ? [passingCheck(), gate] : [passingCheck(), gate, pendingCheck("new")],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(reads).toBe(2);
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),

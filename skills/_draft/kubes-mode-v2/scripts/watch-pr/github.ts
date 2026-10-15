@@ -191,16 +191,28 @@ function parseJson(text: string, label: string): unknown {
     });
   }
 }
+// Failures that retrying can't fix: gh's exit 4 (authentication required),
+// bad credentials, no access, or a PR/repo that doesn't exist. Retrying them
+// only burns --timeout and ends as a misleading TIMEOUT. Rate limits also
+// come back as 403 but clear up, so they stay retryable.
+function isPermanent(result: CommandResult): boolean {
+  if (result.code === 4) return true;
+  if (/rate limit/i.test(result.stderr)) return false;
+  return /HTTP 40[134]\b|Could not resolve to an? |no pull requests found|gh auth login/i.test(
+    result.stderr
+  );
+}
 async function runJson(argv: readonly [string, ...string[]]): Promise<unknown> {
   const result = await run(argv);
-  if (result.code !== 0)
-    throw new WatcherQueryError({
-      kind: "command-exit",
-      retryable: true,
-      code: result.code,
-      detail:
-        firstLine(result.stderr) || `${argv.join(" ")} exited ${result.code}`,
-    });
+  if (result.code !== 0) {
+    const detail =
+      firstLine(result.stderr) || `${argv.join(" ")} exited ${result.code}`;
+    throw new WatcherQueryError(
+      isPermanent(result)
+        ? { kind: "command-rejected", retryable: false, code: result.code, detail }
+        : { kind: "command-exit", retryable: true, code: result.code, detail }
+    );
+  }
   return parseJson(result.stdout, argv.join(" "));
 }
 function raw(value: unknown): string {

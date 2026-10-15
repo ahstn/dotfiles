@@ -282,6 +282,12 @@ export type QueryFailure =
       readonly detail: string;
     }
   | {
+      readonly kind: "command-rejected";
+      readonly retryable: false;
+      readonly detail: string;
+      readonly code: number;
+    }
+  | {
       readonly kind: "command-missing";
       readonly retryable: false;
       readonly detail: string;
