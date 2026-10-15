@@ -28,6 +28,7 @@ query ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) 
             nodes {
               body
               createdAt
+              updatedAt
               author { login }
             }
           }
@@ -387,7 +388,13 @@ function latestComment(thread: Record<string, unknown>): LatestComment | null {
             "latest comment.author.login"
           ),
     body: string(last.body, "latest comment.body"),
-    createdAt: typeof last.createdAt === "string" ? last.createdAt : null,
+    // updatedAt moves on edits too, so revised feedback reads as new.
+    createdAt:
+      typeof last.updatedAt === "string"
+        ? last.updatedAt
+        : typeof last.createdAt === "string"
+          ? last.createdAt
+          : null,
   };
 }
 function isBugbot(comment: T.ReviewComment | null): boolean {
@@ -562,7 +569,7 @@ export class GhGitHubReader implements T.GitHubReader {
       "--limit",
       "300",
       "--json",
-      "number,headRefName,baseRefName",
+      "number,headRefName,baseRefName,isCrossRepository",
     ]);
     return list(value, "open PRs").map((item, index) => {
       const object = record(item, `open PRs[${index}]`);
@@ -576,6 +583,7 @@ export class GhGitHubReader implements T.GitHubReader {
           object.baseRefName,
           `open PRs[${index}].baseRefName`
         ),
+        isCrossRepository: object.isCrossRepository === true,
       };
     });
   }
@@ -802,10 +810,14 @@ export function orderStack(
   context: T.PrContext,
   open: readonly T.OpenPullRequest[]
 ): T.NonEmpty<T.PrContext> {
-  const byNumber = new Map(open.map((pr) => [pr.number, pr]));
-  const byHead = new Map(open.map((pr) => [pr.headRefName, pr]));
+  // A fork PR's head branch lives in another repository, so its name says
+  // nothing about this repository's branches: a fork's `main` -> `main` would
+  // otherwise become its own parent. Stacks are same-repository only.
+  const local = open.filter((pr) => pr.isCrossRepository !== true);
+  const byNumber = new Map(local.map((pr) => [pr.number, pr]));
+  const byHead = new Map(local.map((pr) => [pr.headRefName, pr]));
   const children = new Map<string, T.OpenPullRequest[]>();
-  for (const pr of open)
+  for (const pr of local)
     children.set(pr.baseRefName, [...(children.get(pr.baseRefName) ?? []), pr]);
   for (const values of children.values())
     values.sort((a, b) => a.number - b.number);
@@ -813,9 +825,11 @@ export function orderStack(
   if (start === undefined) return [context];
   const down: T.OpenPullRequest[] = [];
   let current = start;
+  const walked = new Set<T.PrNumber>([start.number]);
   while (byHead.has(current.baseRefName)) {
     const parent = byHead.get(current.baseRefName);
-    if (parent === undefined) break;
+    if (parent === undefined || walked.has(parent.number)) break;
+    walked.add(parent.number);
     down.push(parent);
     current = parent;
   }

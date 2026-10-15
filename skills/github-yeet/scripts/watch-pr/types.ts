@@ -54,6 +54,7 @@ export interface OpenPullRequest {
   readonly number: PrNumber;
   readonly headRefName: string;
   readonly baseRefName: string;
+  readonly isCrossRepository?: boolean;
 }
 export interface ReviewComment {
   readonly authorLogin: string | null;
@@ -76,6 +77,7 @@ export interface ReviewThread {
   readonly id: string;
   readonly firstComment: ReviewComment | null;
   readonly lastAuthorLogin: string | null;
+  /** When the newest comment was posted or last edited. */
   readonly latestCommentAt: string | null;
   readonly disposition: ThreadDisposition;
   readonly isBugbot: boolean;

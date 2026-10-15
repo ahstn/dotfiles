@@ -34,10 +34,10 @@ Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.fact
 
 Exit 3. `blocker.threads` lists only actionable threads. An actionable thread was opened by an owner, member, collaborator or installed GitHub App, and its newest comment is not an autofix reply. The watcher hides drive-by comments and threads you already answered, so don't go looking for them.
 
-The verdict only carries each thread's first comment. Read the whole thread before acting:
+The verdict only carries each thread's first comment. Read the thread before acting. This fetches the newest 100 comments, which includes whatever woke you:
 
 ```shell
-gh api graphql -F id=<thread-id> -f query='query($id: ID!) { node(id: $id) { ... on PullRequestReviewThread { path line isOutdated comments(first: 50) { nodes { author { login } body createdAt } } } } }'
+gh api graphql -F id=<thread-id> -f query='query($id: ID!) { node(id: $id) { ... on PullRequestReviewThread { path line isOutdated comments(last: 100) { nodes { author { login } body createdAt } } } } }'
 ```
 
 Classify each thread and act:
@@ -67,10 +67,10 @@ gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { reso
 
 Exit 4. Each entry in `blocker.ci.failed` has `name`, `link` and `workflow`.
 
-1. Read the failure. For GitHub Actions, the link looks like `.../actions/runs/<run-id>/job/<job-id>`. Run `gh run view --job <job-id> --log-failed`. For other providers, read what `gh` exposes. If you cannot see the logs, report the link.
+1. Read the failure. For GitHub Actions, the link looks like `.../actions/runs/<run-id>/job/<job-id>`. Run `gh run view --job <job-id> --log-failed -R <owner>/<repo>`, using `blocker.pr`, because a fork checkout resolves `gh` to the fork. For other providers, read what `gh` exposes. If you cannot see the logs, report the link.
 2. Decide whether the failure is caused by this PR's diff.
    - **Caused by the diff.** Reproduce it locally when feasible, fix the root cause, run the same check locally, then commit and push.
-   - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun once with `gh run rerun <run-id> --failed`. If it fails the same way again, it is not a flake.
+   - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun once with `gh run rerun <run-id> --failed -R <owner>/<repo>`. If it fails the same way again, it is not a flake.
    - **Also fails on the base branch.** Report it. Don't fix unrelated code in this PR.
 3. `kind: "ci-github-rejected"` with no failed checks means GitHub reports a failing rollup that the check list doesn't show, for example a missing required check. Report it.
 

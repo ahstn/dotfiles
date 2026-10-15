@@ -10,6 +10,7 @@ import {
   queryBackoffSeconds,
   readSnapshot,
   runQueued,
+  runSimple,
   selectTierMajorStackDecision,
 } from "./policy.ts";
 import {
@@ -495,6 +496,44 @@ describe("queued-stack cadence", () => {
     expect(second.emit).toBe(false);
     expect(planQueue(second.state, 300).work?.kind).toBe("whole-stack-sweep");
   });
+});
+
+it("never sleeps past --timeout while backing off", async () => {
+  let now = 0;
+  const sleeps: number[] = [];
+  const reader = fakeReader();
+  const failing: GitHubReader = {
+    ...reader,
+    async pullRequest() {
+      throw new WatcherQueryError({
+        kind: "command-exit",
+        retryable: true,
+        code: 1,
+        detail: "outage",
+      });
+    },
+  };
+  const verdict = await runSimple({
+    dependencies: {
+      reader: failing,
+      clock: {
+        now: () => now,
+        observedAt: () => "now",
+        sleep: async (seconds) => {
+          sleeps.push(seconds);
+          now += seconds;
+        },
+      },
+      emit: () => {},
+    },
+    contexts: [context(1)],
+    mode: "single",
+    statusOnly: false,
+    options: { ...options, interval: 60, timeout: 540, maxQueryErrors: 99 },
+  });
+  expect(verdict.kind).toBe("TIMEOUT");
+  expect(now).toBeLessThanOrEqual(540);
+  expect(sleeps).toEqual([60, 120, 240, 120]);
 });
 
 it("uses the specified retry floor and cap", () => {

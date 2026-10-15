@@ -139,6 +139,16 @@ export function parseArgs(
   const raw = program.opts<RawOptions>();
   if (raw.stackPrs !== undefined && !raw.queuedStack)
     program.error("error: --stack-prs requires --queued-stack");
+  // Without a number, the PR comes from the checkout's branch, which belongs to
+  // the checkout's repository; pairing it with another repository would watch
+  // an unrelated PR that happens to share the number.
+  if (
+    (raw.owner !== undefined || raw.repo !== undefined) &&
+    (raw.owner === undefined ||
+      raw.repo === undefined ||
+      (raw.pr === undefined && raw.stackPrs === undefined))
+  )
+    program.error("error: --owner and --repo must be given together, with --pr");
   return {
     owner: raw.owner ?? null,
     repo: raw.repo ?? null,

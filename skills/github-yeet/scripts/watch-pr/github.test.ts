@@ -359,6 +359,27 @@ describe("context and stack discovery", () => {
     expect(reader.calls).toEqual(["currentPr"]);
   });
 
+  it("ignores fork PRs whose head name matches a local branch", () => {
+    const ordered = orderStack(context, [
+      {
+        number: parsePrNumber(7),
+        headRefName: "main",
+        baseRefName: "main",
+        isCrossRepository: true,
+      },
+      { number: context.number, headRefName: "feature", baseRefName: "main" },
+    ]);
+    expect(ordered.map((item) => Number(item.number))).toEqual([42]);
+  });
+
+  it("stops walking down a stack that loops", () => {
+    const ordered = orderStack(context, [
+      { number: context.number, headRefName: "a", baseRefName: "b" },
+      { number: parsePrNumber(43), headRefName: "b", baseRefName: "a" },
+    ]);
+    expect(ordered.map((item) => Number(item.number))).toEqual([43, 42]);
+  });
+
   it("orders the connected stack bottom-to-top", () => {
     const ordered = orderStack(context, [
       {

@@ -94,6 +94,8 @@ describe("parseArgs", () => {
       ["--stack", "--queued-stack"],
       ["--stack-prs", "1,2"],
       ["--queued-stack", "--stack-prs", "1,1"],
+      ["--owner", "other", "--repo", "project"],
+      ["--owner", "other", "--pr", "1"],
     ];
     for (const argv of invalid) {
       const harness = testRuntime(fakeReader());
