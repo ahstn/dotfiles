@@ -38,8 +38,6 @@ const WATCHER_CANDIDATES = [
 interface Watch {
   readonly cwd: string;
   readonly pr: number;
-  /** The agent commits and pushes in cwd, so its push target must stay this. */
-  readonly head: PrHead;
   readonly allowNoChecks: boolean;
   child: ChildProcess | null;
   timer: ReturnType<typeof setTimeout> | null;
@@ -66,65 +64,82 @@ interface PrHead {
   readonly headRefName: string;
   /** owner/repo the PR's branch lives in; a fork for fork PRs. */
   readonly headRepository: string;
+  readonly headRefOid: string;
 }
 
 /** The PR (given, or the current branch's) and where its branch lives. */
 async function prHead(cwd: string, pr: number | null): Promise<PrHead | null> {
-  const args = ["pr", "view", ...(pr === null ? [] : [String(pr)]), "--json", "number,headRefName,headRepository"];
+  const args = ["pr", "view", ...(pr === null ? [] : [String(pr)]), "--json", "number,headRefName,headRepository,headRefOid"];
   const json = await output("gh", args, cwd);
   if (json === null) return null;
   try {
     const value = JSON.parse(json) as {
       number?: unknown;
       headRefName?: unknown;
+      headRefOid?: unknown;
       headRepository?: { nameWithOwner?: unknown } | null;
     };
     const repository = value.headRepository?.nameWithOwner;
-    return typeof value.number === "number" && typeof value.headRefName === "string" && typeof repository === "string"
-      ? { number: value.number, headRefName: value.headRefName, headRepository: repository }
+    return typeof value.number === "number" &&
+      typeof value.headRefName === "string" &&
+      typeof value.headRefOid === "string" &&
+      typeof repository === "string"
+      ? { number: value.number, headRefName: value.headRefName, headRepository: repository, headRefOid: value.headRefOid }
       : null;
   } catch {
     return null;
   }
 }
 
-function githubRepository(url: string): string | null {
-  const match = /github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?\/?$/.exec(url.trim());
-  return match?.[1] ?? null;
+/** owner/repo for a github.com remote URL (scp-like, ssh:// or https://), else null. */
+export function githubRepository(url: string): string | null {
+  let host: string;
+  let path: string;
+  const scp = url.includes("://") ? null : /^(?:[^@/]+@)?([^:/]+):(.+)$/.exec(url.trim());
+  if (scp) {
+    host = scp[1];
+    path = scp[2];
+  } else {
+    try {
+      const parsed = new URL(url.trim());
+      host = parsed.hostname;
+      path = parsed.pathname;
+    } catch {
+      return null;
+    }
+  }
+  // Exact host, not a suffix: notgithub.com must not pass.
+  if (host.toLowerCase() !== "github.com") return null;
+  const parts = path.replace(/^\/+/, "").replace(/\/+$/, "").replace(/\.git$/, "").split("/");
+  return parts.length === 2 && parts.every(Boolean) ? parts.join("/") : null;
 }
 
 /**
- * Where a plain `git push` from cwd lands, which is what the playbook runs:
- * the push remote (branch pushRemote, then remote.pushDefault, then the
- * upstream remote) and the upstream branch.
- */
-async function pushTarget(cwd: string): Promise<{ branch: string; repository: string | null; ref: string | null } | null> {
-  const branch = await output("git", ["branch", "--show-current"], cwd);
-  if (!branch) return null;
-  const config = (key: string) => output("git", ["config", "--get", key], cwd);
-  const remote =
-    (await config(`branch.${branch}.pushRemote`)) || (await config("remote.pushDefault")) || (await config(`branch.${branch}.remote`));
-  const merge = await config(`branch.${branch}.merge`);
-  const url = remote ? await output("git", ["remote", "get-url", "--push", remote], cwd) : null;
-  return {
-    branch,
-    repository: url ? githubRepository(url) : null,
-    ref: merge?.replace(/^refs\/heads\//, "") ?? null,
-  };
-}
-
-/**
- * Null when a fix committed and pushed from cwd lands on the PR's branch.
- * A name match isn't enough: a fork PR from `main` matches the base repo's
- * `main`, so the push repository has to be the PR's head repository too.
+ * Null when a plain `git push` from cwd would publish nothing but the agent's
+ * fix to the PR's branch. Asks git itself (a porcelain dry run) rather than
+ * re-deriving remotes, push refspecs and push.default, and pins HEAD to the PR
+ * head so unpublished local commits can't ride along with the fix.
  */
 async function checkoutMismatch(cwd: string, head: PrHead): Promise<string | null> {
-  const target = await pushTarget(cwd);
   const want = `${head.headRepository}:${head.headRefName}`;
-  if (target === null) return `the checkout is on a detached HEAD, not PR #${head.number}'s branch ${want}`;
-  if (target.branch !== head.headRefName) return `the checkout is on ${target.branch}, not PR #${head.number}'s branch ${want}`;
-  if (target.repository?.toLowerCase() !== head.headRepository.toLowerCase() || target.ref !== head.headRefName)
-    return `${target.branch} pushes to ${target.repository ?? "an unknown remote"}:${target.ref ?? "?"}, not PR #${head.number}'s branch ${want}`;
+  const branch = await output("git", ["branch", "--show-current"], cwd);
+  if (!branch) return `the checkout is on a detached HEAD, not PR #${head.number}'s branch ${want}`;
+  if (branch !== head.headRefName) return `the checkout is on ${branch}, not PR #${head.number}'s branch ${want}`;
+  const local = await output("git", ["rev-parse", "HEAD"], cwd);
+  if (local !== head.headRefOid)
+    return `local ${branch} is at ${local?.slice(0, 7) ?? "?"} but PR #${head.number}'s head is ${head.headRefOid.slice(0, 7)}; push or reset it first`;
+  const dryRun = await output("git", ["push", "--dry-run", "--porcelain"], cwd);
+  if (dryRun === null) return `could not dry-run \`git push\` from ${branch} to check where it goes`;
+  const lines = dryRun.split("\n");
+  const to = lines.find((line) => line.startsWith("To "))?.slice(3) ?? "";
+  const repository = githubRepository(to);
+  const destinations = lines
+    .filter((line) => line.includes("\t"))
+    .map((line) => line.split("\t")[1]?.split(":")[1] ?? "");
+  if (repository?.toLowerCase() !== head.headRepository.toLowerCase())
+    return `\`git push\` from ${branch} goes to ${to || "an unknown remote"}, not PR #${head.number}'s repository ${head.headRepository}`;
+  if (destinations.length === 0 || destinations.some((ref) => ref !== `refs/heads/${head.headRefName}`))
+    return `\`git push\` from ${branch} would update ${destinations.join(", ") || "nothing"}, not only PR #${head.number}'s branch ${want}`;
   return null;
 }
 
@@ -268,7 +283,10 @@ export default function (pi: ExtensionAPI) {
         // The agent fixes and pushes whatever is checked out. If that has
         // moved off the PR's branch since /autofix started, a wake would land
         // the fix on the wrong branch, so stop instead.
-        void checkoutMismatch(current.cwd, current.head).then((mismatch) => {
+        // Re-read the PR head: after the agent's own pushes it has moved on.
+        void prHead(current.cwd, current.pr)
+          .then((head) => (head === null ? `could not read PR #${current.pr}` : checkoutMismatch(current.cwd, head)))
+          .then((mismatch) => {
           if (watch !== current) return;
           if (mismatch !== null) return stop(mismatch);
           pi.sendUserMessage(wakeMessage(current, verdict), { deliverAs: "followUp" });
@@ -333,7 +351,6 @@ export default function (pi: ExtensionAPI) {
       watch = {
         cwd: ctx.cwd,
         pr,
-        head,
         allowNoChecks: words.includes("--no-checks"),
         child: null,
         timer: null,

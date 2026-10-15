@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  AUTOFIX_FIXED_MARKER,
   AUTOFIX_REPLY_MARKER,
   ChecksUnavailable,
   WatcherQueryError,
@@ -329,6 +330,11 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
                 reply("me", "OWNER", marked)
               ),
               thread(
+                "reopened-after-fix",
+                comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
+                reply("me", "OWNER", `Fixed in abc1234.\n${AUTOFIX_FIXED_MARKER}`)
+              ),
+              thread(
                 "drive-by",
                 comment({ __typename: "User", login: "rando" }, "CONTRIBUTOR")
               ),
@@ -348,6 +354,7 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     "outsider-after-answer": "awaiting-reviewer",
     "reviewer-follow-up": "actionable",
     "edited-after-answer": "actionable",
+    "reopened-after-fix": "actionable",
     "drive-by": "untrusted",
   });
   const followUp = threads.find((t) => t.id === "reviewer-follow-up");
