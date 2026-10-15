@@ -12,6 +12,7 @@ import {
   parseReviewThreads,
   resolveChecks,
   resolveContext,
+  trustedByAssociation,
 } from "./github.ts";
 import {
   fakeReader,
@@ -349,6 +350,24 @@ it("annotates Bugbot threads with distinct review-pass counts", () => {
   expect(threads).toHaveLength(2);
   expect(threads.map((thread) => thread.isBugbot)).toEqual([true, true]);
   expect(threads.map((thread) => thread.bugbotReviewPasses)).toEqual([3, 3]);
+});
+
+it("distrusts a member or collaborator comment whose login is gone", () => {
+  const comment = (authorAssociation: string, authorLogin: string | null) => ({
+    authorLogin,
+    body: "change this",
+    path: null,
+    line: null,
+    createdAt: "now",
+    activityAt: "now",
+    authorAssociation,
+    authorIsBot: false,
+    isViewer: false,
+  });
+  expect(trustedByAssociation(comment("MEMBER", null))).toBe(false);
+  expect(trustedByAssociation(comment("COLLABORATOR", null))).toBe(false);
+  expect(trustedByAssociation(comment("MEMBER", "someone"))).toBe(true);
+  expect(trustedByAssociation(comment("OWNER", null))).toBe(true);
 });
 
 it("parks answered and untrusted threads so they do not wake the agent", () => {

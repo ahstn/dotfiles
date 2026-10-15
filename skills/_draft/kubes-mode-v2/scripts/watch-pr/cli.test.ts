@@ -501,6 +501,23 @@ describe("main", () => {
     });
   });
 
+  it("names GitHub's rejection cause in the pretty status table", async () => {
+    const harness = testRuntime(
+      fakeReader({
+        facts: { mergeStateStatus: "BLOCKED" },
+        fastPath: { kind: "checks", checks: [passingCheck()] },
+        commitRollups: [{ oid: "head", state: "SUCCESS" }],
+      })
+    );
+    await main(
+      ["--owner", "owner", "--repo", "repo", "--pr", "1", "--status-only", "--pretty"],
+      harness.runtime
+    );
+    const table = harness.stdout.join("");
+    expect(table).toContain("GitHub blocks: hidden rule");
+    expect(table).not.toContain("failing checks");
+  });
+
   it("shows help without touching the reader", async () => {
     const reader = fakeReader();
     const harness = testRuntime(reader);

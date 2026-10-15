@@ -101,6 +101,55 @@ describe("readiness truth table", () => {
     expect(failing.ci.kind).toBe("ci-github-rejected");
   });
 
+  it("skips the merge-queue lookup when the refusal is already known", async () => {
+    for (const [state, parked] of [["FAILURE", false], ["SUCCESS", true]] as const) {
+      const base = fakeReader({
+        facts: { mergeStateStatus: "BLOCKED" },
+        fastPath: { kind: "checks", checks: [passingCheck()] },
+        commitRollups: [{ oid: "head", state }],
+        ...(parked
+          ? {
+              threads: [
+                {
+                  id: "t",
+                  firstComment: null,
+                  recentComments: [],
+                  historyComplete: true,
+                  decidingComment: null,
+                  lastAuthorLogin: null,
+                  latestCommentAt: null,
+                  disposition: "untrusted" as const,
+                  isBugbot: false,
+                  bugbotReviewPasses: 0,
+                },
+              ],
+            }
+          : {}),
+      });
+      const snapshot = await readSnapshot({
+        reader: {
+          ...base,
+          async mergeQueueEnabled() {
+            throw new WatcherQueryError({
+              kind: "command-exit",
+              retryable: true,
+              code: 1,
+              detail: "should not be asked",
+            });
+          },
+        },
+        context: context(1),
+        pendingHistory: "include",
+        allowDraft: false,
+      });
+      if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+      expect(snapshot.ci).toMatchObject({
+        kind: "ci-github-rejected",
+        github: { cause: parked ? "open-conversations" : "failing-rollup" },
+      });
+    }
+  });
+
   it("reports a parked conversation on a merge-queue base", () => {
     expect(
       assessGitHubMerge({

@@ -528,7 +528,10 @@ export type CommentTrust = (comment: T.ReviewComment) => boolean;
 export const trustedByAssociation: CommentTrust = (comment) =>
   comment.isViewer ||
   comment.authorIsBot ||
-  TRUSTED_ASSOCIATIONS.has(comment.authorAssociation);
+  (TRUSTED_ASSOCIATIONS.has(comment.authorAssociation) &&
+    // Write access can't be checked without a login (a deleted account), so
+    // a bare MEMBER or COLLABORATOR association proves nothing.
+    !(comment.authorLogin === null && PERMISSION_CHECKED.has(comment.authorAssociation)));
 /**
  * Re-derives a thread's disposition from the newest comment a trusted author
  * wrote. Untrusted replies are skipped, so an outsider cannot reopen a thread

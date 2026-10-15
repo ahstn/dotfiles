@@ -82,9 +82,15 @@ async function mergeAssessment(
       headRollupState,
       blockExplained,
       parkedThreads,
-      // Only an otherwise unexplained BLOCKED needs to know.
+      // Only an otherwise unexplained BLOCKED needs to know. A failing
+      // rollup or a parked conversation is refused whatever the queue, so
+      // don't let a failed lookup replace that known blocker.
       mergeQueue:
-        facts.mergeStateStatus === "BLOCKED" && !blockExplained
+        facts.mergeStateStatus === "BLOCKED" &&
+        !blockExplained &&
+        !parkedThreads &&
+        headRollupState !== "FAILURE" &&
+        headRollupState !== "ERROR"
           ? await reader.mergeQueueEnabled(facts.context)
           : false,
     }),

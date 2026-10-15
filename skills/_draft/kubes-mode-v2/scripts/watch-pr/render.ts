@@ -25,6 +25,11 @@ const REJECTION_ACTIONS: Record<T.GitHubMergeRefusal["cause"], string> = {
   "unexplained-block":
     "GitHub blocks the merge for a rule the watcher can't see (e.g. a required check that never reported); check the branch rules",
 };
+const REJECTION_CELLS: Record<T.GitHubMergeRefusal["cause"], string> = {
+  "failing-rollup": "❌ GitHub reports failing checks",
+  "open-conversations": "⚠️ GitHub blocks: open conversations",
+  "unexplained-block": "⚠️ GitHub blocks: hidden rule",
+};
 function ciCell(row: T.PrSnapshot): string {
   if (row.kind !== "open") return "\u2014";
   const was = row.ci.hadPreviousPassingCi ? ", was ✅" : "";
@@ -36,7 +41,7 @@ function ciCell(row: T.PrSnapshot): string {
     case "ci-failing":
       return `❌ ${row.ci.failed.length} failed${row.ci.pending.length ? `, ${row.ci.pending.length} pending` : ""}${was}`;
     case "ci-github-rejected":
-      return `❌ GitHub reports failing checks${was}`;
+      return `${REJECTION_CELLS[row.ci.github.cause]}${was}`;
     default: {
       const exhaustive: never = row.ci;
       return exhaustive;
