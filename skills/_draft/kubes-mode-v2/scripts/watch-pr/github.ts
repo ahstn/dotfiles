@@ -871,7 +871,7 @@ export class GhGitHubReader implements T.GitHubReader {
         "--repo",
         `${context.owner}/${context.repo}`,
         "--json",
-        "headRefOid,baseRefOid,state,isDraft,reviewDecision,mergedAt,updatedAt,mergeStateStatus",
+        "headRefOid,baseRefOid,baseRefName,state,isDraft,reviewDecision,mergedAt,updatedAt,mergeStateStatus",
       ]),
       "pull request recheck"
     );
@@ -880,6 +880,7 @@ export class GhGitHubReader implements T.GitHubReader {
     return {
       headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
       baseRefOid: optionalString(object.baseRefOid, "pull request.baseRefOid"),
+      baseRefName: string(object.baseRefName, "pull request.baseRefName"),
       state: enumValue(
         object.state,
         ["OPEN", "CLOSED", "MERGED"] as const,

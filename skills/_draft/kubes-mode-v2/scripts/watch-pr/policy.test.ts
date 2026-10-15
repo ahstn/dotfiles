@@ -2035,6 +2035,55 @@ it("re-reads a snapshot when updatedAt moved for a trusted comment", async () =>
   expect(snapshot.kind === "open" && snapshot.threads.map((t) => t.id)).toEqual(["t"]);
 });
 
+it("rescans a stack when a GitHub-rejected row's rollup recovers", async () => {
+  const base = fakeReader({
+    facts: { mergeStateStatus: "BLOCKED" },
+    mergeQueueEnabled: true,
+  });
+  let row1Rollups = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async commitRollups(pr) {
+          if (Number(pr.number) !== 1) return base.commitRollups(pr);
+          row1Rollups += 1;
+          // A transient failure on the first read; green by revalidation.
+          return [{ oid: "head", state: row1Rollups === 1 ? "FAILURE" : "SUCCESS" }];
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(verdict.kind).toBe("READY");
+});
+
+it("re-reads a snapshot when the PR was retargeted to a branch at the same commit", async () => {
+  const base = fakeReader();
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async pullRequest(pr) {
+        reads += 1;
+        return { ...(await base.pullRequest(pr)), baseRefName: reads === 1 ? "main" : "release" };
+      },
+      async recheck(pr) {
+        return { ...(await base.recheck(pr)), baseRefName: "release" };
+      },
+    },
+    context: context(1),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(snapshot.facts.baseRefName).toBe("release");
+});
+
 it("rescans a stack whose order changed on rediscovery", async () => {
   const base = fakeReader();
   let rediscoveries = 0;
@@ -2162,6 +2211,62 @@ it("re-reads a queued sweep's stale blocker row before reporting it", async () =
     options: { ...options, interval: 60, timeout: 90 },
   });
   expect(verdict.kind).toBe("TIMEOUT");
+});
+
+it("keeps a queued thread blocker when its refresh read fails", async () => {
+  const comment = {
+    authorLogin: "owner",
+    body: "fix this",
+    path: null,
+    line: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    activityAt: "2026-01-01T00:00:00Z",
+    authorAssociation: "OWNER",
+    authorIsBot: false,
+    isViewer: false,
+  };
+  const threads = fakeReader({
+    threads: [
+      {
+        id: "t",
+        firstComment: comment,
+        recentComments: [comment],
+        historyComplete: true,
+        decidingComment: comment,
+        lastAuthorLogin: "owner",
+        latestCommentAt: comment.activityAt,
+        disposition: "actionable",
+        isBugbot: false,
+        bugbotReviewPasses: 0,
+      },
+    ],
+  });
+  const base = fakeReader();
+  let row1ThreadReads = 0;
+  const verdict = await runQueued({
+    dependencies: {
+      reader: {
+        ...base,
+        async reviewThreads(pr) {
+          if (Number(pr.number) !== 1) return [];
+          row1ThreadReads += 1;
+          if (row1ThreadReads > 1)
+            throw new WatcherQueryError({
+              kind: "command-exit",
+              retryable: true,
+              code: 1,
+              detail: "GraphQL unavailable",
+            });
+          return threads.reviewThreads(pr);
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    options,
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("review-threads");
 });
 
 it("times out a queued wait at the deadline without another snapshot", async () => {

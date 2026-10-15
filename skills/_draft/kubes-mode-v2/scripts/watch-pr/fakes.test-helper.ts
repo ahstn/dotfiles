@@ -108,6 +108,7 @@ export function fakeReader(
       const {
         headRefOid,
         baseRefOid,
+        baseRefName,
         state,
         isDraft,
         reviewDecision,
@@ -118,6 +119,7 @@ export function fakeReader(
       return {
         headRefOid,
         baseRefOid,
+        baseRefName,
         state,
         isDraft,
         reviewDecision,

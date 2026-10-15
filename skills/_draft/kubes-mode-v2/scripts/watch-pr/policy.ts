@@ -176,8 +176,9 @@ export async function readSnapshot(args: {
  * Whether a row's CI verdict still holds on a fresh read. Check activity and
  * merge-queue settings move none of the recheck fields, so before a verdict
  * rests on them: a clean read must have gained no pending or failed check and
- * (when the merge queue explained BLOCKED) the queue must still be on, and a
- * failing read must still fail the same check attempts.
+ * (when the merge queue explained BLOCKED) the queue must still be on, a
+ * failing read must still fail the same check attempts, and GitHub's
+ * refusal must rest on the same rollup and queue setting.
  */
 async function ciMoved(
   reader: T.GitHubReader,
@@ -210,6 +211,19 @@ async function ciMoved(
       .checks;
     return names(checks) !== names(row.ci.failed);
   }
+  if (row.ci.kind === "ci-github-rejected") {
+    // GitHub's refusal rests on the head rollup and, for an unexplained
+    // BLOCKED, on the merge queue being off. Either can change with no fact
+    // moving (BLOCKED stays BLOCKED).
+    const head = (await reader.commitRollups(row.context)).find(
+      (commit) => commit.oid === row.facts.headRefOid
+    );
+    if ((head?.state ?? null) !== row.ci.github.headRollupState) return true;
+    return (
+      row.ci.github.cause === "unexplained-block" &&
+      (await reader.mergeQueueEnabled(row.context))
+    );
+  }
   return false;
 }
 /** Whether nothing a snapshot depends on moved between two fact reads. */
@@ -217,6 +231,9 @@ function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
   return (
     now.headRefOid === facts.headRefOid &&
     now.baseRefOid === facts.baseRefOid &&
+    // A retarget between branches at the same commit moves only the name,
+    // but the branch rules (BEHIND, merge queue) belong to the name.
+    now.baseRefName === facts.baseRefName &&
     now.state === facts.state &&
     now.isDraft === facts.isDraft &&
     now.reviewDecision === facts.reviewDecision &&
@@ -278,6 +295,18 @@ async function rowsMoved(
     if (await factsMoved(reader, row, await reader.recheck(row.context))) return true;
   }
   return false;
+}
+/**
+ * The top two tiers among rows already read: the first conflict, else the
+ * first actionable thread. Only for a complete set of rows, since a thread
+ * on a later row can't outrank a conflict lower down.
+ */
+function knownBlocker(rows: readonly T.PrSnapshot[]): T.MergeBlocker | null {
+  return (
+    knownConflict(rows) ??
+    rows.map(threadBlocker).find((blocker) => blocker !== null) ??
+    null
+  );
 }
 /** The first conflict among rows already read; the top-tier verdict. */
 function knownConflict(rows: readonly T.PrSnapshot[]): T.MergeBlocker | null {
@@ -1143,7 +1172,7 @@ export async function runSimple(args: {
       // readSnapshot, a known conflict or actionable thread still stands.
       const known =
         error instanceof WatcherQueryError
-          ? (knownConflict(rows) ?? rows.map(threadBlocker).find((b) => b !== null) ?? null)
+          ? knownBlocker(rows)
           : null;
       if (known !== null)
         return { kind: "terminal", verdict: blockerVerdict(stamp, known) };
@@ -1557,7 +1586,8 @@ export async function runQueued(args: {
         });
       } catch (error) {
         const conflict =
-          error instanceof WatcherQueryError ? knownConflict(orderedRows(state)) : null;
+          // The sweep covered every row, so a known thread stands too.
+          error instanceof WatcherQueryError ? knownBlocker(orderedRows(state)) : null;
         if (conflict !== null)
           return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
         throw error;

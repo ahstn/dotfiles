@@ -63,6 +63,7 @@ export type RecheckFacts = Pick<
   PullRequestFacts,
   | "headRefOid"
   | "baseRefOid"
+  | "baseRefName"
   | "state"
   | "isDraft"
   | "reviewDecision"
