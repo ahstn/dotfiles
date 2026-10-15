@@ -16,26 +16,27 @@ query ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) 
           isResolved
           comments(first: 1) {
             nodes {
-              body
-              createdAt
-              path
-              line
-              authorAssociation
-              author { __typename login }
+              ...ThreadComment
             }
           }
-          latest: comments(last: 1) {
+          latest: comments(last: 20) {
             nodes {
-              body
-              createdAt
-              updatedAt
-              author { login }
+              ...ThreadComment
             }
           }
         }
       }
     }
   }
+}
+fragment ThreadComment on PullRequestReviewComment {
+  body
+  createdAt
+  updatedAt
+  path
+  line
+  authorAssociation
+  author { __typename login }
 }
 `;
 export const PR_COMMIT_STATUS_QUERY =
@@ -315,86 +316,83 @@ export function mapRollupNode(value: unknown): T.Check | null {
     ? { ...details, link, kind: "passed", reportedState: state }
     : { ...details, link, kind: "failed", reportedState: state || "FAILURE" };
 }
-function parseComment(value: unknown): T.ReviewComment {
+function parseComment(
+  value: unknown,
+  viewerLogin: string | null
+): T.ReviewComment {
   const object = record(value, "review comment");
   const author =
     object.author === null
       ? null
       : record(object.author, "review comment.author");
+  const authorLogin =
+    author === null
+      ? null
+      : optionalString(author.login, "review comment.author.login");
+  const createdAt = string(object.createdAt, "review comment.createdAt");
   return {
-    authorLogin:
-      author === null
-        ? null
-        : optionalString(author.login, "review comment.author.login"),
+    authorLogin,
     body: string(object.body, "review comment.body"),
     path: optionalString(object.path, "review comment.path"),
     line:
-      object.line === null
+      object.line === null || object.line === undefined
         ? null
         : Number.isInteger(object.line)
           ? Number(object.line)
           : missing("review comment.line", object.line),
-    createdAt: string(object.createdAt, "review comment.createdAt"),
+    createdAt,
+    activityAt:
+      typeof object.updatedAt === "string" ? object.updatedAt : createdAt,
     authorAssociation:
       typeof object.authorAssociation === "string"
         ? object.authorAssociation
         : "NONE",
     authorIsBot: author !== null && author.__typename === "Bot",
+    isViewer: viewerLogin !== null && authorLogin === viewerLogin,
   };
 }
 // Mirrors who Claude Desktop's auto-fix listens to: people with write access
 // and installed GitHub Apps. CONTRIBUTOR and NONE can be anyone on the internet.
 const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+// MEMBER and COLLABORATOR don't imply write access (see requireWriteAccess).
+const PERMISSION_CHECKED = new Set(["MEMBER", "COLLABORATOR"]);
 // The agent posts through the user's own `gh` login, so authorship alone
 // cannot tell the user's review notes from the agent's replies, and the marker
-// alone can be pasted by anyone. A thread is waiting on the reviewer only when
-// its newest comment has the marker and was written by the `gh` viewer.
+// alone can be pasted by anyone. A comment parks its thread only when it has
+// the marker and was written by the `gh` viewer.
 export const AUTOFIX_REPLY_MARKER = "<!-- github-yeet:autofix -->";
-function threadDisposition(
-  first: T.ReviewComment | null,
-  last: LatestComment | null,
-  viewerLogin: string | null
-): T.ThreadDisposition {
-  if (
-    first === null ||
-    !(first.authorIsBot || TRUSTED_ASSOCIATIONS.has(first.authorAssociation))
-  )
-    return "untrusted";
-  return viewerLogin !== null &&
-    last?.authorLogin === viewerLogin &&
-    last.body.includes(AUTOFIX_REPLY_MARKER)
-    ? "awaiting-reviewer"
-    : "actionable";
-}
-interface LatestComment {
-  readonly authorLogin: string | null;
-  readonly body: string;
-  readonly createdAt: string | null;
-}
-function latestComment(thread: Record<string, unknown>): LatestComment | null {
-  if (!("latest" in thread)) return null;
-  const nodes = list(
-    at(thread, ["latest", "nodes"]),
-    "review thread.latest.nodes"
-  );
-  if (nodes.length === 0) return null;
-  const last = record(nodes[0], "latest comment");
+export type CommentTrust = (comment: T.ReviewComment) => boolean;
+export const trustedByAssociation: CommentTrust = (comment) =>
+  comment.isViewer ||
+  comment.authorIsBot ||
+  TRUSTED_ASSOCIATIONS.has(comment.authorAssociation);
+/**
+ * Re-derives a thread's disposition from the newest comment a trusted author
+ * wrote. Untrusted replies are skipped, so an outsider cannot reopen a thread
+ * the agent answered, or bump its dedupe key.
+ */
+export function decideThread(
+  thread: T.ReviewThread,
+  trusted: CommentTrust
+): T.ReviewThread {
+  const first = thread.firstComment;
+  if (first === null || !trusted(first))
+    return {
+      ...thread,
+      disposition: "untrusted",
+      lastAuthorLogin: first?.authorLogin ?? null,
+      latestCommentAt: first?.activityAt ?? null,
+    };
+  const decisive =
+    [...thread.recentComments].reverse().find(trusted) ?? first;
   return {
-    authorLogin:
-      last.author === null
-        ? null
-        : optionalString(
-            record(last.author, "latest comment.author").login,
-            "latest comment.author.login"
-          ),
-    body: string(last.body, "latest comment.body"),
-    // updatedAt moves on edits too, so revised feedback reads as new.
-    createdAt:
-      typeof last.updatedAt === "string"
-        ? last.updatedAt
-        : typeof last.createdAt === "string"
-          ? last.createdAt
-          : null,
+    ...thread,
+    disposition:
+      decisive.isViewer && decisive.body.includes(AUTOFIX_REPLY_MARKER)
+        ? "awaiting-reviewer"
+        : "actionable",
+    lastAuthorLogin: decisive.authorLogin,
+    latestCommentAt: decisive.activityAt,
   };
 }
 function isBugbot(comment: T.ReviewComment | null): boolean {
@@ -436,7 +434,7 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
   const threads: {
     readonly id: string;
     readonly firstComment: T.ReviewComment | null;
-    readonly latest: LatestComment | null;
+    readonly recentComments: readonly T.ReviewComment[];
     readonly resolved: boolean;
   }[] = [];
   for (const node of nodes) {
@@ -447,12 +445,17 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
       at(thread, ["comments", "nodes"]),
       "review thread.comments.nodes"
     );
-    const firstComment =
-      comments.length === 0 ? null : parseComment(comments[0]);
+    const recent =
+      "latest" in thread
+        ? list(at(thread, ["latest", "nodes"]), "review thread.latest.nodes")
+        : [];
     threads.push({
       id: string(thread.id, "review thread.id"),
-      firstComment,
-      latest: latestComment(thread),
+      firstComment:
+        comments.length === 0 ? null : parseComment(comments[0], viewerLogin),
+      recentComments: recent.map((comment) =>
+        parseComment(comment, viewerLogin)
+      ),
       resolved: thread.isResolved,
     });
   }
@@ -467,15 +470,21 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
   const passes = keys.size > 0 ? keys.size : keyless ? 1 : 0;
   return threads
     .filter((thread) => !thread.resolved)
-    .map(({ id, firstComment, latest }) => ({
-      id,
-      firstComment,
-      lastAuthorLogin: latest?.authorLogin ?? firstComment?.authorLogin ?? null,
-      latestCommentAt: latest?.createdAt ?? firstComment?.createdAt ?? null,
-      disposition: threadDisposition(firstComment, latest, viewerLogin),
-      isBugbot: isBugbot(firstComment),
-      bugbotReviewPasses: passes,
-    }));
+    .map(({ id, firstComment, recentComments }) =>
+      decideThread(
+        {
+          id,
+          firstComment,
+          recentComments,
+          lastAuthorLogin: null,
+          latestCommentAt: null,
+          disposition: "actionable",
+          isBugbot: isBugbot(firstComment),
+          bugbotReviewPasses: passes,
+        },
+        trustedByAssociation
+      )
+    );
 }
 export function parsePullRequest(
   value: unknown,
@@ -567,11 +576,18 @@ export class GhGitHubReader implements T.GitHubReader {
       "--state",
       "open",
       "--limit",
-      "300",
+      String(OPEN_PR_LIMIT),
       "--json",
       "number,headRefName,baseRefName,isCrossRepository",
     ]);
-    return list(value, "open PRs").map((item, index) => {
+    const prs = list(value, "open PRs");
+    if (prs.length >= OPEN_PR_LIMIT)
+      throw new WatcherQueryError({
+        kind: "stack-too-large",
+        retryable: false,
+        detail: `${prs.length} open PRs hit the ${OPEN_PR_LIMIT} discovery cap; pass --queued-stack --stack-prs instead of --stack`,
+      });
+    return prs.map((item, index) => {
       const object = record(item, `open PRs[${index}]`);
       return {
         number: parsePrNumber(object.number, `open PRs[${index}].number`),
@@ -717,36 +733,38 @@ export class GhGitHubReader implements T.GitHubReader {
 
 // MEMBER and COLLABORATOR only say the author belongs to the org or was
 // invited, not that they can write: org base permission and collaborator
-// invites can both be Read. Confirm write access before such a thread can wake
-// the agent. GitHub only answers this for callers with push access, so a
-// fork contributor (null) falls back to the association check.
+// invites can both be Read. Every such author in a thread, opener or replier,
+// needs write access to count as trusted. GitHub only answers this for callers
+// with push access, so a fork contributor (null) falls back to association.
 const WRITE_PERMISSIONS = new Set(["admin", "write"]);
 export async function requireWriteAccess(
   reader: T.GitHubReader,
   context: T.PrContext,
   threads: readonly T.ReviewThread[]
 ): Promise<readonly T.ReviewThread[]> {
-  const access = new Map<string, Promise<boolean | null>>();
-  const canWrite = (login: string) => {
-    if (!access.has(login)) access.set(login, reader.permission(context, login));
-    return access.get(login) as Promise<boolean | null>;
-  };
-  return Promise.all(
-    threads.map(async (thread) => {
-      const first = thread.firstComment;
-      if (
-        thread.disposition === "untrusted" ||
-        first === null ||
-        first.authorIsBot ||
-        first.authorLogin === null ||
-        first.authorAssociation === "OWNER"
-      )
-        return thread;
-      return (await canWrite(first.authorLogin)) === false
-        ? { ...thread, disposition: "untrusted" as const }
-        : thread;
+  const needsCheck = (comment: T.ReviewComment): comment is T.ReviewComment & {
+    readonly authorLogin: string;
+  } =>
+    !comment.isViewer &&
+    !comment.authorIsBot &&
+    comment.authorLogin !== null &&
+    PERMISSION_CHECKED.has(comment.authorAssociation);
+  const logins = new Set<string>();
+  for (const thread of threads)
+    for (const comment of [thread.firstComment, ...thread.recentComments])
+      if (comment !== null && needsCheck(comment)) logins.add(comment.authorLogin);
+  const readOnly = new Set<string>();
+  await Promise.all(
+    [...logins].map(async (login) => {
+      if ((await reader.permission(context, login)) === false)
+        readOnly.add(login);
     })
   );
+  if (readOnly.size === 0) return threads;
+  const trusted: CommentTrust = (comment) =>
+    trustedByAssociation(comment) &&
+    !(needsCheck(comment) && readOnly.has(comment.authorLogin));
+  return threads.map((thread) => decideThread(thread, trusted));
 }
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 export async function resolveChecks(
@@ -806,6 +824,10 @@ export async function resolveContext(args: {
     number: args.pr ?? inferred.number,
   };
 }
+// `gh pr list --limit` truncates rather than pages. Stack discovery needs the
+// whole graph, so a list that hits the cap fails loudly instead of building a
+// partial stack that could report READY while a missing member is blocked.
+export const OPEN_PR_LIMIT = 1000;
 export function orderStack(
   context: T.PrContext,
   open: readonly T.OpenPullRequest[]

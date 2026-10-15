@@ -62,12 +62,19 @@ export interface ReviewComment {
   readonly path: string | null;
   readonly line: number | null;
   readonly createdAt: string;
+  /** Last edit time, or createdAt when never edited. */
+  readonly activityAt: string;
   readonly authorAssociation: string;
   readonly authorIsBot: boolean;
+  /** Written by the authenticated `gh` user, which is also how the agent posts. */
+  readonly isViewer: boolean;
 }
 /**
- * `actionable` threads block and wake the agent. `awaiting-reviewer` threads
- * end with an agent reply carrying AUTOFIX_REPLY_MARKER, and `untrusted` threads
+ * Dispositions are decided by the newest comment from a trusted author;
+ * replies from anyone else are skipped, so they can neither reopen a thread
+ * nor change its dedupe key. `actionable` threads block and wake the agent.
+ * `awaiting-reviewer` threads end with an agent reply carrying
+ * AUTOFIX_REPLY_MARKER, and `untrusted` threads
  * were opened by someone without write access who is not an installed App.
  * Neither of those blocks, so a reply that disputes a comment does not
  * re-wake the agent, and drive-by comments cannot steer it.
@@ -76,8 +83,11 @@ export type ThreadDisposition = "actionable" | "awaiting-reviewer" | "untrusted"
 export interface ReviewThread {
   readonly id: string;
   readonly firstComment: ReviewComment | null;
+  /** Up to the 20 newest comments, oldest first. */
+  readonly recentComments: readonly ReviewComment[];
+  /** Author of the newest trusted comment, which decided the disposition. */
   readonly lastAuthorLogin: string | null;
-  /** When the newest comment was posted or last edited. */
+  /** When that comment was posted or last edited. */
   readonly latestCommentAt: string | null;
   readonly disposition: ThreadDisposition;
   readonly isBugbot: boolean;
@@ -238,6 +248,11 @@ export type QueryFailure =
   | {
       readonly kind: "checks-unavailable";
       readonly retryable: true;
+      readonly detail: string;
+    }
+  | {
+      readonly kind: "stack-too-large";
+      readonly retryable: false;
       readonly detail: string;
     }
   | {

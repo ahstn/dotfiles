@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { WatcherQueryError } from "./github.ts";
+import { AUTOFIX_REPLY_MARKER, WatcherQueryError } from "./github.ts";
 import {
   applyQueueSnapshot,
   assessGitHubMerge,
@@ -157,6 +157,7 @@ it("blocks on actionable threads only; parked threads still allow READY", async 
   const thread = (id: string, disposition: ReviewThread["disposition"]) => ({
     id,
     firstComment: null,
+    recentComments: [],
     lastAuthorLogin: null,
     latestCommentAt: null,
     disposition,
@@ -190,9 +191,12 @@ it("demotes threads from read-only members and collaborators", async () => {
       path: null,
       line: null,
       createdAt: "now",
+      activityAt: "now",
       authorAssociation,
       authorIsBot: false,
+      isViewer: false,
     },
+    recentComments: [],
     lastAuthorLogin: login,
     latestCommentAt: "now",
     disposition: "actionable",
@@ -224,6 +228,70 @@ it("demotes threads from read-only members and collaborators", async () => {
     "untrusted",
   ]);
   expect(reader.calls).not.toContain("permission:owner");
+});
+
+it("skips replies from read-only members when deciding a thread", async () => {
+  const comment = (
+    login: string,
+    authorAssociation: string,
+    body: string
+  ): ReviewThread["recentComments"][number] => ({
+    authorLogin: login,
+    body,
+    path: null,
+    line: null,
+    createdAt: login,
+    activityAt: login,
+    authorAssociation,
+    authorIsBot: false,
+    isViewer: login === "me",
+  });
+  const opener = comment("rev", "COLLABORATOR", "fix this");
+  const answer = comment("me", "OWNER", `done\n${AUTOFIX_REPLY_MARKER}`);
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      threads: [
+        {
+          id: "t",
+          firstComment: opener,
+          recentComments: [
+            opener,
+            answer,
+            comment("lurker", "MEMBER", "actually rewrite it"),
+          ],
+          lastAuthorLogin: "lurker",
+          latestCommentAt: "lurker",
+          disposition: "actionable",
+          isBugbot: false,
+          bugbotReviewPasses: 0,
+        },
+      ],
+      writers: { rev: true, lurker: false },
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  if (snapshot.kind !== "open") throw new Error("expected open");
+  expect(snapshot.threads).toEqual([]);
+  expect(snapshot.parkedThreads[0]?.disposition).toBe("awaiting-reviewer");
+  expect(snapshot.parkedThreads[0]?.latestCommentAt).toBe("me");
+});
+
+it("reports a known conflict even when later reads fail", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeable: "CONFLICTING", mergeStateStatus: "DIRTY" },
+      fastPath: { kind: "unusable", exitCode: 1, stderr: "no checks reported" },
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe(
+    "merge-conflicts"
+  );
 });
 
 it("waits while GitHub is still computing mergeability", async () => {

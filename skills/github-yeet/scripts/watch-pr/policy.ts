@@ -69,6 +69,48 @@ export async function readSnapshot(args: {
     return { kind: "merged", context: args.context, facts };
   if (facts.state === "CLOSED")
     return { kind: "closed", context: args.context, facts };
+  try {
+    return await readOpenSnapshot(args, facts);
+  } catch (error) {
+    // A conflict outranks threads and CI, and is already known from facts, so a
+    // failing lower-priority read (an API blip, or a repo with no checks) must
+    // not hide it behind a query error.
+    if (!(error instanceof WatcherQueryError) || !isConflicted(facts))
+      throw error;
+    const unread: T.PendingCheck = {
+      kind: "pending",
+      name: "(not read: merge conflict)",
+      reportedState: "PENDING",
+      description: error.failure.detail,
+      link: "",
+      workflow: "",
+    };
+    return {
+      kind: "open",
+      context: args.context,
+      facts,
+      threads: [],
+      parkedThreads: [],
+      ci: {
+        kind: "ci-pending",
+        source: "graphql-rollup",
+        all: [unread],
+        failed: [],
+        pending: [unread],
+        hadPreviousPassingCi: false,
+      },
+      reviewAutomationRunning: false,
+    };
+  }
+}
+const isConflicted = (facts: T.PullRequestFacts): boolean =>
+  facts.mergeable === "CONFLICTING" ||
+  facts.mergeStateStatus === "DIRTY" ||
+  facts.mergeStateStatus === "CONFLICTING";
+async function readOpenSnapshot(
+  args: Parameters<typeof readSnapshot>[0],
+  facts: T.PullRequestFacts
+): Promise<T.PrSnapshot> {
   const allThreads = await requireWriteAccess(
     args.reader,
     args.context,
@@ -173,10 +215,7 @@ export async function readSnapshot(args: {
   };
 }
 const conflictBlocker = (row: T.PrSnapshot): T.MergeBlocker | null =>
-  row.kind === "open" &&
-  (row.facts.mergeable === "CONFLICTING" ||
-    row.facts.mergeStateStatus === "DIRTY" ||
-    row.facts.mergeStateStatus === "CONFLICTING")
+  row.kind === "open" && isConflicted(row.facts)
     ? { kind: "merge-conflicts", pr: row.context, facts: row.facts }
     : null;
 function threadBlocker(row: T.PrSnapshot): T.MergeBlocker | null {

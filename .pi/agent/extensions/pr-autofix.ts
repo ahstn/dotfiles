@@ -123,7 +123,10 @@ export default function (pi: ExtensionAPI) {
     if (current.allowNoChecks) args.push("--allow-no-checks");
     status(`autofix${current.pr ? ` #${current.pr}` : ""}: watching`);
 
-    let stdout = "";
+    // Without --timeout the watcher prints a WAITING line every poll for as
+    // long as CI stays pending, so keep only the newest complete line.
+    let partial = "";
+    let lastLine = "";
     const child = spawn(watcher, args, { cwd: current.cwd, stdio: ["ignore", "pipe", "pipe"] });
     current.child = child;
     // A missing or non-executable watcher emits "error"; unhandled, it would
@@ -131,11 +134,15 @@ export default function (pi: ExtensionAPI) {
     child.on("error", (error) => {
       if (watch === current) stop(`could not run watch-pr: ${error.message}`);
     });
-    child.stdout?.setEncoding("utf8").on("data", (chunk: string) => (stdout += chunk));
+    child.stdout?.setEncoding("utf8").on("data", (chunk: string) => {
+      const lines = (partial + chunk).split("\n");
+      partial = lines.pop() ?? "";
+      for (const line of lines) if (line.trim()) lastLine = line;
+    });
     child.on("close", (code) => {
       if (watch !== current) return; // stopped or restarted meanwhile
       current.child = null;
-      const last = stdout.trim().split("\n").pop() ?? "";
+      const last = partial.trim() || lastLine;
       let verdict: Verdict;
       try {
         verdict = JSON.parse(last);
