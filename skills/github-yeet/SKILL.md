@@ -1,7 +1,7 @@
 ---
 name: "github-yeet"
 description: "Stages, commits, pushes and opens or updates GitHub pull requests, then optionally watches the PR and fixes failing CI, merge conflicts and review comments until it is ready. Use only when the user explicitly asks to commit, push or open a PR, or asks to watch, babysit or autofix a PR."
-compatibility: requires `gh` cli; watch & autofix also requires `bun`
+compatibility: requires `gh` cli; watch & autofix also requires `bun` >= 1.3.2
 metadata: 
   author: OpenAI
   source: https://github.com/openai/skills

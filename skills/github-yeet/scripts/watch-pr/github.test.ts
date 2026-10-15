@@ -341,6 +341,36 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     "drive-by": "untrusted",
   });
   const outsider = threads.find((t) => t.id === "outsider-after-answer");
+  const flooded = parseReviewThreads({
+    data: {
+      viewer: { login: "me" },
+      repository: {
+        pullRequest: {
+          reviewThreads: {
+            nodes: [
+              {
+                ...thread(
+                  "flooded",
+                  comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
+                  ...Array.from({ length: 20 }, () =>
+                    reply("rando", "NONE", "spam")
+                  )
+                ),
+                latest: {
+                  pageInfo: { hasPreviousPage: true, startCursor: "c" },
+                  nodes: Array.from({ length: 20 }, () =>
+                    reply("rando", "NONE", "spam")
+                  ),
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  });
+  expect(flooded[0]?.disposition).toBe("awaiting-reviewer");
+  expect(flooded[0]?.historyComplete).toBe(false);
   expect(outsider?.lastAuthorLogin).toBe("me");
 });
 

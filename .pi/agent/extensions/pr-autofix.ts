@@ -68,9 +68,13 @@ function verdictKey(verdict: Verdict): string {
         .sort()
         .join(",")}`;
     case "failing-checks":
-      // The head SHA separates a new failure after a push from the one the
-      // agent was already woken for, even when a check's name and link repeat.
-      return `checks:${b.headRefOid}:${(b.ci?.failed ?? []).map((c: { name: string; link: string }) => `${c.name}@${c.link}`).sort().join(",")}`;
+      // The head SHA separates a failure after a push from the one already
+      // reported; completedAt separates a retry of the same commit, for
+      // providers that reuse a check's name and link.
+      return `checks:${b.headRefOid}:${(b.ci?.failed ?? [])
+        .map((c: { name: string; link: string; completedAt?: string }) => `${c.name}@${c.link}@${c.completedAt ?? ""}`)
+        .sort()
+        .join(",")}`;
     default:
       return `${verdict.kind}:${b.kind ?? ""}:${b.reason ?? ""}`;
   }

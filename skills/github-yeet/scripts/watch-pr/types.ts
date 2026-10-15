@@ -83,8 +83,13 @@ export type ThreadDisposition = "actionable" | "awaiting-reviewer" | "untrusted"
 export interface ReviewThread {
   readonly id: string;
   readonly firstComment: ReviewComment | null;
-  /** Up to the 20 newest comments, oldest first. */
+  /**
+   * The newest comments, oldest first: at least 20, and further back until a
+   * trusted author's comment is included or the history page budget runs out.
+   */
   readonly recentComments: readonly ReviewComment[];
+  /** False when older comments exist that were not read. */
+  readonly historyComplete: boolean;
   /** Author of the newest trusted comment, which decided the disposition. */
   readonly lastAuthorLogin: string | null;
   /** When that comment was posted or last edited. */
@@ -99,6 +104,11 @@ interface CheckDetails {
   readonly description: string;
   readonly link: string;
   readonly workflow: string;
+  /**
+   * When this run finished, or when a status was posted. A retry on the same
+   * commit changes it even when the name and link don't.
+   */
+  readonly completedAt?: string;
 }
 export type Check =
   | (CheckDetails & { readonly kind: "passed" })

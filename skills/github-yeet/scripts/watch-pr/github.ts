@@ -20,6 +20,10 @@ query ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) 
             }
           }
           latest: comments(last: 20) {
+            pageInfo {
+              hasPreviousPage
+              startCursor
+            }
             nodes {
               ...ThreadComment
             }
@@ -39,10 +43,40 @@ fragment ThreadComment on PullRequestReviewComment {
   author { __typename login }
 }
 `;
+export const THREAD_COMMENTS_QUERY = `
+query ThreadComments($id: ID!, $before: String!) {
+  node(id: $id) {
+    ... on PullRequestReviewThread {
+      comments(last: 100, before: $before) {
+        pageInfo {
+          hasPreviousPage
+          startCursor
+        }
+        nodes {
+          ...ThreadComment
+        }
+      }
+    }
+  }
+}
+fragment ThreadComment on PullRequestReviewComment {
+  body
+  createdAt
+  updatedAt
+  path
+  line
+  authorAssociation
+  author { __typename login }
+}
+`;
+// Older pages are only read while no trusted comment has been seen, so a
+// thread flooded past this many comments stops paging and is parked (see
+// decideThread) rather than costing an API call per hundred replies.
+const MAX_HISTORY_PAGES = 10;
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 export const PR_CHECK_ROLLUP_QUERY =
-  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    completedAt\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 interface CommandResult {
   readonly code: number;
@@ -238,6 +272,12 @@ function checkDetails(value: Record<string, unknown>, nameKey: string) {
           ? value.detailsUrl
           : "",
     workflow: typeof value.workflow === "string" ? value.workflow : "",
+    completedAt:
+      typeof value.completedAt === "string"
+        ? value.completedAt
+        : typeof value.createdAt === "string"
+          ? value.createdAt
+          : "",
   };
 }
 export function parseFastCheck(value: unknown): T.Check {
@@ -266,6 +306,7 @@ function pendingOrGate(
     readonly description: string;
     readonly link: string;
     readonly workflow: string;
+    readonly completedAt?: string;
   },
   reportedState: string
 ): T.Check {
@@ -383,8 +424,18 @@ export function decideThread(
       lastAuthorLogin: first?.authorLogin ?? null,
       latestCommentAt: first?.activityAt ?? null,
     };
-  const decisive =
-    [...thread.recentComments].reverse().find(trusted) ?? first;
+  const newestTrusted = [...thread.recentComments].reverse().find(trusted);
+  // With history missing, the trusted comment that decides the thread may be
+  // in the part not read (an agent answer buried under drive-by replies), so
+  // the opener alone cannot reopen it.
+  if (newestTrusted === undefined && !thread.historyComplete)
+    return {
+      ...thread,
+      disposition: "awaiting-reviewer",
+      lastAuthorLogin: null,
+      latestCommentAt: null,
+    };
+  const decisive = newestTrusted ?? first;
   return {
     ...thread,
     disposition:
@@ -435,6 +486,7 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
     readonly id: string;
     readonly firstComment: T.ReviewComment | null;
     readonly recentComments: readonly T.ReviewComment[];
+    readonly historyComplete: boolean;
     readonly resolved: boolean;
   }[] = [];
   for (const node of nodes) {
@@ -449,12 +501,19 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
       "latest" in thread
         ? list(at(thread, ["latest", "nodes"]), "review thread.latest.nodes")
         : [];
+    const latestPage =
+      "latest" in thread && isRecord(thread.latest)
+        ? thread.latest.pageInfo
+        : null;
     threads.push({
       id: string(thread.id, "review thread.id"),
       firstComment:
         comments.length === 0 ? null : parseComment(comments[0], viewerLogin),
       recentComments: recent.map((comment) =>
         parseComment(comment, viewerLogin)
+      ),
+      historyComplete: !(
+        isRecord(latestPage) && latestPage.hasPreviousPage === true
       ),
       resolved: thread.isResolved,
     });
@@ -470,12 +529,13 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
   const passes = keys.size > 0 ? keys.size : keyless ? 1 : 0;
   return threads
     .filter((thread) => !thread.resolved)
-    .map(({ id, firstComment, recentComments }) =>
+    .map(({ id, firstComment, recentComments, historyComplete }) =>
       decideThread(
         {
           id,
           firstComment,
           recentComments,
+          historyComplete,
           lastAuthorLogin: null,
           latestCommentAt: null,
           disposition: "actionable",
@@ -612,7 +672,7 @@ export class GhGitHubReader implements T.GitHubReader {
       "--repo",
       `${context.owner}/${context.repo}`,
       "--json",
-      "name,state,description,link,workflow,bucket",
+      "name,state,description,link,workflow,bucket,completedAt",
     ]);
     if ([0, 1, 8].includes(result.code) && result.stdout.trim()) {
       try {
@@ -684,12 +744,59 @@ export class GhGitHubReader implements T.GitHubReader {
       );
       after = page.hasNextPage === true && cursor ? cursor : null;
     } while (after !== null);
+    const viewerLogin =
+      isRecord(viewer) && typeof viewer.login === "string" ? viewer.login : null;
+    for (const node of nodes)
+      await this.extendHistory(record(node, "review thread"), viewerLogin);
     return parseReviewThreads({
       data: {
         viewer,
         repository: { pullRequest: { reviewThreads: { nodes } } },
       },
     });
+  }
+  /**
+   * Pages a thread's comments backward, in place, until a comment from a
+   * trusted author is in view or the page budget runs out, so a burst of
+   * untrusted replies cannot push the deciding comment out of the window.
+   */
+  private async extendHistory(
+    thread: Record<string, unknown>,
+    viewerLogin: string | null
+  ): Promise<void> {
+    if (thread.isResolved === true || !isRecord(thread.latest)) return;
+    const latest = thread.latest;
+    let nodes = list(latest.nodes, "review thread.latest.nodes");
+    let page = record(latest.pageInfo, "review thread.latest.pageInfo");
+    for (let pages = 0; pages < MAX_HISTORY_PAGES; pages += 1) {
+      if (
+        page.hasPreviousPage !== true ||
+        typeof page.startCursor !== "string" ||
+        nodes.some((node) =>
+          trustedByAssociation(parseComment(node, viewerLogin))
+        )
+      )
+        break;
+      const value = await runJson([
+        "gh",
+        "api",
+        "graphql",
+        "-f",
+        `query=${THREAD_COMMENTS_QUERY}`,
+        "-f",
+        `id=${string(thread.id, "review thread.id")}`,
+        "-f",
+        `before=${page.startCursor}`,
+      ]);
+      const older = record(
+        at(value, ["data", "node", "comments"]),
+        "thread comments"
+      );
+      nodes = [...list(older.nodes, "thread comments.nodes"), ...nodes];
+      page = record(older.pageInfo, "thread comments.pageInfo");
+    }
+    latest.nodes = nodes;
+    latest.pageInfo = page;
   }
   async permission(
     context: T.PrContext,

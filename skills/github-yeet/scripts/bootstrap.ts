@@ -22,7 +22,17 @@ function currentInstallKey(): string {
     .digest("hex");
 }
 
+// bun.lock is lockfile v1 with configVersion, which Bun 1.3.2 introduced.
+// Older Bun rejects it under --frozen-lockfile with a confusing error, so name
+// the requirement instead. Bun 1.4+ keeps v1 lockfiles at v1 on install.
+const MINIMUM_BUN = "1.3.2";
+
 export function ensureDependenciesInstalled(): void {
+  if (!Bun.semver.satisfies(Bun.version, `>=${MINIMUM_BUN}`)) {
+    throw new Error(
+      `watch-pr needs Bun >= ${MINIMUM_BUN} (found ${Bun.version}); run \`bun upgrade\``
+    );
+  }
   const installKey = currentInstallKey();
   if (
     existsSync(commanderPackagePath) &&
