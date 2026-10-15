@@ -271,15 +271,21 @@ export async function main(
     }
   }
   // Polling gets only what discovery left of --timeout, so retries at startup
-  // can't stretch the run to nearly twice the limit. (0 means "no timeout",
-  // hence the floor.)
+  // can't stretch the run to nearly twice the limit. A discovery that ran past
+  // the deadline stops here rather than starting a snapshot.
+  const left = timeout - (runtime.clock.now() - started);
+  if (timeout > 0 && left <= 0) {
+    const verdict = stamp({
+      kind: "TIMEOUT",
+      terminal: true,
+      exitCode: 5,
+      reason: { kind: "discovery" },
+    });
+    runtime.stdout(render(verdict));
+    return verdict.exitCode;
+  }
   const polling: T.PollingOptions =
-    timeout > 0
-      ? {
-          ...options.polling,
-          timeout: Math.max(timeout - (runtime.clock.now() - started), 0.001),
-        }
-      : options.polling;
+    timeout > 0 ? { ...options.polling, timeout: left } : options.polling;
   const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
   const verdict =
     options.mode === "queued-stack" && !options.statusOnly

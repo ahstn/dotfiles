@@ -400,6 +400,7 @@ export type TimeoutVerdict = Terminal<"TIMEOUT", 5> & {
         readonly frontier: PrContext;
         readonly unmergedCount: number;
       }
+    | { readonly kind: "discovery" }
     | {
         readonly kind: "stack-scan";
         readonly read: number;
@@ -454,7 +455,10 @@ export interface GitHubReader {
     after: string | null
   ): Promise<RollupPage>;
   reviewThreads(context: PrContext): Promise<readonly ReviewThread[]>;
-  /** true for write/maintain/admin, false below that, null when GitHub won't say. */
+  /**
+   * true for write/maintain/admin, false below that, null when GitHub won't
+   * say (no push access). Other failures throw a retryable WatcherQueryError.
+   */
   permission(context: PrContext, login: string): Promise<boolean | null>;
   commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
 }

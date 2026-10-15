@@ -224,13 +224,10 @@ it("demotes threads from read-only members and collaborators", async () => {
     allowDraft: false,
   });
   if (snapshot.kind !== "open") throw new Error("expected open");
-  expect(snapshot.threads.map((t) => t.id)).toEqual([
-    "writer",
-    "forker-cannot-check",
-    "owner",
-  ]);
-  expect(snapshot.parkedThreads.map((t) => t.disposition)).toEqual([
-    "untrusted",
+  expect(snapshot.threads.map((t) => t.id)).toEqual(["writer", "owner"]);
+  expect(snapshot.parkedThreads.map((t) => [t.id, t.disposition])).toEqual([
+    ["reader", "untrusted"],
+    ["forker-cannot-check", "untrusted"],
   ]);
   expect(reader.calls).not.toContain("permission:owner");
 });

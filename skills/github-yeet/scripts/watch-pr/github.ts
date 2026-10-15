@@ -839,8 +839,19 @@ export class GhGitHubReader implements T.GitHubReader {
       "--jq",
       ".permission",
     ]);
-    if (result.code !== 0) return null;
-    return WRITE_PERMISSIONS.has(result.stdout.trim());
+    if (result.code === 0) return WRITE_PERMISSIONS.has(result.stdout.trim());
+    // 403 is GitHub refusing to say (the caller lacks push access, as in a
+    // fork); anything else is a failed read, which must retry rather than
+    // fall through to trusting the commenter.
+    if (/HTTP 403/.test(result.stderr)) return null;
+    throw new WatcherQueryError({
+      kind: "command-exit",
+      retryable: true,
+      code: result.code,
+      detail:
+        firstLine(result.stderr) ||
+        `permission lookup for ${login} exited ${result.code}`,
+    });
   }
   async commitRollups(
     context: T.PrContext
@@ -871,8 +882,9 @@ export class GhGitHubReader implements T.GitHubReader {
 // MEMBER and COLLABORATOR only say the author belongs to the org or was
 // invited, not that they can write: org base permission and collaborator
 // invites can both be Read. Every such author in a thread, opener or replier,
-// needs write access to count as trusted. GitHub only answers this for callers
-// with push access, so a fork contributor (null) falls back to association.
+// needs verified write access to count as trusted. GitHub only answers this
+// for callers with push access, so where it won't (a fork contributor), those
+// comments are untrusted and only the owner, Apps and the viewer count.
 const WRITE_PERMISSIONS = new Set(["admin", "write"]);
 const needsPermissionCheck = (
   comment: T.ReviewComment
@@ -894,7 +906,7 @@ export async function requireWriteAccess(
   const readOnly = new Set<string>();
   await Promise.all(
     [...logins].map(async (login) => {
-      if ((await reader.permission(context, login)) === false)
+      if ((await reader.permission(context, login)) !== true)
         readOnly.add(login);
     })
   );

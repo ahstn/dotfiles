@@ -100,6 +100,30 @@ it("gives polling only the timeout left after discovery retries", async () => {
   expect(now).toBeLessThanOrEqual(240);
 });
 
+it("stops when discovery itself runs past the timeout", async () => {
+  let now = 0;
+  const base = fakeReader();
+  const reader: GitHubReader = {
+    ...base,
+    async currentPr(pr) {
+      now += 120;
+      return base.currentPr(pr);
+    },
+    async pullRequest() {
+      throw new Error("snapshot should not start");
+    },
+  };
+  const harness = testRuntime(reader);
+  const runtime: CliRuntime = {
+    ...harness.runtime,
+    clock: { ...harness.runtime.clock, now: () => now },
+  };
+  expect(await main(["--pr", "1", "--timeout", "60"], runtime)).toBe(5);
+  expect(JSON.parse(harness.stdout[0] ?? "{}").reason).toEqual({
+    kind: "discovery",
+  });
+});
+
 describe("parseArgs", () => {
   it("uses the specified defaults", () => {
     expect(parseArgs([], silentIo)).toMatchObject({

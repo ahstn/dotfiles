@@ -109,7 +109,8 @@ export function fakeReader(
     },
     async permission(_requested, login) {
       calls.push(`permission:${login}`);
-      return options.writers?.[login] ?? true;
+      const writers = options.writers ?? {};
+      return login in writers ? (writers[login] ?? null) : true;
     },
     async commitRollups() {
       calls.push("commitRollups");

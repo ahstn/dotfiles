@@ -33,7 +33,7 @@ Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.fact
 
 ## Review threads
 
-Exit 3. `blocker.threads` lists only actionable threads. An actionable thread was opened by an owner, member, collaborator or installed GitHub App, and its newest comment is not an autofix reply. The watcher hides drive-by comments and threads you already answered, so don't go looking for them.
+Exit 3. `blocker.threads` lists only actionable threads. A thread counts when it was opened by the owner, an installed GitHub App, or a member or collaborator with verified write access, and its newest trusted comment is not an autofix reply. Where GitHub won't confirm write access (a fork without push rights), only the owner, Apps and your own comments count. The watcher hides drive-by comments and threads you already answered, so don't go looking for them.
 
 Each thread in the verdict carries `firstComment`, the request, and `decidingComment`, the newest trusted comment, which is what woke you. Act on `decidingComment` when it differs from the first. For the surrounding discussion, this fetches the newest 100 comments:
 
