@@ -23,9 +23,9 @@ These apply to every wake.
 
 ## Conflicts
 
-Exit 2. `blocker.facts` has `baseRefName` and `headRefName`.
+Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.facts` has `baseRefName` and `headRefName`.
 
-1. Fetch the base branch with `git fetch origin <base>`, then run `git merge origin/<base>`. Merge, don't rebase, so no force-push is needed.
+1. Fetch the base branch from the PR's base repository, not `origin`, which is the fork in a fork checkout. Run `git fetch https://github.com/<owner>/<repo>.git <base>`, then `git merge FETCH_HEAD`. Merge, don't rebase, so no force-push is needed.
 2. Resolve each conflict by keeping the intent of both sides. Run the affected tests.
 3. If you cannot reconcile a conflict with confidence, run `git merge --abort` and report the files and both intents to the user.
 4. Commit the merge and push.

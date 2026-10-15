@@ -1,4 +1,8 @@
-import { WatcherQueryError, resolveChecks } from "./github.ts";
+import {
+  WatcherQueryError,
+  requireWriteAccess,
+  resolveChecks,
+} from "./github.ts";
 import type * as T from "./types.ts";
 import { nonEmpty } from "./types.ts";
 export function assessGitHubMerge(args: {
@@ -46,6 +50,7 @@ async function mergeAssessment(
     }),
   };
 }
+export const MERGEABILITY_PENDING = "(GitHub mergeability)";
 const AUTOMATION_TOKENS = [
   "bugbot",
   "security review",
@@ -64,7 +69,11 @@ export async function readSnapshot(args: {
     return { kind: "merged", context: args.context, facts };
   if (facts.state === "CLOSED")
     return { kind: "closed", context: args.context, facts };
-  const allThreads = await args.reader.reviewThreads(args.context);
+  const allThreads = await requireWriteAccess(
+    args.reader,
+    args.context,
+    await args.reader.reviewThreads(args.context)
+  );
   const threads = allThreads.filter(
     (thread) => thread.disposition === "actionable"
   );
@@ -81,11 +90,28 @@ export async function readSnapshot(args: {
       (check): check is T.FailedCheck => check.kind === "failed"
     )
   );
-  const pending = nonEmpty(
-    checks.checks.filter(
+  // GitHub reports UNKNOWN while it is still computing conflicts, typically
+  // right after a push. Treat that as a pending check so the watcher polls
+  // again instead of declaring READY before a conflict shows up.
+  const mergeability: T.PendingCheck[] =
+    facts.mergeable === "UNKNOWN"
+      ? [
+          {
+            kind: "pending",
+            name: MERGEABILITY_PENDING,
+            reportedState: "PENDING",
+            description: "GitHub is still computing mergeability",
+            link: "",
+            workflow: "",
+          },
+        ]
+      : [];
+  const pending = nonEmpty([
+    ...checks.checks.filter(
       (check): check is T.PendingCheck => check.kind === "pending"
-    )
-  );
+    ),
+    ...mergeability,
+  ]);
   let ci: T.CiState;
   if (failed === null && pending !== null && args.pendingHistory === "omit")
     ci = {

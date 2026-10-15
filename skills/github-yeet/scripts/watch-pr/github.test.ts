@@ -275,7 +275,9 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
     id,
     isResolved: false,
     comments: { nodes: [first] },
-    latest: { nodes: [{ body: lastBody, author: { login: lastLogin } }] },
+    latest: {
+      nodes: [{ body: lastBody, createdAt: "later", author: { login: lastLogin } }],
+    },
   });
   const marked = `Disproved: the null case is handled above.\n${AUTOFIX_REPLY_MARKER}`;
   const threads = parseReviewThreads({

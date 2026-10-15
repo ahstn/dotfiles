@@ -27,6 +27,7 @@ query ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) 
           latest: comments(last: 1) {
             nodes {
               body
+              createdAt
               author { login }
             }
           }
@@ -367,6 +368,7 @@ function threadDisposition(
 interface LatestComment {
   readonly authorLogin: string | null;
   readonly body: string;
+  readonly createdAt: string | null;
 }
 function latestComment(thread: Record<string, unknown>): LatestComment | null {
   if (!("latest" in thread)) return null;
@@ -385,6 +387,7 @@ function latestComment(thread: Record<string, unknown>): LatestComment | null {
             "latest comment.author.login"
           ),
     body: string(last.body, "latest comment.body"),
+    createdAt: typeof last.createdAt === "string" ? last.createdAt : null,
   };
 }
 function isBugbot(comment: T.ReviewComment | null): boolean {
@@ -461,6 +464,7 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
       id,
       firstComment,
       lastAuthorLogin: latest?.authorLogin ?? firstComment?.authorLogin ?? null,
+      latestCommentAt: latest?.createdAt ?? firstComment?.createdAt ?? null,
       disposition: threadDisposition(firstComment, latest, viewerLogin),
       isBugbot: isBugbot(firstComment),
       bugbotReviewPasses: passes,
@@ -663,6 +667,20 @@ export class GhGitHubReader implements T.GitHubReader {
       },
     });
   }
+  async permission(
+    context: T.PrContext,
+    login: string
+  ): Promise<boolean | null> {
+    const result = await run([
+      "gh",
+      "api",
+      `repos/${context.owner}/${context.repo}/collaborators/${login}/permission`,
+      "--jq",
+      ".permission",
+    ]);
+    if (result.code !== 0) return null;
+    return WRITE_PERMISSIONS.has(result.stdout.trim());
+  }
   async commitRollups(
     context: T.PrContext
   ): Promise<readonly T.CommitRollup[]> {
@@ -689,6 +707,39 @@ export class GhGitHubReader implements T.GitHubReader {
   }
 }
 
+// MEMBER and COLLABORATOR only say the author belongs to the org or was
+// invited, not that they can write: org base permission and collaborator
+// invites can both be Read. Confirm write access before such a thread can wake
+// the agent. GitHub only answers this for callers with push access, so a
+// fork contributor (null) falls back to the association check.
+const WRITE_PERMISSIONS = new Set(["admin", "write"]);
+export async function requireWriteAccess(
+  reader: T.GitHubReader,
+  context: T.PrContext,
+  threads: readonly T.ReviewThread[]
+): Promise<readonly T.ReviewThread[]> {
+  const access = new Map<string, Promise<boolean | null>>();
+  const canWrite = (login: string) => {
+    if (!access.has(login)) access.set(login, reader.permission(context, login));
+    return access.get(login) as Promise<boolean | null>;
+  };
+  return Promise.all(
+    threads.map(async (thread) => {
+      const first = thread.firstComment;
+      if (
+        thread.disposition === "untrusted" ||
+        first === null ||
+        first.authorIsBot ||
+        first.authorLogin === null ||
+        first.authorAssociation === "OWNER"
+      )
+        return thread;
+      return (await canWrite(first.authorLogin)) === false
+        ? { ...thread, disposition: "untrusted" as const }
+        : thread;
+    })
+  );
+}
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 export async function resolveChecks(
   reader: T.GitHubReader,

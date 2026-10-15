@@ -61,7 +61,12 @@ function verdictKey(verdict: Verdict): string {
     case "merge-conflicts":
       return `conflicts:${b.facts?.headRefOid}`;
     case "review-threads":
-      return `threads:${(b.threads ?? []).map((t: { id: string }) => t.id).sort().join(",")}`;
+      // The newest comment's time makes a reviewer's follow-up on an already
+      // seen thread a new key, so it wakes the agent again.
+      return `threads:${(b.threads ?? [])
+        .map((t: { id: string; latestCommentAt?: string | null }) => `${t.id}@${t.latestCommentAt ?? ""}`)
+        .sort()
+        .join(",")}`;
     case "failing-checks":
       // The head SHA separates a new failure after a push from the one the
       // agent was already woken for, even when a check's name and link repeat.

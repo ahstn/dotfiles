@@ -16,6 +16,7 @@ export interface FakeReaderOptions {
   readonly fastPath?: ChecksFastPath;
   readonly rollupPages?: readonly RollupPage[];
   readonly threads?: readonly ReviewThread[];
+  readonly writers?: Readonly<Record<string, boolean | null>>;
   readonly commitRollups?: readonly CommitRollup[];
   readonly openPullRequests?: readonly OpenPullRequest[];
   readonly current?: PrContext;
@@ -101,6 +102,10 @@ export function fakeReader(
     async reviewThreads() {
       calls.push("reviewThreads");
       return options.threads ?? [];
+    },
+    async permission(_requested, login) {
+      calls.push(`permission:${login}`);
+      return options.writers?.[login] ?? true;
     },
     async commitRollups() {
       calls.push("commitRollups");

@@ -76,6 +76,7 @@ export interface ReviewThread {
   readonly id: string;
   readonly firstComment: ReviewComment | null;
   readonly lastAuthorLogin: string | null;
+  readonly latestCommentAt: string | null;
   readonly disposition: ThreadDisposition;
   readonly isBugbot: boolean;
   readonly bugbotReviewPasses: number;
@@ -403,6 +404,8 @@ export interface GitHubReader {
     after: string | null
   ): Promise<RollupPage>;
   reviewThreads(context: PrContext): Promise<readonly ReviewThread[]>;
+  /** true for write/maintain/admin, false below that, null when GitHub won't say. */
+  permission(context: PrContext, login: string): Promise<boolean | null>;
   commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
 }
 export interface PollingOptions {

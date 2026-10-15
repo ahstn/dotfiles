@@ -157,6 +157,7 @@ it("blocks on actionable threads only; parked threads still allow READY", async 
     id,
     firstComment: null,
     lastAuthorLogin: null,
+    latestCommentAt: null,
     disposition,
     isBugbot: false,
     bugbotReviewPasses: 0,
@@ -177,6 +178,61 @@ it("blocks on actionable threads only; parked threads still allow READY", async 
     ])
   ).toBe("ready");
   expect(await decide([thread("fix-me", "actionable")])).toBe("blocker");
+});
+
+it("demotes threads from read-only members and collaborators", async () => {
+  const thread = (login: string, authorAssociation: string): ReviewThread => ({
+    id: login,
+    firstComment: {
+      authorLogin: login,
+      body: "change this",
+      path: null,
+      line: null,
+      createdAt: "now",
+      authorAssociation,
+      authorIsBot: false,
+    },
+    lastAuthorLogin: login,
+    latestCommentAt: "now",
+    disposition: "actionable",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  });
+  const reader = fakeReader({
+    threads: [
+      thread("writer", "MEMBER"),
+      thread("reader", "MEMBER"),
+      thread("forker-cannot-check", "COLLABORATOR"),
+      thread("owner", "OWNER"),
+    ],
+    writers: { writer: true, reader: false, "forker-cannot-check": null },
+  });
+  const snapshot = await readSnapshot({
+    reader,
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  if (snapshot.kind !== "open") throw new Error("expected open");
+  expect(snapshot.threads.map((t) => t.id)).toEqual([
+    "writer",
+    "forker-cannot-check",
+    "owner",
+  ]);
+  expect(snapshot.parkedThreads.map((t) => t.disposition)).toEqual([
+    "untrusted",
+  ]);
+  expect(reader.calls).not.toContain("permission:owner");
+});
+
+it("waits while GitHub is still computing mergeability", async () => {
+  const snapshot = await readSnapshot({
+    reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(classifyPr(snapshot).kind).toBe("waiting");
 });
 
 it("scans stacks tier-major so an upstack conflict outranks frontier CI", async () => {
