@@ -77,6 +77,7 @@ interface RawOptions {
   readonly maxQueryErrors: number;
   readonly statusOnly: boolean;
   readonly allowDraft: boolean;
+  readonly allowNoChecks: boolean;
   readonly pretty: boolean;
 }
 export function parseArgs(
@@ -128,6 +129,11 @@ export function parseArgs(
     )
     .option("--status-only", "print one status table and exit 0", false)
     .option("--allow-draft", "do not treat a draft as a merge gate", false)
+    .option(
+      "--allow-no-checks",
+      "treat a PR with no checks at all as passing CI (repos without CI)",
+      false
+    )
     .option("--pretty", "render human text instead of JSON", false);
   program.parse(argv, { from: "user" });
   const raw = program.opts<RawOptions>();
@@ -147,6 +153,7 @@ export function parseArgs(
       timeout: raw.timeout,
       maxQueryErrors: raw.maxQueryErrors,
       allowDraft: raw.allowDraft,
+      allowNoChecks: raw.allowNoChecks,
     },
   };
 }

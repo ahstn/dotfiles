@@ -1,7 +1,7 @@
 ---
 name: "github-yeet"
-description: "Use only when the user explicitly asks to stage, commit, push, and open a GitHub pull request"
-compatibility: requires `gh` cli
+description: "Stages, commits, pushes and opens or updates GitHub pull requests, then optionally watches the PR and fixes failing CI, merge conflicts and review comments until it is ready. Use only when the user explicitly asks to commit, push or open a PR, or asks to watch, babysit or autofix a PR."
+compatibility: requires `gh` cli; watch & autofix also requires `bun`
 metadata: 
   author: OpenAI
   source: https://github.com/openai/skills
@@ -34,6 +34,7 @@ MUST follow the conventional commits specification for commit, branch and PR tit
 8. If a PR already exists, update that PR in place.
 9. If no PR exists, open a new draft PR with `gh pr create --help`, avoid draft PRs unless explictly requested.
   i. Set the PR title and body so they reflect the actual net change in the diff.
+10. If the user asked to watch, babysit or autofix the PR, continue with [Watch & autofix](#watch--autofix). Otherwise stop after reporting the PR URL.
 
 ## Determining the PR
 
@@ -109,3 +110,33 @@ For issues, explicitly mention "Closes" or "Resolves" to auto-resolve the issue 
 If a JIRA issue can be inferred from context, notes or branch name, reference it here.
 -->
 ```
+
+## Watch & autofix
+
+Only when the user asks for it, in this turn or a later one. Never start it on your own after a plain yeet.
+
+Paths are relative to this skill's directory. Run from the repository checkout:
+
+```shell
+<skill-dir>/scripts/watch-pr/watch-pr --pr <number> --allow-draft --timeout 540
+```
+
+- Add `--allow-no-checks` when the repository has no CI. Without it, a PR with no checks ends in exit 7.
+- `--timeout 540` keeps one run under a 10 minute shell tool limit. Exit 5 means "still pending", so rerun it.
+- Output is NDJSON. The last line is the verdict. Act on the exit code:
+
+| Exit | Verdict | Do |
+| --- | --- | --- |
+| 0 | `READY`, or the PR merged | Report and stop. |
+| 2 | Merge conflicts | [autofix.md: Conflicts](references/autofix.md#conflicts) |
+| 3 | Actionable review threads | [autofix.md: Review threads](references/autofix.md#review-threads) |
+| 4 | Failing checks | [autofix.md: Failing checks](references/autofix.md#failing-checks) |
+| 5 | Timeout, checks still pending | Rerun the watcher. |
+| 6 | Merge gate: changes requested, or PR closed | Report. A human has to act. |
+| 7 | GitHub query failed | Check `gh auth status` and the PR number, then report. |
+| 64 | Bad arguments | Fix the command. |
+
+Read [references/autofix.md](references/autofix.md) before the first fix. It holds the guardrails and the fix, push, rerun loop.
+
+Some harnesses wake the agent for you: in pi, `/autofix` runs the watcher in the background and sends you the verdict as a message. When you get such a message, skip the watcher run and act on its verdict.
+

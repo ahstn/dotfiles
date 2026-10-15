@@ -25,6 +25,7 @@ import type {
   PrContext,
   ProgressVerdict,
   PullRequestFacts,
+  ReviewThread,
   RollupState,
 } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
@@ -149,6 +150,33 @@ describe("snapshot query planning", () => {
     ).toBe("merged");
     expect(reader.calls).toEqual(["pullRequest"]);
   });
+});
+
+it("blocks on actionable threads only; parked threads still allow READY", async () => {
+  const thread = (id: string, disposition: ReviewThread["disposition"]) => ({
+    id,
+    firstComment: null,
+    lastAuthorLogin: null,
+    disposition,
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  });
+  const decide = async (threads: readonly ReviewThread[]) =>
+    classifyPr(
+      await readSnapshot({
+        reader: fakeReader({ threads }),
+        context: context(9),
+        pendingHistory: "include",
+        allowDraft: false,
+      })
+    ).kind;
+  expect(
+    await decide([
+      thread("answered", "awaiting-reviewer"),
+      thread("drive-by", "untrusted"),
+    ])
+  ).toBe("ready");
+  expect(await decide([thread("fix-me", "actionable")])).toBe("blocker");
 });
 
 it("scans stacks tier-major so an upstack conflict outranks frontier CI", async () => {

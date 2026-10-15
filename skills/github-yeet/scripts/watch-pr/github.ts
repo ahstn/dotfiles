@@ -1,8 +1,36 @@
 import { spawn } from "node:child_process";
 import type * as T from "./types.ts";
 import { nonEmpty, parsePrNumber } from "./types.ts";
-export const REVIEW_THREADS_QUERY =
-  "\nquery ReviewThreads($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      reviewThreads(first: 100) {\n        nodes {\n          id\n          isResolved\n          comments(first: 10) {\n            nodes {\n              body\n              createdAt\n              path\n              line\n              author { login }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+export const REVIEW_THREADS_QUERY = `
+query ReviewThreads($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          comments(first: 1) {
+            nodes {
+              body
+              createdAt
+              path
+              line
+              authorAssociation
+              author { __typename login }
+            }
+          }
+          latest: comments(last: 1) {
+            nodes {
+              body
+              author { login }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 export const PR_CHECK_ROLLUP_QUERY =
@@ -328,6 +356,55 @@ function parseComment(value: unknown): T.ReviewComment {
           ? Number(object.line)
           : missing("review comment.line", object.line),
     createdAt: string(object.createdAt, "review comment.createdAt"),
+    authorAssociation:
+      typeof object.authorAssociation === "string"
+        ? object.authorAssociation
+        : "NONE",
+    authorIsBot: author !== null && author.__typename === "Bot",
+  };
+}
+// Mirrors who Claude Desktop's auto-fix listens to: people with write access
+// and installed GitHub Apps. CONTRIBUTOR and NONE can be anyone on the internet.
+const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+// The agent usually posts through the user's own `gh` login, so authorship
+// cannot tell the user's review notes from the agent's replies. Agent replies
+// carry this marker instead, and a thread whose newest comment has it is
+// waiting on the reviewer.
+export const AUTOFIX_REPLY_MARKER = "<!-- github-yeet:autofix -->";
+function threadDisposition(
+  first: T.ReviewComment | null,
+  last: LatestComment | null
+): T.ThreadDisposition {
+  if (
+    first === null ||
+    !(first.authorIsBot || TRUSTED_ASSOCIATIONS.has(first.authorAssociation))
+  )
+    return "untrusted";
+  return last?.body.includes(AUTOFIX_REPLY_MARKER)
+    ? "awaiting-reviewer"
+    : "actionable";
+}
+interface LatestComment {
+  readonly authorLogin: string | null;
+  readonly body: string;
+}
+function latestComment(thread: Record<string, unknown>): LatestComment | null {
+  if (!("latest" in thread)) return null;
+  const nodes = list(
+    at(thread, ["latest", "nodes"]),
+    "review thread.latest.nodes"
+  );
+  if (nodes.length === 0) return null;
+  const last = record(nodes[0], "latest comment");
+  return {
+    authorLogin:
+      last.author === null
+        ? null
+        : optionalString(
+            record(last.author, "latest comment.author").login,
+            "latest comment.author.login"
+          ),
+    body: string(last.body, "latest comment.body"),
   };
 }
 function isBugbot(comment: T.ReviewComment | null): boolean {
@@ -365,6 +442,7 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
   const threads: {
     readonly id: string;
     readonly firstComment: T.ReviewComment | null;
+    readonly latest: LatestComment | null;
     readonly resolved: boolean;
   }[] = [];
   for (const node of nodes) {
@@ -375,9 +453,12 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
       at(thread, ["comments", "nodes"]),
       "review thread.comments.nodes"
     );
+    const firstComment =
+      comments.length === 0 ? null : parseComment(comments[0]);
     threads.push({
       id: string(thread.id, "review thread.id"),
-      firstComment: comments.length === 0 ? null : parseComment(comments[0]),
+      firstComment,
+      latest: latestComment(thread),
       resolved: thread.isResolved,
     });
   }
@@ -392,9 +473,11 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
   const passes = keys.size > 0 ? keys.size : keyless ? 1 : 0;
   return threads
     .filter((thread) => !thread.resolved)
-    .map(({ id, firstComment }) => ({
+    .map(({ id, firstComment, latest }) => ({
       id,
       firstComment,
+      lastAuthorLogin: latest?.authorLogin ?? firstComment?.authorLogin ?? null,
+      disposition: threadDisposition(firstComment, latest),
       isBugbot: isBugbot(firstComment),
       bugbotReviewPasses: passes,
     }));
@@ -601,9 +684,11 @@ export class GhGitHubReader implements T.GitHubReader {
   }
 }
 
+export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 export async function resolveChecks(
   reader: T.GitHubReader,
-  context: T.PrContext
+  context: T.PrContext,
+  allowNoChecks = false
 ): Promise<T.CheckRead> {
   const fast = await reader.checksFastPath(context);
   const direct = fast.kind === "checks" ? nonEmpty(fast.checks) : null;
@@ -617,6 +702,23 @@ export async function resolveChecks(
   } while (after !== null);
   const fallback = nonEmpty(checks);
   if (fallback !== null) return { source: "graphql-rollup", checks: fallback };
+  // A repo without CI reports no checks forever, which is otherwise
+  // indistinguishable from checks that have not registered yet. The caller
+  // opts in, and a synthetic skipped check keeps CheckRead non-empty.
+  if (allowNoChecks)
+    return {
+      source: "graphql-rollup",
+      checks: [
+        {
+          kind: "skipped",
+          name: NO_CHECKS_CONFIGURED,
+          reportedState: "SKIPPED",
+          description: "",
+          link: "",
+          workflow: "",
+        },
+      ],
+    };
   const suffix =
     fast.kind === "unusable"
       ? `fast path exit=${fast.exitCode}; GraphQL rollup was empty${firstLine(fast.stderr) ? `; ${firstLine(fast.stderr)}` : ""}`

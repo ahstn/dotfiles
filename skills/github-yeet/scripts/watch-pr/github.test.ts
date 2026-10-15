@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  AUTOFIX_REPLY_MARKER,
   ChecksUnavailable,
   WatcherQueryError,
   mapRollupNode,
@@ -256,6 +257,67 @@ it("annotates Bugbot threads with distinct review-pass counts", () => {
   expect(threads.map((thread) => thread.bugbotReviewPasses)).toEqual([3, 3]);
 });
 
+it("parks answered and untrusted threads so they do not wake the agent", () => {
+  const comment = (author: object, authorAssociation: string) => ({
+    body: "please fix",
+    createdAt: "now",
+    path: "a.ts",
+    line: 1,
+    authorAssociation,
+    author,
+  });
+  const thread = (
+    id: string,
+    first: object,
+    lastBody: string
+  ): Record<string, unknown> => ({
+    id,
+    isResolved: false,
+    comments: { nodes: [first] },
+    latest: { nodes: [{ body: lastBody, author: { login: "me" } }] },
+  });
+  const threads = parseReviewThreads({
+    data: {
+      repository: {
+        pullRequest: {
+          reviewThreads: {
+            nodes: [
+              thread(
+                "member",
+                comment({ __typename: "User", login: "me" }, "OWNER"),
+                "please fix"
+              ),
+              thread(
+                "app",
+                comment({ __typename: "Bot", login: "coderabbitai" }, "NONE"),
+                "please fix"
+              ),
+              thread(
+                "answered",
+                comment({ __typename: "User", login: "rev" }, "COLLABORATOR"),
+                `Disproved: the null case is handled above.\n${AUTOFIX_REPLY_MARKER}`
+              ),
+              thread(
+                "drive-by",
+                comment({ __typename: "User", login: "rando" }, "CONTRIBUTOR"),
+                "please fix"
+              ),
+            ],
+          },
+        },
+      },
+    },
+  });
+  expect(
+    Object.fromEntries(threads.map((t) => [t.id, t.disposition]))
+  ).toEqual({
+    member: "actionable",
+    app: "actionable",
+    answered: "awaiting-reviewer",
+    "drive-by": "untrusted",
+  });
+});
+
 describe("context and stack discovery", () => {
   it("returns a fully explicit context without any reader call", async () => {
     const reader = fakeReader();
@@ -303,4 +365,15 @@ describe("context and stack discovery", () => {
     ]);
     expect(ordered.map((item) => Number(item.number))).toEqual([41, 42, 43]);
   });
+});
+
+it("treats an empty check list as passing only when allowed", async () => {
+  const reader = fakeReader({
+    fastPath: { kind: "unusable", exitCode: 1, stderr: "no checks reported" },
+  });
+  await expect(resolveChecks(reader, context)).rejects.toThrow(
+    "could not read PR checks"
+  );
+  const read = await resolveChecks(reader, context, true);
+  expect(read.checks.map((check) => check.kind)).toEqual(["skipped"]);
 });

@@ -22,13 +22,16 @@ function ciCell(row: T.PrSnapshot): string {
 function reviewCell(row: T.PrSnapshot): string {
   if (row.kind !== "open") return "\u2014";
   const open = row.threads.length;
+  const parked = row.parkedThreads.length
+    ? `, ${row.parkedThreads.length} parked`
+    : "";
   return row.reviewAutomationRunning
     ? open
-      ? `🤖 running, ${open} open`
-      : "🤖 running"
+      ? `🤖 running, ${open} open${parked}`
+      : `🤖 running${parked}`
     : open
-      ? `📝 ${open} open`
-      : "✅";
+      ? `📝 ${open} open${parked}`
+      : `✅${parked}`;
 }
 function mergeCell(row: T.PrSnapshot): string {
   if (row.kind === "merged") return "✅ merged";
@@ -59,6 +62,7 @@ function threadLine(thread: T.ReviewThread): string {
     comment?.path ?? "None",
     comment?.line ?? "None",
     comment?.authorLogin ?? "None",
+    `disposition=${thread.disposition}`,
     `isBugBot=${thread.isBugbot}`,
     `bugbotReviewPasses=${thread.bugbotReviewPasses}`,
     (comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? "",

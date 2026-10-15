@@ -79,6 +79,7 @@ describe("parseArgs", () => {
       timeout: 0,
       maxQueryErrors: 3,
       allowDraft: true,
+      allowNoChecks: false,
     });
     expect(parsed.pretty).toBe(true);
   });

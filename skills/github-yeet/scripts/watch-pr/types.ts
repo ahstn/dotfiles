@@ -61,10 +61,22 @@ export interface ReviewComment {
   readonly path: string | null;
   readonly line: number | null;
   readonly createdAt: string;
+  readonly authorAssociation: string;
+  readonly authorIsBot: boolean;
 }
+/**
+ * `actionable` threads block and wake the agent. `awaiting-reviewer` threads
+ * end with an agent reply carrying AUTOFIX_REPLY_MARKER, and `untrusted` threads
+ * were opened by someone without write access who is not an installed App.
+ * Neither of those blocks, so a reply that disputes a comment does not
+ * re-wake the agent, and drive-by comments cannot steer it.
+ */
+export type ThreadDisposition = "actionable" | "awaiting-reviewer" | "untrusted";
 export interface ReviewThread {
   readonly id: string;
   readonly firstComment: ReviewComment | null;
+  readonly lastAuthorLogin: string | null;
+  readonly disposition: ThreadDisposition;
   readonly isBugbot: boolean;
   readonly bugbotReviewPasses: number;
 }
@@ -153,6 +165,7 @@ export type PrSnapshot =
       readonly context: PrContext;
       readonly facts: PullRequestFacts;
       readonly threads: readonly ReviewThread[];
+      readonly parkedThreads: readonly ReviewThread[];
       readonly ci: CiState;
       readonly reviewAutomationRunning: boolean;
     };
@@ -398,4 +411,5 @@ export interface PollingOptions {
   readonly timeout: number;
   readonly maxQueryErrors: number;
   readonly allowDraft: boolean;
+  readonly allowNoChecks?: boolean;
 }

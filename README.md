@@ -38,6 +38,7 @@ Dotfile management is handled by [`mise.toml`] currently, while bootstrap and sy
   - [`.pi/agent/extensions/exa-websearch/`] - single Exa web/search contents tool with highlights-first results, deep search modes, summaries, and URL content retrieval.
       - Alternative, with no API Key required and [kepano/defuddle] sanitization: [thinkscape/agent-smart-fetch]
   - [`.pi/agent/extensions/skill-autocomplete.ts`] - press `$` in the editor to open an autocomplete menu of loaded skills.
+  - [`.pi/agent/extensions/pr-autofix.ts`] - `/autofix [pr] [--no-checks]` watches the branch's PR in the background and wakes the agent on failing CI, merge conflicts or review comments, similar to Claude Desktop's auto-fix. Uses the [`github-yeet`](./skills/github-yeet/SKILL.md) skill's watcher and playbook. Also linked into oh-my-pi.
 
 ### Packages
 
@@ -78,6 +79,8 @@ npx skills add ahstn/dotfiles
 npx skills add ahstn/dotfiles --skill code-review-and-quality
 ```
 
+[`github-yeet`](./skills/github-yeet/SKILL.md) commits, pushes and opens PRs. Its watch & autofix mode needs `bun`: `scripts/watch-pr` polls the PR, and `references/autofix.md` is the fix playbook. In other harnesses the agent runs the watcher itself and loops.
+
 ## :sparkles: Setup & Application Specifics
 
 ### ZSH
@@ -103,6 +106,7 @@ For macOS, both fonts are declared in `.config/mise/config.toml` and installed w
 [`.pi/agent/pi-permissions.jsonc`]: ./.pi/agent/pi-permissions.jsonc
 [`.pi/agent/extensions/exa-websearch/`]: ./.pi/agent/extensions/exa-websearch/
 [`.pi/agent/extensions/skill-autocomplete.ts`]: ./.pi/agent/extensions/skill-autocomplete.ts
+[`.pi/agent/extensions/pr-autofix.ts`]: ./.pi/agent/extensions/pr-autofix.ts
 [`.pi/agent/prompts/deepresearch.md`]: ./.pi/agent/prompts/deepresearch.md
 
 [`mise.toml`]: ./mise.toml

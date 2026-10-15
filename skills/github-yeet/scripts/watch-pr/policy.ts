@@ -57,14 +57,25 @@ export async function readSnapshot(args: {
   readonly context: T.PrContext;
   readonly pendingHistory: "include" | "omit";
   readonly allowDraft: boolean;
+  readonly allowNoChecks?: boolean;
 }): Promise<T.PrSnapshot> {
   const facts = await args.reader.pullRequest(args.context);
   if (facts.state === "MERGED" || facts.mergedAt !== null)
     return { kind: "merged", context: args.context, facts };
   if (facts.state === "CLOSED")
     return { kind: "closed", context: args.context, facts };
-  const threads = await args.reader.reviewThreads(args.context);
-  const checks = await resolveChecks(args.reader, args.context);
+  const allThreads = await args.reader.reviewThreads(args.context);
+  const threads = allThreads.filter(
+    (thread) => thread.disposition === "actionable"
+  );
+  const parkedThreads = allThreads.filter(
+    (thread) => thread.disposition !== "actionable"
+  );
+  const checks = await resolveChecks(
+    args.reader,
+    args.context,
+    args.allowNoChecks
+  );
   const failed = nonEmpty(
     checks.checks.filter(
       (check): check is T.FailedCheck => check.kind === "failed"
@@ -124,6 +135,7 @@ export async function readSnapshot(args: {
     context: args.context,
     facts,
     threads,
+    parkedThreads,
     ci,
     reviewAutomationRunning: checks.checks.some(
       (check) =>
@@ -427,6 +439,7 @@ export async function runSimple(args: {
           context,
           pendingHistory: "include",
           allowDraft: args.options.allowDraft,
+          allowNoChecks: args.options.allowNoChecks,
         })
       );
     const complete = nonEmpty(rows);
@@ -740,6 +753,7 @@ export async function runQueued(args: {
       context,
       pendingHistory: "omit",
       allowDraft: args.options.allowDraft,
+      allowNoChecks: args.options.allowNoChecks,
     });
     const applied = applyQueueSnapshot(
       state,
