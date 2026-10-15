@@ -270,8 +270,20 @@ async function readOpenSnapshot(
   const threads = summaries.filter(
     (thread) => thread.disposition === "actionable"
   );
-  const parkedThreads = summaries.filter(
-    (thread) => thread.disposition !== "actionable"
+  const parkedThreads = summaries.flatMap(
+    ({ disposition, ...thread }): T.ParkedThreadSummary[] =>
+      disposition === "actionable"
+        ? []
+        : [
+            {
+              id: thread.id,
+              disposition,
+              path: thread.firstComment?.path ?? null,
+              line: thread.firstComment?.line ?? null,
+              lastAuthorLogin: thread.lastAuthorLogin,
+              latestCommentAt: thread.latestCommentAt,
+            },
+          ]
   );
   try {
     const { ci, reviewAutomationRunning } = await readCi(

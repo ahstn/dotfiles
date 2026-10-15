@@ -56,6 +56,59 @@ describe("checks fallback chain", () => {
     ]);
   });
 
+  it("keeps only each check's newest attempt from the rollup", async () => {
+    const run = (
+      name: string,
+      conclusion: string | null,
+      startedAt: string | null,
+      event = "pull_request"
+    ) =>
+      mapRollupNode({
+        __typename: "CheckRun",
+        name,
+        status: conclusion === null ? "QUEUED" : "COMPLETED",
+        conclusion,
+        startedAt,
+        checkSuite: { workflowRun: { event, workflow: { name: "CI" } } },
+      });
+    const pages = [
+      [
+        run("test", "CANCELLED", "2026-01-01T00:00:00Z"),
+        run("lint", "FAILURE", "2026-01-01T00:00:00Z"),
+        run("build", "FAILURE", "2026-01-01T00:00:00Z"),
+        run("push-only", "FAILURE", "2026-01-01T00:00:00Z", "push"),
+      ],
+      [
+        run("test", "SUCCESS", "2026-01-01T00:05:00Z"),
+        run("lint", null, null),
+        run("build", "SUCCESS", "2026-01-01T00:00:00Z"),
+        run("push-only", "SUCCESS", "2026-01-01T00:05:00Z"),
+      ],
+    ].map((checks, index) => ({
+      checks: checks.filter((check) => check !== null),
+      endCursor: index === 0 ? "next" : null,
+    }));
+    const read = await resolveChecks(
+      fakeReader({
+        fastPath: { kind: "unusable", exitCode: 1, stderr: "" },
+        rollupPages: pages,
+      }),
+      context
+    );
+    // A superseded cancel is dropped and a queued rerun supersedes a failure,
+    // but a tie keeps both, and other events are other checks.
+    expect(read.checks.map((check) => [check.name, check.kind])).toEqual([
+      ["build", "failed"],
+      ["push-only", "failed"],
+      ["test", "passed"],
+      ["lint", "pending"],
+      ["build", "passed"],
+      ["push-only", "passed"],
+    ]);
+    expect(read.checks.every((check) => check.attempt === undefined)).toBe(true);
+    expect(read.checks[0]?.workflow).toBe("CI");
+  });
+
   it("falls back when valid fast-path JSON represented an empty list", async () => {
     const reader = fakeReader({
       fastPath: { kind: "checks", checks: [] },

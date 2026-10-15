@@ -138,7 +138,20 @@ export interface ReviewThread {
  * context, so it never leaves the watcher.
  */
 export type ReviewThreadSummary = Omit<ReviewThread, "recentComments">;
-interface CheckDetails {
+/**
+ * A thread that doesn't wake the agent. Anyone can write in it (a drive-by
+ * thread, or a flood past the history budget), so verdicts carry where it is
+ * and who spoke last, never comment text.
+ */
+export interface ParkedThreadSummary {
+  readonly id: string;
+  readonly disposition: Exclude<ThreadDisposition, "actionable">;
+  readonly path: string | null;
+  readonly line: number | null;
+  readonly lastAuthorLogin: string | null;
+  readonly latestCommentAt: string | null;
+}
+export interface CheckDetails {
   readonly name: string;
   readonly reportedState: string;
   readonly description: string;
@@ -149,6 +162,12 @@ interface CheckDetails {
    * commit changes it even when the name and link don't.
    */
   readonly completedAt?: string;
+  /**
+   * Rollup reads only: which check this run is an attempt of, and when it
+   * started (null while queued). resolveChecks keeps each check's newest
+   * attempt and drops this field.
+   */
+  readonly attempt?: { readonly key: string; readonly startedAt: string | null };
 }
 export type Check =
   | (CheckDetails & { readonly kind: "passed" })
@@ -239,7 +258,7 @@ export type PrSnapshot =
       readonly context: PrContext;
       readonly facts: PullRequestFacts;
       readonly threads: readonly ReviewThreadSummary[];
-      readonly parkedThreads: readonly ReviewThreadSummary[];
+      readonly parkedThreads: readonly ParkedThreadSummary[];
       /** Only read when mergeStateStatus is BEHIND; see GitHubReader.upToDateRequired. */
       readonly upToDateRequired?: boolean | null;
       readonly ci: CiState;

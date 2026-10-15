@@ -77,7 +77,7 @@ const MAX_HISTORY_PAGES = 10;
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 export const PR_CHECK_ROLLUP_QUERY =
-  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    completedAt\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      workflowRun {\n                        event\n                        workflow {\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 interface CommandResult {
   readonly code: number;
@@ -379,16 +379,8 @@ let ignoredPendingChecks: ReadonlySet<string> = new Set();
 export function setIgnoredPendingChecks(names: readonly string[]): void {
   ignoredPendingChecks = new Set(names);
 }
-function pendingOrGate(
-  details: {
-    readonly name: string;
-    readonly description: string;
-    readonly link: string;
-    readonly workflow: string;
-    readonly completedAt?: string;
-  },
-  reportedState: string
-): T.Check {
+type CheckFields = Omit<T.CheckDetails, "reportedState">;
+function pendingOrGate(details: CheckFields, reportedState: string): T.Check {
   return ignoredPendingChecks.has(details.name)
     ? { ...details, kind: "code-review-gate", reportedState }
     : { ...details, kind: "pending", reportedState };
@@ -404,32 +396,60 @@ export function mapRollupNode(value: unknown): T.Check | null {
   const link =
     typeof object.targetUrl === "string" ? object.targetUrl : details.link;
   if (typename === "CheckRun") {
-    const status =
-      typeof object.status === "string" ? object.status.toUpperCase() : "";
-    const conclusion =
-      typeof object.conclusion === "string"
-        ? object.conclusion.toUpperCase()
-        : "";
-    if (status !== "COMPLETED")
-      return pendingOrGate({ ...details, link }, "PENDING");
-    if (conclusion === "SUCCESS")
-      return { ...details, link, kind: "passed", reportedState: "SUCCESS" };
-    if (conclusion === "NEUTRAL" || conclusion === "SKIPPED")
-      return { ...details, link, kind: "skipped", reportedState: conclusion };
-    return {
+    // Checks from other Apps have no workflow run; their name is their identity.
+    const suite = isRecord(object.checkSuite) ? object.checkSuite : null;
+    const run = suite !== null && isRecord(suite.workflowRun) ? suite.workflowRun : null;
+    const event = run !== null && typeof run.event === "string" ? run.event : "";
+    const workflow =
+      run !== null && isRecord(run.workflow) && typeof run.workflow.name === "string"
+        ? run.workflow.name
+        : details.workflow;
+    return mapCheckRun(object, {
       ...details,
       link,
-      kind: "failed",
-      reportedState: conclusion === "ACTION_REQUIRED" ? conclusion : "FAILURE",
-    };
+      workflow,
+      attempt: {
+        key: ["CheckRun", workflow, event, details.name].join("\0"),
+        startedAt: typeof object.startedAt === "string" ? object.startedAt : null,
+      },
+    });
   }
   const state =
     typeof object.state === "string" ? object.state.toUpperCase() : "";
+  const status = {
+    ...details,
+    link,
+    attempt: {
+      key: ["StatusContext", details.name].join("\0"),
+      startedAt: typeof object.createdAt === "string" ? object.createdAt : null,
+    },
+  };
   if (state === "PENDING" || state === "EXPECTED")
-    return pendingOrGate({ ...details, link }, "PENDING");
+    return pendingOrGate(status, "PENDING");
   return state === "SUCCESS"
-    ? { ...details, link, kind: "passed", reportedState: state }
-    : { ...details, link, kind: "failed", reportedState: state || "FAILURE" };
+    ? { ...status, kind: "passed", reportedState: state }
+    : { ...status, kind: "failed", reportedState: state || "FAILURE" };
+}
+function mapCheckRun(
+  object: Record<string, unknown>,
+  details: CheckFields
+): T.Check {
+  const status =
+    typeof object.status === "string" ? object.status.toUpperCase() : "";
+  const conclusion =
+    typeof object.conclusion === "string"
+      ? object.conclusion.toUpperCase()
+      : "";
+  if (status !== "COMPLETED") return pendingOrGate(details, "PENDING");
+  if (conclusion === "SUCCESS")
+    return { ...details, kind: "passed", reportedState: "SUCCESS" };
+  if (conclusion === "NEUTRAL" || conclusion === "SKIPPED")
+    return { ...details, kind: "skipped", reportedState: conclusion };
+  return {
+    ...details,
+    kind: "failed",
+    reportedState: conclusion === "ACTION_REQUIRED" ? conclusion : "FAILURE",
+  };
 }
 function parseComment(
   value: unknown,
@@ -768,7 +788,7 @@ export class GhGitHubReader implements T.GitHubReader {
       "--paginate",
       `${repo}/rules/branches/${branch}`,
       "--jq",
-      ".[] | [.type, (.parameters.strict_required_status_checks_policy // false)] | @tsv",
+      ".[] | [.type, (.parameters.strict_required_status_checks_policy // false), ((.parameters.required_status_checks // []) | length)] | @tsv",
     ]);
     // Only a definite "can't see this" (403/404) may become null, which ends
     // the watch at a human gate. Anything else (5xx, 429, rate limits, a
@@ -787,10 +807,15 @@ export class GhGitHubReader implements T.GitHubReader {
     if (rules.code === 0) {
       rulesKnown = true;
       for (const line of rules.stdout.split("\n")) {
-        const [type, strict] = line.split("\t");
+        const [type, strict, required] = line.split("\t");
         // A merge queue brings PRs up to date itself; authors needn't.
         if (type === "merge_queue") return false;
-        if (type === "required_status_checks" && strict === "true")
+        // GitHub ignores the strict policy until the rule names a check.
+        if (
+          type === "required_status_checks" &&
+          strict === "true" &&
+          Number(required) > 0
+        )
           rulesStrict = true;
       }
     }
@@ -1160,6 +1185,32 @@ export async function requireWriteAccess(
   return decided;
 }
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
+/**
+ * The rollup lists every attempt of a check on the commit, so a cancelled run
+ * sits beside the rerun that passed. Keep each check's newest attempt, as
+ * `gh pr checks` does. A queued attempt (not started) counts as newest, and
+ * attempts that tie are all kept, so a failure is never hidden by a guess.
+ */
+function latestAttempts(checks: readonly T.Check[]): T.Check[] {
+  const startOf = (check: T.Check): number => {
+    const started = Date.parse(check.attempt?.startedAt ?? "");
+    return Number.isNaN(started) ? Infinity : started;
+  };
+  const newest = new Map<string, number>();
+  for (const check of checks)
+    if (check.attempt !== undefined)
+      newest.set(
+        check.attempt.key,
+        Math.max(newest.get(check.attempt.key) ?? -Infinity, startOf(check))
+      );
+  return checks
+    .filter(
+      (check) =>
+        check.attempt === undefined ||
+        startOf(check) === newest.get(check.attempt.key)
+    )
+    .map(({ attempt: _attempt, ...check }) => check as T.Check);
+}
 export async function resolveChecks(
   reader: T.GitHubReader,
   context: T.PrContext,
@@ -1175,7 +1226,7 @@ export async function resolveChecks(
     checks.push(...page.checks);
     after = page.endCursor;
   } while (after !== null);
-  const fallback = nonEmpty(checks);
+  const fallback = nonEmpty(latestAttempts(checks));
   if (fallback !== null) return { source: "graphql-rollup", checks: fallback };
   // A repo without CI reports no checks forever, which is otherwise
   // indistinguishable from checks that have not registered yet. The caller

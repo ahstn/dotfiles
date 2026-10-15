@@ -235,6 +235,8 @@ it("demotes threads from read-only members and collaborators", async () => {
     ["reader", "untrusted"],
     ["forker-cannot-check", "untrusted"],
   ]);
+  // Drive-by text never reaches a verdict, even as a parked thread.
+  expect(JSON.stringify(snapshot.parkedThreads)).not.toContain("change this");
   expect(reader.calls).not.toContain("permission:owner");
 });
 
@@ -297,6 +299,7 @@ it("skips replies from read-only members when deciding a thread", async () => {
   expect(snapshot.threads).toEqual([]);
   expect(snapshot.parkedThreads[0]?.disposition).toBe("awaiting-reviewer");
   expect(snapshot.parkedThreads[0]?.latestCommentAt).toBe("2026-01-02T00:00:00Z");
+  expect(JSON.stringify(snapshot.parkedThreads)).not.toMatch(/fix this|done|rewrite/);
 });
 
 it("reports a known conflict even when later reads fail", async () => {

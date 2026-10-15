@@ -144,14 +144,11 @@ it("flags unverifiable threads in the pretty status table", () => {
   } as const;
   const thread = {
     id: "huge",
-    firstComment: null,
-    historyComplete: false,
-    decidingComment: null,
+    path: null,
+    line: null,
     lastAuthorLogin: null,
     latestCommentAt: null,
     disposition: "unverifiable",
-    isBugbot: false,
-    bugbotReviewPasses: 0,
   } as const;
   const table = renderPretty({
     schemaVersion: 1,
