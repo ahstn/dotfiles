@@ -1206,10 +1206,14 @@ export class GhGitHubReader implements T.GitHubReader {
         for (const check of list(
           parameters.required_status_checks ?? [],
           "required_status_checks"
-        ))
-          requiredChecks.push(
-            string(record(check, "required check").context, "required check.context")
-          );
+        )) {
+          const required = record(check, "required check");
+          // A check required from a specific App can't be matched by name:
+          // another App may post a passing check of the same name.
+          if (required.integration_id !== undefined && required.integration_id !== null)
+            return null;
+          requiredChecks.push(string(required.context, "required check.context"));
+        }
       }
     return { requiredChecks };
   }

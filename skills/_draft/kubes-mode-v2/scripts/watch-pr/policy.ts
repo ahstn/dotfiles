@@ -1623,38 +1623,43 @@ export async function runQueued(args: {
         },
       };
     }
-    let evaluation = evaluateQueue(
+    const evaluation = evaluateQueue(
       state,
       args.dependencies.clock.now(),
       args.options
     );
-    // A whole-stack sweep reads rows one at a time, so an earlier row's
-    // failure or thread can clear while later rows are read. Re-read a
-    // blocker's row before reporting it, and evaluate again if it changed.
-    // Each row is re-read at most once (the one just read is fresh).
-    const fresh = new Set([snapshot.context.number]);
-    while (evaluation.kind === "blocker" && !fresh.has(evaluation.blocker.pr.number)) {
-      const pr = evaluation.blocker.pr;
-      fresh.add(pr.number);
-      let reread: T.PrSnapshot;
+    // A whole-stack sweep reads rows one at a time, so any row can change
+    // while later ones are read: a failure clears, or an early row gains a
+    // conflict that outranks the blocker found. Before reporting one,
+    // revalidate every row (as runSimple does) and sweep again if one moved.
+    if (evaluation.kind === "blocker") {
+      const rows = activeRows(state);
+      let moved: boolean;
       try {
-        reread = await readSnapshot({
-          reader: args.dependencies.reader,
-          context: pr,
-          pendingHistory: "omit",
-          allowDraft: args.options.allowDraft,
-          allowNoChecks: args.options.allowNoChecks,
-        });
+        moved = await rowsMoved(args.dependencies.reader, rows, args.options.allowNoChecks);
       } catch (error) {
-        const conflict =
-          // The sweep covered every row, so a known thread stands too.
+        // The sweep covered every row, so a known conflict or thread stands.
+        const known =
           error instanceof WatcherQueryError ? knownBlocker(orderedRows(state)) : null;
-        if (conflict !== null)
-          return { kind: "terminal", verdict: blockerVerdict(stamp, conflict) };
+        if (known !== null)
+          return { kind: "terminal", verdict: blockerVerdict(stamp, known) };
         throw error;
       }
-      state = { ...state, snapshots: new Map(state.snapshots).set(pr.number, reread) };
-      evaluation = evaluateQueue(state, args.dependencies.clock.now(), args.options);
+      if (moved) {
+        state = { ...state, nextSweepAt: args.dependencies.clock.now() };
+        const frontier = rows[0]?.context ?? state.queue[0];
+        const unmergedCount = rows.length;
+        return {
+          kind: "continue",
+          onDeadline: () =>
+            stamp({
+              kind: "TIMEOUT",
+              terminal: true,
+              exitCode: 5,
+              reason: { kind: "queued-stack", frontier, unmergedCount },
+            }),
+        };
+      }
     }
     state = evaluation.state;
     switch (evaluation.kind) {

@@ -2458,6 +2458,44 @@ it("emits a new queued wait when a different check is pending", async () => {
   expect(waits).toEqual(["build", "deploy"]);
 });
 
+it("revalidates earlier queued rows before reporting a later CI blocker", async () => {
+  const base = fakeReader();
+  let row1Reads = 0;
+  let row1Rechecks = 0;
+  const conflict = { mergeable: "CONFLICTING" as const, mergeStateStatus: "DIRTY" as const };
+  const verdict = await runQueued({
+    dependencies: {
+      reader: {
+        ...base,
+        // #1 gains a conflict right after the sweep reads it.
+        async pullRequest(pr) {
+          const facts = await base.pullRequest(pr);
+          if (Number(pr.number) !== 1) return facts;
+          row1Reads += 1;
+          return row1Reads === 1 ? facts : { ...facts, ...conflict };
+        },
+        async recheck(pr) {
+          const facts = await base.recheck(pr);
+          if (Number(pr.number) !== 1) return facts;
+          row1Rechecks += 1;
+          return row1Rechecks === 1 ? facts : { ...facts, ...conflict };
+        },
+        async checksFastPath(pr) {
+          return {
+            kind: "checks",
+            checks: [Number(pr.number) === 2 ? failedCheck() : passingCheck()],
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    options,
+  });
+  expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

@@ -599,7 +599,8 @@ export interface GitHubReader {
    * For a base that merges through GitHub's merge queue, the checks its rules
    * require, when every rule on it is visible and none could block a ready
    * PR. null otherwise: no queue, classic protection (unreadable without
-   * admin), or a rule such as required signatures.
+   * admin), a rule such as required signatures, or a check required from a
+   * specific App (which a name can't prove).
    */
   mergeQueueRules(context: PrContext, baseRefName: string): Promise<MergeQueueRules | null>;
 }
