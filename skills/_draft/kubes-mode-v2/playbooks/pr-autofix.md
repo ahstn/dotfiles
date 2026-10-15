@@ -9,7 +9,7 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 ```
 
 - `<owner>/<repo>` is the PR's base repository, the one the PR was opened against. Always pass it: in a fork checkout a bare number is ambiguous, and the watcher refuses it rather than guess.
-- Add `--ignore-pending-check "<name>"` (repeatable) only for a check that waits on a human and would otherwise keep the watcher pending forever, such as an approval gate. Use the exact name, and only when the user names it: anything can post a check under any name.
+- Add `--ignore-pending-check '<name>'` (repeatable) only for a check that waits on a human and would otherwise keep the watcher pending forever, such as an approval gate. Use the exact name, and only when the user names it: anything can post a check under any name. Pass it in single quotes, never double, so `$`, backticks or `$(...)` in the name stay literal; write any `'` in the name as `'\''`.
 - Add `--allow-no-checks` when the repository has no CI. Without it, a PR with no checks ends in exit 7.
 - `--timeout 540` keeps one run under a 10-minute shell tool limit.
 - Output is NDJSON, and the last line is the verdict. Act on the exit code:

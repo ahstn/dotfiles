@@ -68,6 +68,7 @@ function mergeCell(row: T.PrSnapshot): string {
   if (row.facts.isDraft) return "⏸ draft";
   if (row.facts.reviewDecision === "CHANGES_REQUESTED")
     return "⚠️ changes requested";
+  if (row.facts.reviewDecision === "REVIEW_REQUIRED") return "⏳ needs approval";
   if (
     row.kind === "open" &&
     row.parkedThreads.some((thread) => thread.disposition === "unverifiable")

@@ -983,11 +983,8 @@ export async function runSimple(args: {
     // Each row was validated as it was read, but earlier rows can change
     // while later ones are read. Before calling a whole stack READY, check
     // them again; if any moved, scan again.
-    if (
-      decision.kind === "clear" &&
-      (await earlierRowsMoved(args.dependencies.reader, rows))
-    )
-      return rescan;
+    // Rediscovery first, row revalidation last, so nothing that lands on a
+    // row while the open-PR graph is read slips past the final comparison.
     if (decision.kind === "clear" && args.rediscover !== undefined) {
       const from = rows.find((row) => row.kind === "open")?.context;
       if (from !== undefined) {
@@ -999,6 +996,11 @@ export async function runSimple(args: {
         }
       }
     }
+    if (
+      decision.kind === "clear" &&
+      (await earlierRowsMoved(args.dependencies.reader, rows))
+    )
+      return rescan;
     if (decision.kind === "clear")
       return {
         kind: "terminal",

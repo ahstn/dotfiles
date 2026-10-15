@@ -191,6 +191,58 @@ it("flags unverifiable threads in the pretty status table", () => {
   expect(table).toContain("⚠️ needs a human");
 });
 
+it("shows a missing approval in the pretty status table", () => {
+  const ctx = { owner: "o", repo: "r", number: parsePrNumber(1) };
+  const table = renderPretty({
+    schemaVersion: 1,
+    sequence: 1,
+    observedAt: "now",
+    mode: "single",
+    kind: "STATUS",
+    terminal: true,
+    exitCode: 0,
+    reason: "status-only",
+    rows: [
+      {
+        kind: "open",
+        context: ctx,
+        facts: {
+          context: ctx,
+          mergeable: "MERGEABLE",
+          mergeStateStatus: "BLOCKED",
+          reviewDecision: "REVIEW_REQUIRED",
+          headRefOid: "h",
+          baseRefOid: "b",
+          updatedAt: "t",
+          headRefName: "f",
+          baseRefName: "main",
+          state: "OPEN",
+          mergedAt: null,
+          isDraft: false,
+        },
+        threads: [],
+        parkedThreads: [],
+        ci: {
+          kind: "ci-clean",
+          source: "gh-pr-checks",
+          all: [passingCheck()],
+          failed: [],
+          pending: [],
+          hadPreviousPassingCi: false,
+          github: {
+            kind: "allowed",
+            basis: "rollup",
+            mergeStateStatus: "BLOCKED",
+            headRollupState: "SUCCESS",
+          },
+        },
+        reviewAutomationRunning: false,
+      },
+    ],
+  });
+  expect(table).toContain("⏳ needs approval");
+});
+
 it("escapes bidi and C1 characters in JSON output, keeping it valid", () => {
   const verdict = {
     schemaVersion: 1,
