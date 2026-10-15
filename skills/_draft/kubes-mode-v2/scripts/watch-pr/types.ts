@@ -171,6 +171,8 @@ export interface CheckDetails {
   readonly attempt?: {
     readonly key: string;
     readonly suite: string;
+    /** Whether the suite can hold reruns of a check, not only distinct jobs. */
+    readonly rerun: boolean;
     readonly startedAt: string | null;
   };
 }

@@ -79,7 +79,7 @@ export const PR_COMMIT_STATUS_QUERY =
 export const PR_MERGE_QUEUE_QUERY =
   "query PrMergeQueue($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { isMergeQueueEnabled } } }";
 export const PR_CHECK_ROLLUP_QUERY =
-  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      databaseId\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                    startedAt\n                    completedAt\n                    checkSuite {\n                      databaseId\n                      app {\n                        databaseId\n                      }\n                      workflowRun {\n                        event\n                        runAttempt\n                        workflow {\n                          databaseId\n                          name\n                        }\n                      }\n                    }\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                    createdAt\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
 interface CommandResult {
   readonly code: number;
@@ -408,7 +408,8 @@ export function mapRollupNode(value: unknown): T.Check | null {
     // Apps' checks. Key attempts by the App's and workflow's IDs, and when
     // GitHub withholds an ID, don't collapse the check at all. Jobs in one
     // suite (workflow run) can share a name too, so the suite says which
-    // attempt a run belongs to.
+    // attempt a run belongs to. But a suite can also hold reruns: an Actions
+    // run past its first attempt, or another App's rerequested suite.
     const identity =
       run === null
         ? [app]
@@ -426,6 +427,9 @@ export function mapRollupNode(value: unknown): T.Check | null {
             attempt: {
               key: ["CheckRun", ...identity, details.name].join("\0"),
               suite: String(suiteId),
+              rerun:
+                run === null ||
+                (typeof run.runAttempt === "number" && run.runAttempt > 1),
               startedAt: typeof object.startedAt === "string" ? object.startedAt : null,
             },
           }
@@ -441,6 +445,7 @@ export function mapRollupNode(value: unknown): T.Check | null {
       key: ["StatusContext", details.name].join("\0"),
       // Each status post stands alone; the newest one for a context wins.
       suite: typeof object.createdAt === "string" ? object.createdAt : "",
+      rerun: false,
       startedAt: typeof object.createdAt === "string" ? object.createdAt : null,
     },
   };
@@ -1223,17 +1228,22 @@ export async function requireWriteAccess(
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 /**
  * The rollup lists every attempt of a check on the commit, so a cancelled run
- * sits beside the rerun that passed. Keep each check's newest suite, as
- * `gh pr checks` keeps the newest attempt. A queued attempt (not started)
- * counts as newest. Same-name runs in the newest suite are all kept: they
- * may be distinct jobs, so no failure is hidden by a guess. So are ties.
+ * sits beside the rerun that passed. Keep each check's newest attempt, as
+ * `gh pr checks` does. A queued attempt (not started) counts as newest, and
+ * ties are all kept. Same-name runs in the newest suite are distinct jobs
+ * when the suite can't hold reruns (an Actions run on its first attempt), so
+ * they are all kept and no failure is hidden by a guess; otherwise the
+ * newest start wins there too.
  */
 function latestAttempts(checks: readonly T.Check[]): T.Check[] {
   const startOf = (check: T.Check): number => {
     const started = Date.parse(check.attempt?.startedAt ?? "");
     return Number.isNaN(started) ? Infinity : started;
   };
-  const newest = new Map<string, { readonly start: number; readonly suite: string }>();
+  const newest = new Map<
+    string,
+    { readonly start: number; readonly suite: string; readonly rerun: boolean }
+  >();
   for (const check of checks) {
     if (check.attempt === undefined) continue;
     const current = newest.get(check.attempt.key);
@@ -1241,6 +1251,7 @@ function latestAttempts(checks: readonly T.Check[]): T.Check[] {
       newest.set(check.attempt.key, {
         start: startOf(check),
         suite: check.attempt.suite,
+        rerun: check.attempt.rerun,
       });
   }
   return checks
@@ -1249,8 +1260,8 @@ function latestAttempts(checks: readonly T.Check[]): T.Check[] {
       const latest = newest.get(check.attempt.key);
       return (
         latest === undefined ||
-        check.attempt.suite === latest.suite ||
-        startOf(check) === latest.start
+        startOf(check) === latest.start ||
+        (check.attempt.suite === latest.suite && !latest.rerun)
       );
     })
     .map(({ attempt: _attempt, ...check }) => check as T.Check);

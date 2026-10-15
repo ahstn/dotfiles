@@ -127,11 +127,12 @@ export async function readSnapshot(args: {
     let confirmed = true;
     let moved = true;
     try {
-      // Before a clean CI read can become READY, confirm it (see ciMoved).
-      // A failing read was already confirmed after the rollup in readCi.
+      // Before a clean CI read can become READY, or GitHub's refusal an exit
+      // 4, confirm it (see ciMoved). A failing read was already confirmed
+      // after the rollup in readCi.
       if (
         snapshot.kind === "open" &&
-        snapshot.ci.kind === "ci-clean" &&
+        (snapshot.ci.kind === "ci-clean" || snapshot.ci.kind === "ci-github-rejected") &&
         (await ciMoved(args.reader, snapshot, args.allowNoChecks))
       )
         confirmed = false;

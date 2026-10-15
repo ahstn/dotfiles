@@ -209,6 +209,32 @@ describe("readiness truth table", () => {
     });
   });
 
+  it("re-reads a GitHub refusal whose rollup recovers before the snapshot settles", async () => {
+    let rollups = 0;
+    const base = fakeReader({
+      facts: { mergeStateStatus: "BLOCKED" },
+      fastPath: { kind: "checks", checks: [passingCheck()] },
+      mergeQueueEnabled: true,
+    });
+    const snapshot = await readSnapshot({
+      reader: {
+        ...base,
+        async commitRollups() {
+          rollups += 1;
+          return [{ oid: "head", state: rollups === 1 ? "FAILURE" : "SUCCESS" }];
+        },
+      },
+      context: context(1),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+    expect(snapshot.ci).toMatchObject({
+      kind: "ci-clean",
+      github: { basis: "merge-queue" },
+    });
+  });
+
   it("reports a parked conversation on a merge-queue base", () => {
     expect(
       assessGitHubMerge({

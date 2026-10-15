@@ -107,23 +107,28 @@ Fixed in abc1234: the empty cursor now returns the first page.
 <!-- pr-autofix:fixed -->
 ```
 
-Just before posting, rerun the watcher with `--status-only` for that one PR, `--owner <owner> --repo <repo> --pr <blocker.pr.number>` and no `--stack`, and find this thread by `id` in `rows[0].threads`. A single-PR read re-checks the PR after reading it; a stack scan can't do that for every row at once. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. For a thread you fixed, also check that `rows[0].facts.headRefOid` is the commit you last pushed (`git rev-parse HEAD` after the push). If not, someone pushed or rewound the branch and your fix may be gone: don't reply or resolve, and start again from step 1. The watcher applies the trust rules, so untrusted replies don't trigger this.
+Just before posting, rerun the watcher with `--status-only` for that one PR, `--owner <owner> --repo <repo> --pr <blocker.pr.number>` and no `--stack`, and find this thread by `id` in `rows[0].threads`. A single-PR read re-checks the PR after reading it; a stack scan can't do that for every row at once. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. Check the head too, before every reply. For a thread you fixed, `rows[0].facts.headRefOid` must be the commit you last pushed (`git rev-parse HEAD` after the push). For any other reply, it must still be `<based-on>` from step 1, the code your answer is about. If not, someone pushed or rewound the branch: your fix may be gone, or your evidence stale. Don't reply or resolve, and start again from step 1. The watcher applies the trust rules, so untrusted replies don't trigger this.
 
-Post the reply from that file. For a fixed thread, resolve it only if the reply succeeded (`&&`). Remove the file either way:
+Post the reply from that file, then remove the file either way:
 
 ```shell
-{
-  gh api graphql -F threadId=<thread-id> -F "body=@<reply-file>" -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }' &&
-    gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
-}
+gh api graphql -F threadId=<thread-id> -F "body=@<reply-file>" -f query='mutation($threadId: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $threadId, body: $body}) { comment { url } } }'
 rc=$?
 rm -- "<reply-file>"
 test "$rc" -eq 0
 ```
 
-The last line keeps the block's exit status the API's, so a failed reply or resolve isn't masked by a successful cleanup. Check it before telling anyone the thread was handled.
+The last line keeps the API's exit status, so a failed reply isn't masked by a successful cleanup. If it failed, nothing was handled; say so.
 
-For a reply that leaves the thread open, run only the first command.
+For a fixed thread, only after the reply succeeded, resolve it:
+
+```shell
+gh api graphql -F threadId=<thread-id> -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
+```
+
+If resolving fails, retry this command once. If it fails again, stop and report the thread as replied but unresolved. Don't run the watcher again: it reads a fixed marker on an unresolved thread as a reopened thread, and would send you to fix it twice.
+
+For a reply that leaves the thread open, don't resolve.
 
 ## Failing checks
 

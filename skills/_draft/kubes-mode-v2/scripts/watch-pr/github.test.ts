@@ -65,7 +65,8 @@ describe("checks fallback chain", () => {
       startedAt: string | null,
       event = "pull_request",
       workflowId: number | null = 1,
-      suite = (suites += 1)
+      suite = (suites += 1),
+      runAttempt = 1
     ) =>
       mapRollupNode({
         __typename: "CheckRun",
@@ -78,6 +79,7 @@ describe("checks fallback chain", () => {
           app: { databaseId: 15368 },
           workflowRun: {
             event,
+            runAttempt,
             workflow: { databaseId: workflowId, name: "CI" },
           },
         },
@@ -93,6 +95,8 @@ describe("checks fallback chain", () => {
         run("lint", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", null),
         // Two jobs of one workflow run that share a display name.
         run("matrix", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", 1, 99),
+        // A rerun inside one workflow run (attempt 2) supersedes attempt 1.
+        run("flaky", "FAILURE", "2026-01-01T00:00:00Z", "pull_request", 1, 98, 2),
       ],
       [
         run("test", "SUCCESS", "2026-01-01T00:05:00Z"),
@@ -100,6 +104,7 @@ describe("checks fallback chain", () => {
         run("build", "SUCCESS", "2026-01-01T00:00:00Z"),
         run("push-only", "SUCCESS", "2026-01-01T00:05:00Z"),
         run("matrix", "SUCCESS", "2026-01-01T00:01:00Z", "pull_request", 1, 99),
+        run("flaky", "SUCCESS", "2026-01-01T00:03:00Z", "pull_request", 1, 98, 2),
       ],
     ].map((checks, index) => ({
       checks: checks.filter((check) => check !== null),
@@ -114,7 +119,8 @@ describe("checks fallback chain", () => {
     );
     // A superseded cancel is dropped and a queued rerun supersedes a failure,
     // but a tie keeps both, other events or workflows are other checks, and
-    // same-name jobs of one run are all kept.
+    // same-name jobs of a first-attempt run are all kept, but a rerun
+    // attempt in the same run supersedes the old one.
     expect(read.checks.map((check) => [check.name, check.kind])).toEqual([
       ["build", "failed"],
       ["push-only", "failed"],
@@ -126,6 +132,7 @@ describe("checks fallback chain", () => {
       ["build", "passed"],
       ["push-only", "passed"],
       ["matrix", "passed"],
+      ["flaky", "passed"],
     ]);
     expect(read.checks.every((check) => check.attempt === undefined)).toBe(true);
     expect(read.checks[0]?.workflow).toBe("CI");
