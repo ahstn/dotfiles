@@ -9,6 +9,7 @@ import {
   GhGitHubReader,
   WatcherQueryError,
   discoverStack,
+  setIgnoredPendingChecks,
   setWatchDeadline,
   resolveContext,
 } from "./github.ts";
@@ -30,6 +31,7 @@ export interface CliOptions {
   readonly mode: T.WatchMode;
   readonly stackPrs: readonly T.PrNumber[];
   readonly statusOnly: boolean;
+  readonly ignoredPendingChecks: readonly string[];
   readonly pretty: boolean;
   readonly polling: T.PollingOptions;
 }
@@ -78,6 +80,7 @@ interface RawOptions {
   readonly timeout: number;
   readonly maxQueryErrors: number;
   readonly statusOnly: boolean;
+  readonly ignorePendingCheck: readonly string[];
   readonly allowDraft: boolean;
   readonly allowNoChecks: boolean;
   readonly pretty: boolean;
@@ -136,6 +139,12 @@ export function parseArgs(
       "treat a PR with no checks at all as passing CI (repos without CI)",
       false
     )
+    .option(
+      "--ignore-pending-check <name>",
+      "don't wait on a pending check with exactly this name, e.g. a human approval gate (repeatable)",
+      (value: string, previous: readonly string[]) => [...previous, value],
+      [] as readonly string[]
+    )
     .option("--pretty", "render human text instead of JSON", false);
   program.parse(argv, { from: "user" });
   const raw = program.opts<RawOptions>();
@@ -165,6 +174,7 @@ export function parseArgs(
     mode: raw.queuedStack ? "queued-stack" : raw.stack ? "stack" : "single",
     stackPrs: raw.stackPrs ?? [],
     statusOnly: raw.statusOnly,
+    ignoredPendingChecks: raw.ignorePendingCheck,
     pretty: raw.pretty,
     polling: {
       interval: raw.interval,
@@ -214,6 +224,7 @@ export async function main(
     if (!(error instanceof CommanderError)) throw error;
     return error.exitCode === 0 ? 0 : 64;
   }
+  setIgnoredPendingChecks(options.ignoredPendingChecks);
   const render = options.pretty ? renderPretty : renderJson;
   const emit = (verdict: T.ProgressVerdict): void =>
     runtime.stdout(render(verdict));

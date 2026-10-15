@@ -371,9 +371,14 @@ export function parseFastCheck(value: unknown): T.Check {
     return { ...details, kind: "skipped", reportedState: state };
   return { ...details, kind: "failed", reportedState: state };
 }
-// The owner-approval gate is excluded from pending everywhere, so the rule has
-// one home. Classifying it as pending on either read path makes the watcher
-// wait on a human, which is the behaviour #172004 removed from the Python.
+// Checks that only a human can clear (Cursor's "Code Review Gate", say) would
+// keep the watcher waiting forever, so they can be excluded from pending.
+// Opt-in by exact name via --ignore-pending-check: a display name is set by
+// whatever posts the check, so the watcher never assumes one on its own.
+let ignoredPendingChecks: ReadonlySet<string> = new Set();
+export function setIgnoredPendingChecks(names: readonly string[]): void {
+  ignoredPendingChecks = new Set(names);
+}
 function pendingOrGate(
   details: {
     readonly name: string;
@@ -384,13 +389,8 @@ function pendingOrGate(
   },
   reportedState: string
 ): T.Check {
-  return details.name === "Code Review Gate"
-    ? {
-        ...details,
-        kind: "code-review-gate",
-        name: "Code Review Gate",
-        reportedState,
-      }
+  return ignoredPendingChecks.has(details.name)
+    ? { ...details, kind: "code-review-gate", reportedState }
     : { ...details, kind: "pending", reportedState };
 }
 export function mapRollupNode(value: unknown): T.Check | null {
@@ -1104,6 +1104,7 @@ export async function requireWriteAccess(
     for (const comment of [thread.firstComment, ...thread.recentComments])
       if (comment !== null && needsCheck(comment)) logins.add(comment.authorLogin);
   const readOnly = new Set<string>();
+  const failedLogins = new Set<string>();
   let lookupFailure: unknown = null;
   await Promise.all(
     [...logins].map(async (login) => {
@@ -1113,6 +1114,7 @@ export async function requireWriteAccess(
       } catch (error) {
         // Not trusted while unknown; whether that can stand is decided below.
         readOnly.add(login);
+        failedLogins.add(login);
         lookupFailure ??= error;
       }
     })
@@ -1126,8 +1128,26 @@ export async function requireWriteAccess(
   // thread is actionable on trust that needed no failed lookup, report it
   // (threads outrank everything but conflicts, so this can't end in READY);
   // otherwise retry rather than let a failed lookup park real feedback.
+  if (lookupFailure === null) return decided;
+  // A failed lookup leaves its author untrusted for now. Threads that end up
+  // parked because of it are harmless here: an actionable thread exists, so
+  // this can't be READY, and they're re-checked next poll. But an actionable
+  // thread is about to be acted on and resolved, so its deciding comment must
+  // be right: if the unverified author wrote or edited anything newer than
+  // it, trusting them would change what the agent reads. Retry then.
+  const couldChange = decided.some(
+    (thread) =>
+      thread.disposition === "actionable" &&
+      thread.recentComments.some(
+        (comment) =>
+          comment.authorLogin !== null &&
+          failedLogins.has(comment.authorLogin) &&
+          (thread.latestCommentAt === null ||
+            comment.activityAt > thread.latestCommentAt)
+      )
+  );
   if (
-    lookupFailure !== null &&
+    couldChange ||
     !decided.some((thread) => thread.disposition === "actionable")
   )
     throw lookupFailure;

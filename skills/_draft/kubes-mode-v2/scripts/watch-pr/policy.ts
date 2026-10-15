@@ -114,9 +114,12 @@ export async function readSnapshot(args: {
         confirmed = false;
       // BEHIND stays BEHIND when an admin turns strict checks on or off, so
       // the rule result has to be re-read too.
+      // Skipped for a partial snapshot (threads kept after a failed CI read),
+      // which never read the rule: its verdict is the thread blocker anyway.
       if (
         snapshot.kind === "open" &&
         facts.mergeStateStatus === "BEHIND" &&
+        snapshot.upToDateRequired !== undefined &&
         (await args.reader.upToDateRequired(args.context, facts.baseRefName)) !==
           snapshot.upToDateRequired
       )

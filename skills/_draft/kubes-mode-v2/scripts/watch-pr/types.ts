@@ -157,7 +157,8 @@ export type Check =
   | (CheckDetails & { readonly kind: "pending" })
   | (CheckDetails & {
       readonly kind: "code-review-gate";
-      readonly name: "Code Review Gate";
+      /** A pending check the user opted out of waiting on (--ignore-pending-check). */
+      readonly name: string;
     });
 export type FailedCheck = Extract<Check, { readonly kind: "failed" }>;
 export type PendingCheck = Extract<Check, { readonly kind: "pending" }>;

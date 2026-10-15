@@ -5,6 +5,7 @@ import {
   ChecksUnavailable,
   WatcherQueryError,
   discoverStack,
+  setIgnoredPendingChecks,
   mapRollupNode,
   orderStack,
   parsePullRequest,
@@ -104,7 +105,21 @@ describe("rollup node mapping", () => {
     }
   });
 
+  it("treats a check named like the gate as an ordinary pending check by default", () => {
+    setIgnoredPendingChecks([]);
+    expect(
+      mapRollupNode({
+        __typename: "CheckRun",
+        name: "Code Review Gate",
+        status: "IN_PROGRESS",
+        conclusion: null,
+        detailsUrl: "",
+      })?.kind
+    ).toBe("pending");
+  });
+
   it("classifies an in-progress Code Review Gate from the rollup as the gate", () => {
+    setIgnoredPendingChecks(["Code Review Gate"]);
     expect(
       mapRollupNode({
         __typename: "CheckRun",
@@ -120,6 +135,7 @@ describe("rollup node mapping", () => {
         state: "PENDING",
       })
     ).toMatchObject({ kind: "code-review-gate" });
+    setIgnoredPendingChecks([]);
   });
 
   it("maps StatusContext states and drops unknown typenames", () => {

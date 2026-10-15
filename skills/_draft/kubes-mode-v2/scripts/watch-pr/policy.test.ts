@@ -971,6 +971,84 @@ it("reports a failure the fresh read saw even when the rollup said SUCCESS", asy
   expect(decision.blocker.ci.failed.map((check) => check.name)).toEqual(["b"]);
 });
 
+it("retries when an unverified reply is newer than an actionable thread's decider", async () => {
+  const at = (t: string) => `2026-01-0${t}T00:00:00Z`;
+  const comment = (login: string, assoc: string, t: string) => ({
+    authorLogin: login,
+    body: login,
+    path: null,
+    line: null,
+    createdAt: at(t),
+    activityAt: at(t),
+    authorAssociation: assoc,
+    authorIsBot: false,
+    isViewer: false,
+  });
+  const opener = comment("boss", "OWNER", "1");
+  const base = fakeReader({
+    threads: [
+      {
+        id: "t",
+        firstComment: opener,
+        recentComments: [opener, comment("m", "MEMBER", "2")],
+        historyComplete: true,
+        decidingComment: null,
+        lastAuthorLogin: null,
+        latestCommentAt: null,
+        disposition: "actionable",
+        isBugbot: false,
+        bugbotReviewPasses: 0,
+      },
+    ],
+  });
+  const outage = new WatcherQueryError({
+    kind: "command-exit",
+    retryable: true,
+    code: 1,
+    detail: "502",
+  });
+  await expect(
+    readSnapshot({
+      reader: {
+        ...base,
+        async permission() {
+          throw outage;
+        },
+      },
+      context: context(9),
+      pendingHistory: "include",
+      allowDraft: false,
+    })
+  ).rejects.toBe(outage);
+});
+
+it("returns a known thread blocker for a BEHIND PR whose CI read failed", async () => {
+  const thread: ReviewThread = {
+    id: "t",
+    firstComment: null,
+    recentComments: [],
+    historyComplete: true,
+    decidingComment: null,
+    lastAuthorLogin: null,
+    latestCommentAt: null,
+    disposition: "actionable",
+    isBugbot: false,
+    bugbotReviewPasses: 0,
+  };
+  const snapshot = await readSnapshot({
+    reader: fakeReader({
+      facts: { mergeStateStatus: "BEHIND" },
+      threads: [thread],
+      fastPath: { kind: "unusable", exitCode: 1, stderr: "no checks reported" },
+    }),
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe("review-threads");
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
