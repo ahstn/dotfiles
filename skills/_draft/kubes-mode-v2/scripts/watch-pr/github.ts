@@ -1144,8 +1144,10 @@ export async function requireWriteAccess(
         (comment) =>
           comment.authorLogin !== null &&
           failedLogins.has(comment.authorLogin) &&
+          // >= to match decideThread, where a later comment wins a tie:
+          // an unverified reply at the same instant could still decide.
           (thread.latestCommentAt === null ||
-            comment.activityAt > thread.latestCommentAt)
+            comment.activityAt >= thread.latestCommentAt)
       )
   );
   if (

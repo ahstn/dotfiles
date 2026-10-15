@@ -1059,6 +1059,56 @@ it("waits while GitHub reports UNSTABLE despite a green check read", async () =>
   expect(classifyPr(snapshot).kind).toBe("waiting");
 });
 
+it("retries when an unverified reply ties the decider's timestamp", async () => {
+  const comment = (login: string, assoc: string) => ({
+    authorLogin: login,
+    body: login,
+    path: null,
+    line: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    activityAt: "2026-01-01T00:00:00Z",
+    authorAssociation: assoc,
+    authorIsBot: false,
+    isViewer: false,
+  });
+  const opener = comment("boss", "OWNER");
+  const base = fakeReader({
+    threads: [
+      {
+        id: "t",
+        firstComment: opener,
+        recentComments: [opener, comment("m", "MEMBER")],
+        historyComplete: true,
+        decidingComment: null,
+        lastAuthorLogin: null,
+        latestCommentAt: null,
+        disposition: "actionable",
+        isBugbot: false,
+        bugbotReviewPasses: 0,
+      },
+    ],
+  });
+  const outage = new WatcherQueryError({
+    kind: "command-exit",
+    retryable: true,
+    code: 1,
+    detail: "502",
+  });
+  await expect(
+    readSnapshot({
+      reader: {
+        ...base,
+        async permission() {
+          throw outage;
+        },
+      },
+      context: context(9),
+      pendingHistory: "include",
+      allowDraft: false,
+    })
+  ).rejects.toBe(outage);
+});
+
 it("waits while GitHub is still computing mergeability", async () => {
   const snapshot = await readSnapshot({
     reader: fakeReader({ facts: { mergeable: "UNKNOWN" } }),
