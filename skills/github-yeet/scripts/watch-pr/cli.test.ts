@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { type CliRuntime, main, parseArgs } from "./cli.ts";
 import { fakeReader, passingCheck } from "./fakes.test-helper.ts";
+import { WatcherQueryError } from "./github.ts";
 import { renderJson, renderPretty } from "./render.ts";
 import type { GitHubReader, WatcherVerdict } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
@@ -31,6 +32,35 @@ function testRuntime(reader: GitHubReader): {
     },
   };
 }
+
+it("retries a transient failure while resolving the PR", async () => {
+  const base = fakeReader();
+  let attempts = 0;
+  const reader: GitHubReader = {
+    ...base,
+    async currentPr(pr) {
+      attempts += 1;
+      if (attempts === 1)
+        throw new WatcherQueryError({
+          kind: "command-exit",
+          retryable: true,
+          code: 1,
+          detail: "502 from api.github.com",
+        });
+      return base.currentPr(pr);
+    },
+  };
+  const harness = testRuntime(reader);
+  const slept: number[] = [];
+  const runtime: CliRuntime = {
+    ...harness.runtime,
+    clock: { ...harness.runtime.clock, sleep: async (s) => void slept.push(s) },
+  };
+  expect(await main(["--pr", "1"], runtime)).toBe(0);
+  expect(attempts).toBe(2);
+  expect(slept).toEqual([60]);
+  expect(JSON.parse(harness.stdout[0] ?? "{}").kind).toBe("RETRY");
+});
 
 describe("parseArgs", () => {
   it("uses the specified defaults", () => {

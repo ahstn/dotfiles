@@ -24,6 +24,8 @@ const IDLE_POLL_MS = 5 * 60_000;
 // Bounds token spend per /autofix run. The playbook's own cap is 3 attempts
 // per check or thread; this catches loops across many of them.
 const MAX_WAKES = 10;
+// Enough for the last few lines of an error, which is all the notice shows.
+const STDERR_TAIL_CHARS = 4_000;
 
 const WATCHER_CANDIDATES = [
   process.env.GITHUB_YEET_WATCH_PR,
@@ -147,6 +149,13 @@ export default function (pi: ExtensionAPI) {
     child.on("error", (error) => {
       if (watch === current) stop(`could not run watch-pr: ${error.message}`);
     });
+    // stderr must be read too, or a chatty failure (a first-run `bun install`
+    // dumping its log) fills the pipe and the watcher never exits. Keep a tail
+    // for the stop message.
+    let stderrTail = "";
+    child.stderr?.setEncoding("utf8").on("data", (chunk: string) => {
+      stderrTail = (stderrTail + chunk).slice(-STDERR_TAIL_CHARS);
+    });
     child.stdout?.setEncoding("utf8").on("data", (chunk: string) => {
       const lines = (partial + chunk).split("\n");
       partial = lines.pop() ?? "";
@@ -160,7 +169,8 @@ export default function (pi: ExtensionAPI) {
       try {
         verdict = JSON.parse(last);
       } catch {
-        return stop(`watch-pr exited ${code} without a verdict`);
+        const detail = stderrTail.trim().split("\n").pop();
+        return stop(`watch-pr exited ${code} without a verdict${detail ? `: ${detail}` : ""}`);
       }
       handle(current, verdict, code ?? -1);
     });

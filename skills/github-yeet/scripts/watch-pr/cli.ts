@@ -12,6 +12,7 @@ import {
   resolveContext,
 } from "./github.ts";
 import {
+  queryBackoffSeconds,
   runQueued,
   runSimple,
   statusQueryVerdict,
@@ -201,28 +202,63 @@ export async function main(
   const render = options.pretty ? renderPretty : renderJson;
   const emit = (verdict: T.ProgressVerdict): void =>
     runtime.stdout(render(verdict));
-  let contexts: T.NonEmpty<T.PrContext>;
-  try {
+  const discover = async (): Promise<T.NonEmpty<T.PrContext>> => {
     const seed = await resolveContext({
       reader: runtime.reader,
       owner: options.owner,
       repo: options.repo,
       pr: options.pr ?? options.stackPrs[0] ?? null,
     });
-    contexts =
+    return (
       nonEmpty(options.stackPrs.map((number) => ({ ...seed, number }))) ??
       (options.mode === "single"
         ? [seed]
-        : await discoverStack(runtime.reader, seed));
-  } catch (error) {
-    if (!(error instanceof WatcherQueryError)) throw error;
-    const verdict = statusQueryVerdict(
-      verdictFactory(runtime.clock, options.mode),
-      1,
-      error.failure
+        : await discoverStack(runtime.reader, seed))
     );
-    runtime.stdout(render(verdict));
-    return verdict.exitCode;
+  };
+  // Discovery gets the same retry budget, backoff and deadline as polling, so
+  // one transient `gh` failure at startup doesn't end the watch.
+  const stamp = verdictFactory(runtime.clock, options.mode);
+  const started = runtime.clock.now();
+  const { timeout, maxQueryErrors, interval } = options.polling;
+  let contexts: T.NonEmpty<T.PrContext> | null = null;
+  for (let failures = 1; contexts === null; failures += 1) {
+    try {
+      contexts = await discover();
+    } catch (error) {
+      if (!(error instanceof WatcherQueryError)) throw error;
+      const elapsed = runtime.clock.now() - started;
+      const remaining = timeout > 0 ? timeout - elapsed : Infinity;
+      if (!error.failure.retryable || failures >= maxQueryErrors) {
+        const verdict = statusQueryVerdict(stamp, failures, error.failure);
+        runtime.stdout(render(verdict));
+        return verdict.exitCode;
+      }
+      if (remaining <= 0) {
+        const verdict = stamp({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "status-unavailable", failure: error.failure },
+        });
+        runtime.stdout(render(verdict));
+        return verdict.exitCode;
+      }
+      const retryInSeconds = Math.min(
+        queryBackoffSeconds(interval, failures),
+        remaining
+      );
+      emit(
+        stamp({
+          kind: "RETRY",
+          terminal: false,
+          failure: error.failure,
+          consecutiveFailures: failures,
+          retryInSeconds,
+        })
+      );
+      await runtime.clock.sleep(retryInSeconds);
+    }
   }
   const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
   const verdict =

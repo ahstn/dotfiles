@@ -413,6 +413,39 @@ it("waits on a draft while checks are pending, then reports the draft gate", asy
   });
 });
 
+it("times out a queued wait at the deadline without another snapshot", async () => {
+  let now = 0;
+  let reads = 0;
+  const base = fakeReader({
+    fastPath: { kind: "checks", checks: [pendingCheck()] },
+  });
+  const reader: GitHubReader = {
+    ...base,
+    async pullRequest(pr) {
+      reads += 1;
+      return base.pullRequest(pr);
+    },
+  };
+  const verdict = await runQueued({
+    dependencies: {
+      reader,
+      clock: {
+        now: () => now,
+        observedAt: () => "now",
+        sleep: async (seconds) => {
+          now += seconds;
+        },
+      },
+      emit: () => {},
+    },
+    contexts: [context(1)],
+    options: { ...options, interval: 60, timeout: 90 },
+  });
+  expect(verdict.kind).toBe("TIMEOUT");
+  expect(now).toBeLessThanOrEqual(90);
+  expect(reads).toBe(2);
+});
+
 describe("queued-stack cadence", () => {
   async function openSnapshot(pr: PrContext) {
     return readSnapshot({

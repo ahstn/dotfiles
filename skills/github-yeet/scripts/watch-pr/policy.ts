@@ -964,7 +964,23 @@ export async function runQueued(args: {
               reason: evaluation.reason,
             })
           );
-        return { kind: "sleep", seconds: args.options.interval };
+        return {
+          kind: "sleep",
+          seconds: args.options.interval,
+          // Without this the poll loop would wake at the deadline and read
+          // another snapshot (or a whole sweep) before evaluateQueue times out.
+          onDeadline: () =>
+            stamp({
+              kind: "TIMEOUT",
+              terminal: true,
+              exitCode: 5,
+              reason: {
+                kind: "queued-stack",
+                frontier: evaluation.frontier,
+                unmergedCount: activeRows(evaluation.state).length,
+              },
+            }),
+        };
       default: {
         const exhaustive: never = evaluation;
         return exhaustive;
