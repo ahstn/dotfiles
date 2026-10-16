@@ -2345,6 +2345,44 @@ it("rescans a stack when an earlier pending row fails", async () => {
   ).toBe(1);
 });
 
+it("rescans a stack when an earlier row's pending check clears behind a failing rollup", async () => {
+  const base = fakeReader({ facts: { mergeStateStatus: "BLOCKED" } });
+  let row1CheckReads = 0;
+  let row1Rollups = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async checksFastPath(pr) {
+          if (Number(pr.number) === 2) return { kind: "checks", checks: [failedCheck("e2e")] };
+          row1CheckReads += 1;
+          return {
+            kind: "checks",
+            checks: [row1CheckReads === 1 ? pendingCheck("unit") : passingCheck("unit")],
+          };
+        },
+        // A hidden check fails #1's rollup once its visible check passes.
+        async commitRollups(pr) {
+          if (Number(pr.number) === 2) return base.commitRollups(pr);
+          row1Rollups += 1;
+          return [{ oid: "head", state: row1Rollups === 1 ? "PENDING" : "FAILURE" }];
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(
+    verdict.kind === "BLOCKER" &&
+      verdict.blocker.kind === "failing-checks" &&
+      Number(verdict.blocker.pr.number)
+  ).toBe(1);
+});
+
 it("rescans a stack whose order changed on rediscovery", async () => {
   const base = fakeReader();
   let rediscoveries = 0;

@@ -238,9 +238,13 @@ async function ciMoved(
   }
   if (row.ci.kind === "ci-pending" && !row.ci.pending.some((check) => isUnreadCi(check))) {
     // A pending check that has failed since outranks anything on a later
-    // row, so the stack must be read again rather than report that.
-    return (await resolveChecks(reader, row.context, allowNoChecks)).checks.some(
-      (check) => check.kind === "failed"
+    // row, and one that has cleared means the rollup (perhaps failing on a
+    // hidden check) needs reassessing. Either way, read the stack again.
+    const checks = (await resolveChecks(reader, row.context, allowNoChecks))
+      .checks;
+    return (
+      checks.some((check) => check.kind === "failed") ||
+      pendingNames(checks) !== pendingNames(row.ci.pending)
     );
   }
   if (row.ci.kind === "ci-failing") {
@@ -263,12 +267,6 @@ async function ciMoved(
     // is actionable instead, and a change in what's pending changes the wait.
     const checks = (await resolveChecks(reader, row.context, allowNoChecks))
       .checks;
-    const pendingNames = (pending: readonly T.Check[]) =>
-      pending
-        .filter((check) => check.kind === "pending" && check.name !== MERGEABILITY_PENDING)
-        .map((check) => check.name)
-        .sort()
-        .join("\0");
     if (
       checks.some((check) => check.kind === "failed") ||
       pendingNames(checks) !== pendingNames(row.ci.pending)
@@ -286,6 +284,18 @@ async function ciMoved(
   }
   return false;
 }
+/** Real pending checks, by name: not the watcher's own stand-ins. */
+const pendingNames = (checks: readonly T.Check[]): string =>
+  checks
+    .filter(
+      (check) =>
+        check.kind === "pending" &&
+        check.name !== MERGEABILITY_PENDING &&
+        check.name !== ROLLUP_DISAGREES
+    )
+    .map((check) => check.name)
+    .sort()
+    .join("\0");
 /** The head commit's rollup state, as mergeAssessment reads it. */
 async function headRollup(
   reader: T.GitHubReader,
