@@ -1203,13 +1203,16 @@ export class GhGitHubReader implements T.GitHubReader {
       "branch rules pages"
     );
     const requiredChecks: string[] = [];
+    let threadResolutionRequired = false;
     for (const page of pages)
       for (const rule of list(page, "branch rules")) {
         const object = record(rule, "branch rule");
         const type = string(object.type, "branch rule.type");
         if (!QUEUE_SAFE_RULES.has(type)) return null;
-        if (type !== "required_status_checks") continue;
         const parameters = isRecord(object.parameters) ? object.parameters : {};
+        if (type === "pull_request" && parameters.required_review_thread_resolution !== false)
+          threadResolutionRequired = true;
+        if (type !== "required_status_checks") continue;
         for (const check of list(
           parameters.required_status_checks ?? [],
           "required_status_checks"
@@ -1222,7 +1225,7 @@ export class GhGitHubReader implements T.GitHubReader {
           requiredChecks.push(string(required.context, "required check.context"));
         }
       }
-    return { requiredChecks };
+    return { requiredChecks, threadResolutionRequired };
   }
   async commitRollups(
     context: T.PrContext

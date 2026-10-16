@@ -22,6 +22,7 @@ export interface FakeReaderOptions {
   readonly mergeQueueEnabled?: boolean;
   /** Checks the queue branch's rules require (default none). */
   readonly queueRequiredChecks?: readonly string[];
+  readonly queueThreadResolution?: boolean;
   readonly latestAttemptJobs?: Readonly<Record<number, readonly number[]>>;
   readonly openPullRequests?: readonly OpenPullRequest[];
   readonly current?: PrContext;
@@ -161,7 +162,10 @@ export function fakeReader(
     async mergeQueueRules() {
       calls.push("mergeQueueRules");
       return options.mergeQueueEnabled
-        ? { requiredChecks: options.queueRequiredChecks ?? [] }
+        ? {
+            requiredChecks: options.queueRequiredChecks ?? [],
+            threadResolutionRequired: options.queueThreadResolution ?? false,
+          }
         : null;
     },
     async commitRollups() {

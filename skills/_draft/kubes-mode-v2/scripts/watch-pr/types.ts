@@ -606,6 +606,8 @@ export interface GitHubReader {
 }
 export interface MergeQueueRules {
   readonly requiredChecks: readonly string[];
+  /** A pull_request rule requires review threads resolved before merging. */
+  readonly threadResolutionRequired: boolean;
 }
 export interface PollingOptions {
   readonly interval: number;

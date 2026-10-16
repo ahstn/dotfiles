@@ -31,9 +31,8 @@ export function assessGitHubMerge(args: {
         headRollupState: args.headRollupState,
         cause: "failing-rollup",
       };
-    // An open conversation can stop a PR entering the queue too, so it
-    // outranks the queue's own BLOCKED.
-    if (!args.blockExplained && args.mergeQueue && !args.parkedThreads)
+    // mergeQueue already accounts for parked threads (queueOwnsBlock).
+    if (!args.blockExplained && args.mergeQueue)
       return {
         kind: "allowed",
         basis: "merge-queue",
@@ -63,17 +62,20 @@ export function assessGitHubMerge(args: {
 }
 /**
  * Whether the merge queue alone explains a BLOCKED PR: the base queues merges,
- * every rule on it is visible and none could block a ready PR, and every
- * check its rules require has passed. Otherwise BLOCKED is a hidden blocker,
- * queue or not.
+ * every rule on it is visible and none could block a ready PR, every check
+ * its rules require has passed, and parked threads don't matter because no
+ * rule requires conversations resolved. Otherwise BLOCKED is a hidden
+ * blocker, queue or not.
  */
 async function queueOwnsBlock(
   reader: T.GitHubReader,
   facts: T.PullRequestFacts,
-  checks: readonly T.Check[]
+  checks: readonly T.Check[],
+  parkedThreads: boolean
 ): Promise<boolean> {
   const rules = await reader.mergeQueueRules(facts.context, facts.baseRefName);
   if (rules === null) return false;
+  if (parkedThreads && rules.threadResolutionRequired) return false;
   const passed = new Set(
     checks
       .filter((check) => check.kind === "passed" || check.kind === "skipped")
@@ -104,15 +106,14 @@ async function mergeAssessment(
       blockExplained,
       parkedThreads,
       // Only an otherwise unexplained BLOCKED needs to know. A failing
-      // rollup or a parked conversation is refused whatever the queue, so
-      // don't let a failed lookup replace that known blocker.
+      // rollup is refused whatever the queue, so don't let a failed lookup
+      // replace that known blocker. Parked threads are the queue rules' call.
       mergeQueue:
         facts.mergeStateStatus === "BLOCKED" &&
         !blockExplained &&
-        !parkedThreads &&
         headRollupState !== "FAILURE" &&
         headRollupState !== "ERROR"
-          ? await queueOwnsBlock(reader, facts, checks)
+          ? await queueOwnsBlock(reader, facts, checks, parkedThreads)
           : false,
     }),
   };
@@ -139,8 +140,20 @@ export async function readSnapshot(args: {
     const facts = await args.reader.pullRequest(args.context);
     if (facts.state === "MERGED" || facts.mergedAt !== null)
       return { kind: "merged", context: args.context, facts };
-    if (facts.state === "CLOSED")
-      return { kind: "closed", context: args.context, facts };
+    if (facts.state === "CLOSED") {
+      // A PR closed and reopened in quick succession would otherwise end the
+      // watch at a gate it has already left. Confirm before returning.
+      const now = await args.reader.recheck(args.context);
+      if (now.state === "CLOSED" && now.mergedAt === null)
+        return { kind: "closed", context: args.context, facts };
+      if (attempt >= HEAD_RACE_ATTEMPTS)
+        throw new WatcherQueryError({
+          kind: "head-moved",
+          retryable: true,
+          detail: `PR kept changing state during ${attempt} snapshots (${facts.state} -> ${now.state})`,
+        });
+      continue;
+    }
     const snapshot = await readOpenOrConflict(args, facts);
     // Confirming reads come first and the field recheck comes last, so a push
     // landing during any of them is caught by the final comparison.
@@ -215,7 +228,7 @@ async function ciMoved(
       return true;
     return (
       row.ci.github.basis === "merge-queue" &&
-      !(await queueOwnsBlock(reader, row.facts, checks))
+      !(await queueOwnsBlock(reader, row.facts, checks, quietlyParked(row)))
     );
   }
   if (row.ci.kind === "ci-failing") {
@@ -257,12 +270,15 @@ async function ciMoved(
     );
     if ((head?.state ?? null) !== row.ci.github.headRollupState) return true;
     return (
-      row.ci.github.cause === "unexplained-block" &&
-      (await queueOwnsBlock(reader, row.facts, checks))
+      row.ci.github.cause !== "failing-rollup" &&
+      (await queueOwnsBlock(reader, row.facts, checks, quietlyParked(row)))
     );
   }
   return false;
 }
+/** Parked threads that don't block READY themselves (see readCi). */
+const quietlyParked = (row: Extract<T.PrSnapshot, { kind: "open" }>): boolean =>
+  row.parkedThreads.some((thread) => thread.disposition !== "unverifiable");
 /** Whether nothing a snapshot depends on moved between two fact reads. */
 function sameFacts(facts: T.PullRequestFacts, now: T.RecheckFacts): boolean {
   return (

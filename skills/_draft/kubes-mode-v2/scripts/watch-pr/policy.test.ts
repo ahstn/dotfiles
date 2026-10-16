@@ -158,7 +158,7 @@ describe("readiness truth table", () => {
   });
 
   it("skips the merge-queue lookup when the refusal is already known", async () => {
-    for (const [state, parked] of [["FAILURE", false], ["SUCCESS", true]] as const) {
+    for (const [state, parked] of [["FAILURE", false], ["FAILURE", true]] as const) {
       const base = fakeReader({
         facts: { mergeStateStatus: "BLOCKED" },
         fastPath: { kind: "checks", checks: [passingCheck()] },
@@ -201,7 +201,7 @@ describe("readiness truth table", () => {
       if (snapshot.kind !== "open") throw new Error("expected open snapshot");
       expect(snapshot.ci).toMatchObject({
         kind: "ci-github-rejected",
-        github: { cause: parked ? "open-conversations" : "failing-rollup" },
+        github: { cause: "failing-rollup" },
       });
     }
   });
@@ -219,7 +219,9 @@ describe("readiness truth table", () => {
         // An admin turns the queue off right after the first lookup.
         async mergeQueueRules() {
           lookups += 1;
-          return lookups === 1 ? { requiredChecks: [] } : null;
+          return lookups === 1
+            ? { requiredChecks: [], threadResolutionRequired: false }
+            : null;
         },
       },
       context: context(1),
@@ -305,16 +307,44 @@ describe("readiness truth table", () => {
     });
   });
 
-  it("reports a parked conversation on a merge-queue base", () => {
-    expect(
-      assessGitHubMerge({
-        mergeStateStatus: "BLOCKED",
-        headRollupState: "SUCCESS",
-        blockExplained: false,
-        parkedThreads: true,
-        mergeQueue: true,
-      })
-    ).toMatchObject({ kind: "refused", cause: "open-conversations" });
+  it("lets queue rules decide whether a parked conversation blocks", async () => {
+    const untrusted = {
+      id: "drive-by",
+      firstComment: null,
+      recentComments: [],
+      historyComplete: true,
+      decidingComment: null,
+      lastAuthorLogin: null,
+      latestCommentAt: null,
+      disposition: "untrusted" as const,
+      isBugbot: false,
+      bugbotReviewPasses: 0,
+    };
+    const read = async (threadResolution: boolean) => {
+      const snapshot = await readSnapshot({
+        reader: fakeReader({
+          facts: { mergeStateStatus: "BLOCKED" },
+          fastPath: { kind: "checks", checks: [passingCheck()] },
+          commitRollups: [{ oid: "head", state: "SUCCESS" }],
+          threads: [untrusted],
+          mergeQueueEnabled: true,
+          queueThreadResolution: threadResolution,
+        }),
+        context: context(1),
+        pendingHistory: "include",
+        allowDraft: false,
+      });
+      if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+      return snapshot.ci;
+    };
+    expect(await read(false)).toMatchObject({
+      kind: "ci-clean",
+      github: { basis: "merge-queue" },
+    });
+    expect(await read(true)).toMatchObject({
+      kind: "ci-github-rejected",
+      github: { cause: "open-conversations" },
+    });
   });
 
   it("turns a clean visible list plus GitHub refusal into an explicit CI blocker", async () => {
@@ -1921,6 +1951,10 @@ it("drops a row that closed before it was read from the stack", async () => {
           const facts = await base.pullRequest(pr);
           return Number(pr.number) === 2 ? { ...facts, state: "CLOSED" as const } : facts;
         },
+        async recheck(pr) {
+          const facts = await base.recheck(pr);
+          return Number(pr.number) === 2 ? { ...facts, state: "CLOSED" as const } : facts;
+        },
       },
       clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
       emit: () => {},
@@ -2188,6 +2222,25 @@ it("rescans a stack when a GitHub-rejected row's rollup recovers", async () => {
     options,
   });
   expect(verdict.kind).toBe("READY");
+});
+
+it("re-reads a PR that was reopened right after a CLOSED read", async () => {
+  const base = fakeReader();
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async pullRequest(pr) {
+        reads += 1;
+        const facts = await base.pullRequest(pr);
+        return reads === 1 ? { ...facts, state: "CLOSED" as const } : facts;
+      },
+    },
+    context: context(1),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(snapshot.kind).toBe("open");
 });
 
 it("re-reads a snapshot when GitHub finds a conflict behind an unchanged BLOCKED", async () => {
