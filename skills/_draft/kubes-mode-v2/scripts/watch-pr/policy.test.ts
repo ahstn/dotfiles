@@ -2675,6 +2675,35 @@ it("revalidates earlier queued rows before reporting a later CI blocker", async 
   expect(verdict.kind === "BLOCKER" && verdict.blocker.kind).toBe("merge-conflicts");
 });
 
+it("reports a failure past the deadline as a timeout, even on the last attempt", async () => {
+  let now = 0;
+  const base = fakeReader();
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        // The deadline kills the call.
+        async pullRequest() {
+          now = 120;
+          throw new WatcherQueryError({
+            kind: "command-exit",
+            retryable: true,
+            code: 124,
+            detail: "killed at the deadline",
+          });
+        },
+      },
+      clock: { now: () => now, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1)],
+    mode: "single",
+    statusOnly: false,
+    options: { ...options, timeout: 60, maxQueryErrors: 1 },
+  });
+  expect(verdict).toMatchObject({ kind: "TIMEOUT", exitCode: 5 });
+});
+
 it("times out a queued wait at the deadline without another snapshot", async () => {
   let now = 0;
   let reads = 0;

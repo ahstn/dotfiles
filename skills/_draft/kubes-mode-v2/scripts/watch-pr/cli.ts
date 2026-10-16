@@ -288,18 +288,20 @@ export async function main(
       if (!(error instanceof WatcherQueryError)) throw error;
       const elapsed = runtime.clock.now() - started;
       const remaining = timeout > 0 ? timeout - elapsed : Infinity;
-      if (!error.failure.retryable || failures >= maxQueryErrors) {
-        const verdict = statusQueryVerdict(stamp, failures, error.failure);
-        runtime.stdout(render(verdict));
-        return verdict.exitCode;
-      }
-      if (remaining <= 0) {
+      // Past the deadline a retryable failure is a timeout (the caller
+      // reruns), even on the last allowed attempt.
+      if (error.failure.retryable && remaining <= 0) {
         const verdict = stamp({
           kind: "TIMEOUT",
           terminal: true,
           exitCode: 5,
           reason: { kind: "status-unavailable", failure: error.failure },
         });
+        runtime.stdout(render(verdict));
+        return verdict.exitCode;
+      }
+      if (!error.failure.retryable || failures >= maxQueryErrors) {
+        const verdict = statusQueryVerdict(stamp, failures, error.failure);
         runtime.stdout(render(verdict));
         return verdict.exitCode;
       }

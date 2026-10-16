@@ -1061,7 +1061,18 @@ async function pollUntilTerminal<V>(args: {
     } catch (error) {
       if (!(error instanceof WatcherQueryError)) throw error;
       failures += 1;
-      if (!error.failure.retryable || failures >= args.options.maxQueryErrors)
+      if (!error.failure.retryable)
+        return statusQueryVerdict(args.stamp, failures, error.failure);
+      // A retryable failure past the deadline (often a call the deadline
+      // killed) is a timeout, which the caller reruns, not a dead end.
+      if (deadlinePassed(started, args.options, args.dependencies.clock.now()))
+        return args.stamp({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "status-unavailable", failure: error.failure },
+        });
+      if (failures >= args.options.maxQueryErrors)
         return statusQueryVerdict(args.stamp, failures, error.failure);
       const retryInSeconds = queryBackoffSeconds(
         args.options.interval,
