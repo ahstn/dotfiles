@@ -119,6 +119,7 @@ async function mergeAssessment(
   };
 }
 export const MERGEABILITY_PENDING = "(GitHub mergeability)";
+const UNREAD_CI = "(not read:";
 export const ROLLUP_DISAGREES = "(GitHub check rollup)";
 const AUTOMATION_TOKENS = [
   "bugbot",
@@ -226,9 +227,20 @@ async function ciMoved(
       .checks;
     if (checks.some((check) => check.kind === "pending" || check.kind === "failed"))
       return true;
+    // A clean list beside a rollup that has since failed is a GitHub refusal,
+    // and BLOCKED can stay BLOCKED through it.
+    if ((await headRollup(reader, row.facts)) !== row.ci.github.headRollupState)
+      return true;
     return (
       row.ci.github.basis === "merge-queue" &&
       !(await queueOwnsBlock(reader, row.facts, checks, quietlyParked(row)))
+    );
+  }
+  if (row.ci.kind === "ci-pending" && !row.ci.pending.some((check) => isUnreadCi(check))) {
+    // A pending check that has failed since outranks anything on a later
+    // row, so the stack must be read again rather than report that.
+    return (await resolveChecks(reader, row.context, allowNoChecks)).checks.some(
+      (check) => check.kind === "failed"
     );
   }
   if (row.ci.kind === "ci-failing") {
@@ -265,10 +277,8 @@ async function ciMoved(
     // GitHub's refusal rests on the head rollup and, for an unexplained
     // BLOCKED, on the merge queue being off. Either can change with no fact
     // moving (BLOCKED stays BLOCKED).
-    const head = (await reader.commitRollups(row.context)).find(
-      (commit) => commit.oid === row.facts.headRefOid
-    );
-    if ((head?.state ?? null) !== row.ci.github.headRollupState) return true;
+    if ((await headRollup(reader, row.facts)) !== row.ci.github.headRollupState)
+      return true;
     return (
       row.ci.github.cause !== "failing-rollup" &&
       (await queueOwnsBlock(reader, row.facts, checks, quietlyParked(row)))
@@ -276,6 +286,21 @@ async function ciMoved(
   }
   return false;
 }
+/** The head commit's rollup state, as mergeAssessment reads it. */
+async function headRollup(
+  reader: T.GitHubReader,
+  facts: T.PullRequestFacts
+): Promise<T.RollupState | null> {
+  if (facts.headRefOid === null) return null;
+  return (
+    (await reader.commitRollups(facts.context)).find(
+      (commit) => commit.oid === facts.headRefOid
+    )?.state ?? null
+  );
+}
+/** A stand-in for CI that wasn't read (see unreadCi), not a real check. */
+const isUnreadCi = (check: T.PendingCheck): boolean =>
+  check.name.startsWith(UNREAD_CI);
 /** Parked threads that don't block READY themselves (see readCi). */
 const quietlyParked = (row: Extract<T.PrSnapshot, { kind: "open" }>): boolean =>
   row.parkedThreads.some((thread) => thread.disposition !== "unverifiable");
@@ -398,7 +423,7 @@ async function readOpenOrConflict(
       facts,
       threads: [],
       parkedThreads: [],
-      ci: unreadCi("(not read: merge conflict)", error.failure.detail),
+      ci: unreadCi(`${UNREAD_CI} merge conflict)`, error.failure.detail),
       reviewAutomationRunning: false,
     };
   }
@@ -509,7 +534,7 @@ async function readOpenSnapshot(
       facts,
       threads,
       parkedThreads,
-      ci: unreadCi("(not read: review threads first)", error.failure.detail),
+      ci: unreadCi(`${UNREAD_CI} review threads first)`, error.failure.detail),
       reviewAutomationRunning: false,
     };
   }

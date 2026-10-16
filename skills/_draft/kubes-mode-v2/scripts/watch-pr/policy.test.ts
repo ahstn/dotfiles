@@ -307,6 +307,33 @@ describe("readiness truth table", () => {
     });
   });
 
+  it("re-reads the rollup before calling a BLOCKED queue PR clean", async () => {
+    let rollups = 0;
+    const base = fakeReader({
+      facts: { mergeStateStatus: "BLOCKED" },
+      fastPath: { kind: "checks", checks: [passingCheck()] },
+      mergeQueueEnabled: true,
+    });
+    const snapshot = await readSnapshot({
+      reader: {
+        ...base,
+        // The rollup fails right after the first read; the list stays clean.
+        async commitRollups() {
+          rollups += 1;
+          return [{ oid: "head", state: rollups === 1 ? "SUCCESS" : "FAILURE" }];
+        },
+      },
+      context: context(1),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    if (snapshot.kind !== "open") throw new Error("expected open snapshot");
+    expect(snapshot.ci).toMatchObject({
+      kind: "ci-github-rejected",
+      github: { cause: "failing-rollup" },
+    });
+  });
+
   it("lets queue rules decide whether a parked conversation blocks", async () => {
     const untrusted = {
       id: "drive-by",
@@ -2286,6 +2313,36 @@ it("re-reads a snapshot when the PR was retargeted to a branch at the same commi
     allowDraft: false,
   });
   expect(snapshot.facts.baseRefName).toBe("release");
+});
+
+it("rescans a stack when an earlier pending row fails", async () => {
+  const base = fakeReader();
+  let row1CheckReads = 0;
+  const verdict = await runSimple({
+    dependencies: {
+      reader: {
+        ...base,
+        async checksFastPath(pr) {
+          if (Number(pr.number) === 2) return { kind: "checks", checks: [failedCheck("e2e")] };
+          row1CheckReads += 1;
+          // Pending when the scan reads it; failed while #2 is read.
+          return {
+            kind: "checks",
+            checks: [row1CheckReads === 1 ? pendingCheck("unit") : failedCheck("unit")],
+          };
+        },
+      },
+      clock: { now: () => 0, observedAt: () => "now", sleep: async () => {} },
+      emit: () => {},
+    },
+    contexts: [context(1), context(2)],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  expect(
+    verdict.kind === "BLOCKER" && "pr" in verdict.blocker && Number(verdict.blocker.pr.number)
+  ).toBe(1);
 });
 
 it("rescans a stack whose order changed on rediscovery", async () => {
