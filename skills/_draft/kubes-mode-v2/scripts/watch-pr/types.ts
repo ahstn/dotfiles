@@ -97,7 +97,7 @@ export interface ReviewComment {
  * nor change its dedupe key. `actionable` threads block and wake the agent.
  * `awaiting-reviewer` threads end with an agent reply carrying
  * AUTOFIX_REPLY_MARKER, and `untrusted` threads
- * were opened by someone without write access who is not an installed App.
+ * were opened by someone without write access who is not a listed bot.
  * Neither of those blocks, so a reply that disputes a comment does not
  * re-wake the agent, and drive-by comments cannot steer it.
  */

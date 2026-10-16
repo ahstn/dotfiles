@@ -10,6 +10,7 @@ import {
   WatcherQueryError,
   discoverStack,
   setIgnoredPendingChecks,
+  setTrustedBots,
   setWatchDeadline,
   resolveContext,
 } from "./github.ts";
@@ -32,6 +33,7 @@ export interface CliOptions {
   readonly stackPrs: readonly T.PrNumber[];
   readonly statusOnly: boolean;
   readonly ignoredPendingChecks: readonly string[];
+  readonly trustedBots: readonly string[];
   readonly pretty: boolean;
   readonly polling: T.PollingOptions;
 }
@@ -81,6 +83,7 @@ interface RawOptions {
   readonly maxQueryErrors: number;
   readonly statusOnly: boolean;
   readonly ignorePendingCheck: readonly string[];
+  readonly trustBot: readonly string[];
   readonly allowDraft: boolean;
   readonly allowNoChecks: boolean;
   readonly pretty: boolean;
@@ -145,6 +148,12 @@ export function parseArgs(
       (value: string, previous: readonly string[]) => [...previous, value],
       [] as readonly string[]
     )
+    .option(
+      "--trust-bot <login>",
+      "treat review comments from this bot as trusted, e.g. chatgpt-codex-connector (repeatable; other bots are ignored)",
+      (value: string, previous: readonly string[]) => [...previous, value],
+      [] as readonly string[]
+    )
     .option("--pretty", "render human text instead of JSON", false);
   program.parse(argv, { from: "user" });
   const raw = program.opts<RawOptions>();
@@ -175,6 +184,7 @@ export function parseArgs(
     stackPrs: raw.stackPrs ?? [],
     statusOnly: raw.statusOnly,
     ignoredPendingChecks: raw.ignorePendingCheck,
+    trustedBots: raw.trustBot,
     pretty: raw.pretty,
     polling: {
       interval: raw.interval,
@@ -225,6 +235,7 @@ export async function main(
     return error.exitCode === 0 ? 0 : 64;
   }
   setIgnoredPendingChecks(options.ignoredPendingChecks);
+  setTrustedBots(options.trustedBots);
   const render = options.pretty
     ? (verdict: T.WatcherVerdict) =>
         renderPretty(verdict, { allowDraft: options.polling.allowDraft })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { type CliRuntime, main, parseArgs } from "./cli.ts";
 import { fakeReader, passingCheck } from "./fakes.test-helper.ts";
-import { WatcherQueryError } from "./github.ts";
+import { WatcherQueryError, trustedByAssociation } from "./github.ts";
 import { renderJson, renderPretty, safe } from "./render.ts";
 import type { GitHubReader, WatcherVerdict } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
@@ -545,6 +545,33 @@ describe("main", () => {
     const table = harness.stdout.join("");
     expect(table).toContain("✅ (draft allowed)");
     expect(table).not.toContain("⏸ draft");
+  });
+
+  it("trusts only the bots passed with --trust-bot", async () => {
+    const bot = (login: string) => ({
+      authorLogin: login,
+      body: "fix this",
+      path: null,
+      line: null,
+      createdAt: "now",
+      activityAt: "now",
+      authorAssociation: "NONE",
+      authorIsBot: true,
+      isViewer: false,
+    });
+    const harness = testRuntime(fakeReader());
+    await main(
+      [
+        "--owner", "owner", "--repo", "repo", "--pr", "1", "--status-only",
+        "--trust-bot", "chatgpt-codex-connector", "--trust-bot", "copilot-pull-request-reviewer",
+      ],
+      harness.runtime
+    );
+    expect(trustedByAssociation(bot("chatgpt-codex-connector"))).toBe(true);
+    expect(trustedByAssociation(bot("copilot-pull-request-reviewer[bot]"))).toBe(true);
+    expect(trustedByAssociation(bot("coderabbitai"))).toBe(false);
+    await main(["--owner", "owner", "--repo", "repo", "--pr", "1", "--status-only"], harness.runtime);
+    expect(trustedByAssociation(bot("chatgpt-codex-connector"))).toBe(false);
   });
 
   it("shows help without touching the reader", async () => {

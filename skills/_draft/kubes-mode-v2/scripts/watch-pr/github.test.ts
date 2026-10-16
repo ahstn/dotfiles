@@ -14,6 +14,7 @@ import {
   resolveContext,
   trustedByAssociation,
   decideThread,
+  setTrustedBots,
 } from "./github.ts";
 import {
   fakeReader,
@@ -485,6 +486,8 @@ it("distrusts a member or collaborator comment whose login is gone", () => {
 });
 
 it("parks answered and untrusted threads so they do not wake the agent", () => {
+  // REST's "[bot]" suffix is accepted for GraphQL's bare login.
+  setTrustedBots(["coderabbitai[bot]"]);
   const comment = (author: object, authorAssociation: string) => ({
     body: "please fix",
     createdAt: "2026-01-01T00:00:00Z",
@@ -524,6 +527,10 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
               thread(
                 "app",
                 comment({ __typename: "Bot", login: "coderabbitai" }, "NONE")
+              ),
+              thread(
+                "unlisted-app",
+                comment({ __typename: "Bot", login: "some-other-app" }, "NONE")
               ),
               thread(
                 "answered",
@@ -580,11 +587,13 @@ it("parks answered and untrusted threads so they do not wake the agent", () => {
       },
     },
   });
+  setTrustedBots([]);
   expect(
     Object.fromEntries(threads.map((t) => [t.id, t.disposition]))
   ).toEqual({
     member: "actionable",
     app: "actionable",
+    "unlisted-app": "untrusted",
     answered: "awaiting-reviewer",
     "forged-marker": "actionable",
     "outsider-after-answer": "awaiting-reviewer",

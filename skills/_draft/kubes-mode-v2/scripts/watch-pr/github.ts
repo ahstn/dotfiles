@@ -536,8 +536,8 @@ function parseComment(
     isViewer: viewerLogin !== null && authorLogin === viewerLogin,
   };
 }
-// Mirrors who Claude Desktop's auto-fix listens to: people with write access
-// and installed GitHub Apps. CONTRIBUTOR and NONE can be anyone on the internet.
+// People with write access, and the bots the user lists (--trust-bot).
+// CONTRIBUTOR and NONE can be anyone on the internet.
 const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 // MEMBER and COLLABORATOR don't imply write access (see requireWriteAccess).
 const PERMISSION_CHECKED = new Set(["MEMBER", "COLLABORATOR"]);
@@ -554,14 +554,24 @@ export const AUTOFIX_FIXED_MARKER = "<!-- pr-autofix:fixed -->";
 // writes it; one that merely ends a sentence is still feedback.
 const endsWithMarker = (body: string, marker: string): boolean =>
   body.trimEnd().split(/\r?\n/).at(-1)?.trim() === marker;
+// Opt-in by login via --trust-bot: any installed App can comment on a PR,
+// and an uninstalled one's old comments stay, so a bot counts only when the
+// user names it. GraphQL drops the "[bot]" suffix REST shows; accept both.
+let trustedBots: ReadonlySet<string> = new Set();
+const botLogin = (login: string): string =>
+  login.toLowerCase().replace(/\[bot\]$/, "");
+export function setTrustedBots(logins: readonly string[]): void {
+  trustedBots = new Set(logins.map(botLogin));
+}
 export type CommentTrust = (comment: T.ReviewComment) => boolean;
 export const trustedByAssociation: CommentTrust = (comment) =>
   comment.isViewer ||
-  comment.authorIsBot ||
-  (TRUSTED_ASSOCIATIONS.has(comment.authorAssociation) &&
-    // Write access can't be checked without a login (a deleted account), so
-    // a bare MEMBER or COLLABORATOR association proves nothing.
-    !(comment.authorLogin === null && PERMISSION_CHECKED.has(comment.authorAssociation)));
+  (comment.authorIsBot
+    ? comment.authorLogin !== null && trustedBots.has(botLogin(comment.authorLogin))
+    : TRUSTED_ASSOCIATIONS.has(comment.authorAssociation) &&
+      // Write access can't be checked without a login (a deleted account),
+      // so a bare MEMBER or COLLABORATOR association proves nothing.
+      !(comment.authorLogin === null && PERMISSION_CHECKED.has(comment.authorAssociation)));
 /**
  * Re-derives a thread's disposition from the newest comment a trusted author
  * wrote. Untrusted replies are skipped, so an outsider cannot reopen a thread

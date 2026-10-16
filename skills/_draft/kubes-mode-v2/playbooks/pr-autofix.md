@@ -5,10 +5,12 @@ Watch an open PR and fix what blocks it (merge conflicts, review threads, failin
 `scripts/watch-pr/watch-pr` (relative to this skill) does the watching. It needs `gh` and Bun >= 1.3.2, and installs its own dependencies on first run. Run it from the PR's checkout:
 
 ```shell
-<skill-dir>/scripts/watch-pr/watch-pr --owner <owner> --repo <repo> --pr <number> --allow-draft --timeout 540
+<skill-dir>/scripts/watch-pr/watch-pr --owner <owner> --repo <repo> --pr <number> --allow-draft --timeout 540 \
+  --trust-bot chatgpt-codex-connector --trust-bot copilot-pull-request-reviewer
 ```
 
 - `<owner>/<repo>` is the PR's base repository, the one the PR was opened against. Always pass it: in a fork checkout a bare number is ambiguous, and the watcher refuses it rather than guess.
+- `--trust-bot <login>` (repeatable) lists the review bots whose comments count as feedback: here Codex and Copilot, the reviewers these repositories use. Any other bot's comments are ignored, because any installed App can comment, and an uninstalled App's old comments stay. Add a login only for a reviewer the user set up.
 - Add `--ignore-pending-check '<name>'` (repeatable) only for a check that waits on a human and would otherwise keep the watcher pending forever, such as an approval gate. Use the exact name, and only when the user names it: anything can post a check under any name. Pass it in single quotes, never double, so `$`, backticks or `$(...)` in the name stay literal; write any `'` in the name as `'\''`.
 - Add `--allow-no-checks` when the repository has no CI. Without it, a PR with no checks ends in exit 7.
 - `--timeout 540` keeps one run under a 10-minute shell tool limit.
@@ -78,7 +80,7 @@ Exit 2. `blocker.pr` has the base repository's `owner` and `repo`. `blocker.fact
 
 ## Review threads
 
-Exit 3. `blocker.threads` lists only actionable threads. A thread counts when it was opened by the owner, an installed GitHub App, or a member or collaborator with verified write access, and its newest trusted comment is not an autofix reply. Where GitHub won't confirm write access (a fork without push rights), only the owner, Apps and your own comments count. The watcher hides drive-by comments and threads you already answered, so don't go looking for them.
+Exit 3. `blocker.threads` lists only actionable threads. A thread counts when it was opened by the owner, a bot passed with `--trust-bot`, or a member or collaborator with verified write access, and its newest trusted comment is not an autofix reply. Where GitHub won't confirm write access (a fork without push rights), only the owner, listed bots and your own comments count. The watcher hides drive-by comments and threads you already answered, so don't go looking for them.
 
 Each thread in the verdict carries `firstComment`, the request, and `decidingComment`, the newest trusted comment, which is what woke you. Act on `decidingComment` when it differs from the first. For the surrounding discussion, this fetches the newest 100 comments:
 
@@ -107,7 +109,7 @@ Fixed in abc1234: the empty cursor now returns the first page.
 <!-- pr-autofix:fixed -->
 ```
 
-Just before posting, rerun the watcher with `--status-only` for that one PR, `--owner <owner> --repo <repo> --pr <blocker.pr.number>` and no `--stack`, and find this thread by `id` in `rows[0].threads`. A single-PR read re-checks the PR after reading it; a stack scan can't do that for every row at once. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. Check the head too, before every reply. For a thread you fixed, `rows[0].facts.headRefOid` must be the commit you last pushed (`git rev-parse HEAD` after the push). For any other reply, it must still be `<based-on>` from step 1, the code your answer is about. If not, someone pushed or rewound the branch: your fix may be gone, or your evidence stale. Don't reply or resolve, and start again from step 1. The watcher applies the trust rules, so untrusted replies don't trigger this.
+Just before posting, rerun the watcher with `--status-only` for that one PR, `--owner <owner> --repo <repo> --pr <blocker.pr.number>`, the same `--trust-bot` flags and no `--stack`, and find this thread by `id` in `rows[0].threads`. A single-PR read re-checks the PR after reading it; a stack scan can't do that for every row at once. If it's no longer listed, or its `latestCommentAt`, `decidingComment.authorLogin` or `decidingComment.body` differ from the verdict you worked from, a trusted reviewer moved on while you worked. A newer comment can share the old timestamp, so compare all three: don't reply or resolve, and start again from step 2. Resolving would also bury feedback you never read. Check the head too, before every reply. For a thread you fixed, `rows[0].facts.headRefOid` must be the commit you last pushed (`git rev-parse HEAD` after the push). For any other reply, it must still be `<based-on>` from step 1, the code your answer is about. If not, someone pushed or rewound the branch: your fix may be gone, or your evidence stale. Don't reply or resolve, and start again from step 1. The watcher applies the trust rules, so untrusted replies don't trigger this.
 
 Post the reply from that file, then remove the file either way:
 
