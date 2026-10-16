@@ -1,0 +1,176 @@
+import type {
+  Check,
+  ChecksFastPath,
+  CommitRollup,
+  GitHubReader,
+  OpenPullRequest,
+  PrContext,
+  PullRequestFacts,
+  ReviewThread,
+  RollupPage,
+} from "./types.ts";
+import { parsePrNumber } from "./types.ts";
+
+export interface FakeReaderOptions {
+  readonly facts?: Partial<Omit<PullRequestFacts, "context">>;
+  readonly fastPath?: ChecksFastPath;
+  readonly rollupPages?: readonly RollupPage[];
+  readonly threads?: readonly ReviewThread[];
+  readonly writers?: Readonly<Record<string, boolean | null>>;
+  readonly upToDateRequired?: boolean | null;
+  readonly commitRollups?: readonly CommitRollup[];
+  readonly mergeQueueEnabled?: boolean;
+  /** Checks the queue branch's rules require (default none). */
+  readonly queueRequiredChecks?: readonly string[];
+  readonly queueThreadResolution?: boolean;
+  readonly latestAttemptJobs?: Readonly<Record<number, readonly number[]>>;
+  readonly openPullRequests?: readonly OpenPullRequest[];
+  readonly current?: PrContext;
+  readonly checkoutParent?: { readonly owner: string; readonly repo: string };
+}
+
+export function passingCheck(name = "ci"): Check {
+  return {
+    kind: "passed",
+    name,
+    reportedState: "SUCCESS",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+}
+
+export function pendingCheck(name = "ci"): Check {
+  return {
+    kind: "pending",
+    name,
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+}
+
+export function failedCheck(name = "ci"): Check {
+  return {
+    kind: "failed",
+    name,
+    reportedState: "FAILURE",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+}
+
+export function fakeReader(
+  options: FakeReaderOptions = {}
+): GitHubReader & { readonly calls: readonly string[] } {
+  const calls: string[] = [];
+  const context = options.current ?? {
+    owner: "owner",
+    repo: "repo",
+    number: parsePrNumber(1),
+  };
+  const defaults: PullRequestFacts = {
+    context,
+    mergeable: "MERGEABLE",
+    mergeStateStatus: "CLEAN",
+    reviewDecision: "APPROVED",
+    headRefOid: "head",
+    baseRefOid: "base",
+    updatedAt: "t",
+    headRefName: "feature",
+    baseRefName: "main",
+    state: "OPEN",
+    mergedAt: null,
+    isDraft: false,
+  };
+  let page = 0;
+  return {
+    calls,
+    async checkoutRepository() {
+      calls.push("checkoutRepository");
+      return {
+        repository: { owner: context.owner, repo: context.repo },
+        parent: options.checkoutParent ?? null,
+      };
+    },
+    async currentPr(pr) {
+      calls.push("currentPr");
+      return { ...context, number: pr ?? context.number };
+    },
+    async pullRequest(requested) {
+      calls.push("pullRequest");
+      return { ...defaults, ...options.facts, context: requested };
+    },
+    async upToDateRequired() {
+      calls.push("upToDateRequired");
+      return options.upToDateRequired === undefined ? true : options.upToDateRequired;
+    },
+    async recheck() {
+      calls.push("recheck");
+      const {
+        headRefOid,
+        baseRefOid,
+        baseRefName,
+        mergeable,
+        state,
+        isDraft,
+        reviewDecision,
+        mergedAt,
+        updatedAt,
+        mergeStateStatus,
+      } = { ...defaults, ...options.facts };
+      return {
+        headRefOid,
+        baseRefOid,
+        baseRefName,
+        mergeable,
+        state,
+        isDraft,
+        reviewDecision,
+        mergedAt,
+        updatedAt,
+        mergeStateStatus,
+      };
+    },
+    async openPullRequests() {
+      calls.push("openPullRequests");
+      return options.openPullRequests ?? [];
+    },
+    async checksFastPath() {
+      calls.push("checksFastPath");
+      return options.fastPath ?? { kind: "checks", checks: [passingCheck()] };
+    },
+    async checkRollupPage(_requested, after) {
+      calls.push(`checkRollupPage:${after ?? "null"}`);
+      return options.rollupPages?.[page++] ?? { checks: [], endCursor: null };
+    },
+    async reviewThreads() {
+      calls.push("reviewThreads");
+      return options.threads ?? [];
+    },
+    async permission(_requested, login) {
+      calls.push(`permission:${login}`);
+      const writers = options.writers ?? {};
+      return login in writers ? (writers[login] ?? null) : true;
+    },
+    async latestAttemptJobs(_requested, run) {
+      calls.push(`latestAttemptJobs:${run}`);
+      return new Set(options.latestAttemptJobs?.[run] ?? []);
+    },
+    async mergeQueueRules() {
+      calls.push("mergeQueueRules");
+      return options.mergeQueueEnabled
+        ? {
+            requiredChecks: options.queueRequiredChecks ?? [],
+            threadResolutionRequired: options.queueThreadResolution ?? false,
+          }
+        : null;
+    },
+    async commitRollups() {
+      calls.push("commitRollups");
+      return options.commitRollups ?? [{ oid: "head", state: "SUCCESS" }];
+    },
+  };
+}
