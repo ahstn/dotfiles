@@ -13,6 +13,7 @@ import {
   resolveChecks,
   resolveContext,
   trustedByAssociation,
+  decideThread,
 } from "./github.ts";
 import {
   fakeReader,
@@ -429,6 +430,40 @@ it("annotates Bugbot threads with distinct review-pass counts", () => {
   expect(threads).toHaveLength(2);
   expect(threads.map((thread) => thread.isBugbot)).toEqual([true, true]);
   expect(threads.map((thread) => thread.bugbotReviewPasses)).toEqual([3, 3]);
+});
+
+it("lets an edit beat an autofix reply at the same instant", () => {
+  const comment = (login: string, body: string, isViewer: boolean) => ({
+    authorLogin: login,
+    body,
+    path: null,
+    line: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    activityAt: "2026-01-02T00:00:00Z",
+    authorAssociation: "OWNER",
+    authorIsBot: false,
+    isViewer,
+  });
+  // The reviewer edits their request in the same second the reply lands.
+  const request = comment("owner", "also handle nulls", false);
+  const reply = comment("me", `done\n${AUTOFIX_FIXED_MARKER}`, true);
+  const decided = decideThread(
+    {
+      id: "t",
+      firstComment: request,
+      recentComments: [request, reply],
+      historyComplete: true,
+      decidingComment: null,
+      lastAuthorLogin: null,
+      latestCommentAt: null,
+      disposition: "actionable",
+      isBugbot: false,
+      bugbotReviewPasses: 0,
+    },
+    trustedByAssociation
+  );
+  expect(decided.disposition).toBe("actionable");
+  expect(decided.decidingComment?.body).toBe("also handle nulls");
 });
 
 it("distrusts a member or collaborator comment whose login is gone", () => {

@@ -593,9 +593,19 @@ export function decideThread(
       latestCommentAt: null,
     };
   // Latest activity, not latest position: a reviewer editing an older comment
-  // after the agent's answer is new feedback. Ties keep the later comment.
+  // after the agent's answer is new feedback. Ties keep the later comment,
+  // except that feedback beats an autofix reply at the same instant: list
+  // order can't say the reply came after the edit.
+  const markerReply = (comment: T.ReviewComment) =>
+    comment.isViewer &&
+    (endsWithMarker(comment.body, AUTOFIX_REPLY_MARKER) ||
+      endsWithMarker(comment.body, AUTOFIX_FIXED_MARKER));
   const decisive = [first, ...trustedRecent].reduce((best, comment) =>
-    comment.activityAt >= best.activityAt ? comment : best
+    comment.activityAt > best.activityAt ||
+    (comment.activityAt === best.activityAt &&
+      !(markerReply(comment) && !markerReply(best)))
+      ? comment
+      : best
   );
   return {
     ...thread,
