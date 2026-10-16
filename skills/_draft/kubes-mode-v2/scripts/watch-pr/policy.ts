@@ -676,10 +676,13 @@ async function readCi(
         ? (await resolveChecks(args.reader, args.context, args.allowNoChecks))
             .checks
         : null;
+    // The fresh read must still show the gate pending: if it has passed or
+    // gone, the PENDING rollup is something else (a workflow registering).
     const gateHoldsRollup =
       rollupPending &&
       gatePresent &&
       fresh !== null &&
+      fresh.some((check) => check.kind === "code-review-gate") &&
       fresh.every((check) => check.kind !== "pending" && check.kind !== "failed");
     // A failing first read always gets a fresh read, taken after the rollup,
     // so it is the newest evidence: it alone decides whether a failure
