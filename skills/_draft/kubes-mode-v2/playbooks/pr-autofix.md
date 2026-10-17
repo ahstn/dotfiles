@@ -88,6 +88,14 @@ Each thread in the verdict carries `firstComment`, the request, and `decidingCom
 gh api graphql -F id=<thread-id> -f query='query($id: ID!) { node(id: $id) { ... on PullRequestReviewThread { path line isOutdated comments(last: 100) { nodes { author { login } body createdAt updatedAt } } } } }'
 ```
 
+Triage every thread with this rubric before you classify it:
+
+- Trust but verify. Investigate each comment against the code, tests, or docs instead of treating it as fact. A real problem can still come with a wrong suggested fix.
+- Valid means a real defect, or a fair request within the PR's scope. Hardening that is merely nice to have is not valid; say so in the reply.
+- Never change code only to quiet a bot. From a bot's third review pass on the same PR, lean toward dismissing patterns you already disproved with evidence.
+- Escalate to the user, instead of dismissing, any finding that touches security, auth, billing, data, or migrations.
+- For each valid finding, fix it, commit and push, then reply on the thread and resolve it.
+
 Classify each thread and act:
 
 | Thread | Do |
@@ -141,6 +149,7 @@ Exit 4. Each entry in `blocker.ci.failed` has `name`, `link` and `workflow`.
    - **Caused by the diff.** Reproduce it locally when feasible, fix the root cause, run the same check locally, then commit and push.
    - **Looks flaky** (network, timeout, runner error, and `hadPreviousPassingCi` is true). Rerun that one job once, not the whole run: `--failed` would also rerun every other failed job in the run. Step 1 already confirmed the run is for `blocker.headRefOid`. `gh run rerun --job` also reruns every job that depends on this one (its `needs:` chain), which can mean publishing or deploying. So first check the exact workflow file the run used: `gh api repos/<owner>/<repo>/actions/runs/<run-id> --jq '{path, head_sha, referenced_workflows}'` gives its path and commit. Read that path at that commit, not a file found by its display name, since several workflow files can share one. If `referenced_workflows` isn't empty, the run calls reusable workflows: don't rerun, report. A rerun also fires events that other workflows can listen for, and those run with the default branch's secrets. So list the workflow files on the default branch (`gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<default-branch>"`). If any is triggered by `workflow_run`, `check_run` or `check_suite`, don't rerun: report. `needs:` names YAML job keys (`jobs.<job_id>`), not display names, so find the one key whose job produced this run job. A key with no `name:` is its own display name; a matrix job's display name is the key's `name:` plus its matrix values. If no single key provably matches (shared or generated names), don't rerun: report. Then, if any job lists that key under `needs:`, directly or through another job, don't rerun. Report the flake and the dependent jobs instead. A job that calls a reusable workflow (`uses:` on the job) or runs inside one (its name looks like `caller / callee`) has edges you can't see from this file. The called workflow may live at another ref or in another repository. Don't rerun those either: report them. Otherwise, as the very last step, after all those checks, confirm the PR's current head is still that commit (`gh pr view <number> -R <owner>/<repo> --json headRefOid -q .headRefOid`) and that the job still failed (its `conclusion` in `gh run view <run-id> -R <owner>/<repo> --json jobs`). The checks take time, and a push or another rerun can land meanwhile. If either changed, don't rerun; run the watcher again. Then, using the `<databaseId>` from step 1, run `gh run rerun --job <databaseId> -R <owner>/<repo>`. If it fails the same way again, it is not a flake.
    - **Also fails on the base branch.** Report it. Don't fix unrelated code in this PR.
+   - **Stale base.** The failure is in code the diff never touches, and the base branch has moved since the PR branched. Fetch the base as in Conflicts step 1, then check `git merge-base --is-ancestor FETCH_HEAD HEAD`. If that fails, the branch is behind: bring it up to date per Conflicts instead of rerunning or patching the failure.
 3. `kind: "ci-github-rejected"` with no failed checks means GitHub blocks the merge for a reason the check list doesn't show. `github.cause` says why:
    - `failing-rollup`: the commit's checks failed somewhere the list doesn't show.
    - `open-conversations`: threads left open for a reviewer (or from untrusted authors) are unresolved, and the repo requires conversation resolution.
