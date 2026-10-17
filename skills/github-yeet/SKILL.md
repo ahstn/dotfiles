@@ -1,6 +1,6 @@
 ---
 name: "github-yeet"
-description: "Use only when the user explicitly asks to stage, commit, push, and open a GitHub pull request"
+description: "Use for any commit, push, or GitHub pull request. Stop after the push unless a PR was requested"
 compatibility: requires `gh` cli
 metadata: 
   author: OpenAI
@@ -29,6 +29,7 @@ MUST follow the conventional commits specification for commit, branch and PR tit
 3. Only stage files changed in this session, ignore unrelated changes and/or any pre-existing unstaged files.
 4. Commit tersely with the description: `git commit -m "{description}"`
 5. Push with tracking: `git push -u origin $(git branch --show-current)`
+   - Stop here for a checkpoint commit. Continue to the PR steps only when a PR was requested or one already exists for the branch.
 6. Discover and read the repository PR template, if any.
 7. Check whether the current branch already has a PR: `gh pr view "$(git branch --show-current)" --json number,isDraft,url`
 8. If a PR already exists, update that PR in place.
