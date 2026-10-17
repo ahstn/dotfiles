@@ -1,6 +1,6 @@
 ---
 name: kubes-mode-v2
-description: Personal working mode for software engineering tasks. Routes each task to a matched playbook (investigation, bug fix, feature, refactor, prototype, perf, hillclimb, runtime forensics, pause, multi-phase plan, worktree cleanup), applies bundled principles on verification, measurement, root causes, and context use, and sets autonomy, question, and evidence rules. Use when the user invokes /kubes-mode-v2 or asks to work in kubes mode.
+description: Personal working mode for software engineering tasks. Routes each task to a matched playbook (investigation, bug fix, feature, refactor, prototype, perf, hillclimb, runtime forensics, pause, multi-phase plan, worktree cleanup, PR autofix), applies bundled principles on verification, measurement, root causes, and context use, and sets autonomy, question, and evidence rules. Use when the user invokes /kubes-mode-v2 or asks to work in kubes mode.
 disable-model-invocation: true
 mode: true
 icon: crown
@@ -71,14 +71,15 @@ Autonomy:
 
 ## Git and PRs
 
-- Every commit, push, and PR goes through `github-yeet`. Do not hand-roll `git commit`, `git push`, or `gh pr create`. It sets conventional branch, commit, and PR names, stages only this session's files, and updates an existing PR in place.
+- Every commit, push, and PR goes through `github-yeet`. Do not hand-roll `git commit`, `git push`, or `gh pr create`. It sets conventional branch, commit, and PR names, stages only this session's files, and updates an existing PR in place. One exception: `playbooks/pr-autofix.md` pushes with its own guarded push, and its commits still follow `github-yeet`'s naming.
 - Commit and push each verified checkpoint on the current feature or PR branch without being asked, including periodically during long runs. For a checkpoint, run `github-yeet` through the push step and stop before the PR steps. Opening a PR, pushing to `main`, or merging still needs the request. "Commit this" does not mean "open a PR".
 - Split commits into small logical units. Never `git add .`.
 - Before opening or updating a PR, run `/code-review` on the diff and fix the valid findings.
 - After pushing, watch CI and fix failures until it is green. Report done only when CI is green or the failure is outside the change, and say which.
 - When syncing with `main`, merge `origin/main` and resolve conflicts so recent changes on both sides keep their intended behavior.
 - **PR status** ("check on PR X", "anything outstanding?"): read-only. Fetch CI state and review comments, assess each for validity, and report a triage table: fix, dismiss with reason, or ask.
-- **Address or fix PR comments**: fetch the comments on this branch's PR and assess each one. Trust but verify: investigate before treating a comment as correct. Fix the valid ones, commit and push to the existing PR with `github-yeet`, then reply to and resolve the threads you acted on. Dismiss invalid ones with a concrete reason. Then wait for the next review round and repeat until no new valid comments arrive. This does not authorize a new PR or a merge.
+- **Watch, babysit, or autofix a PR** until it is ready: `playbooks/pr-autofix.md`. It keeps going across CI runs and review rounds.
+- **Address or fix PR comments**: one pass over this branch's PR comments, triaged with the rubric in `playbooks/pr-autofix.md` (Review threads). Fix the valid ones, commit and push to the existing PR, then reply to and resolve the threads you acted on. Dismiss invalid ones with a concrete reason. This does not authorize a new PR or a merge. To keep going until no new valid comments arrive, use the autofix playbook.
 
 ## Long or unattended work
 
@@ -104,6 +105,7 @@ Match the task to one playbook and open its file. For multi-step work, put its s
 - **Pause safely.** Suspend in-flight work so it can resume: going offline, restart, or close to compaction. `playbooks/pause-safely.md`.
 - **Multi-phase plan.** Work that spans phases or stacked PRs. `playbooks/multi-phase-plan.md`.
 - **Worktree cleanup.** Reclaim disk by pruning merged or abandoned git worktrees. `playbooks/worktree-cleanup.md`.
+- **PR autofix.** Watch an open PR and fix conflicts, review threads, and failing checks until it is ready. `playbooks/pr-autofix.md`.
 
 No playbook fits: write a short plan (goal, steps, how each step is checked) and follow it.
 
