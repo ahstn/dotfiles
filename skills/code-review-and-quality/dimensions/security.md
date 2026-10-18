@@ -23,10 +23,11 @@ Treat client code, headers, filenames, URLs, queue messages, database content, c
 ### 1. Authentication, session, and authorization
 
 - Is authentication required at every protected entry point, including alternate transports and background handlers?
-- Is authorization checked server-side for the action and the specific object, tenant, account, or scope?
+- Is authorization checked server-side for the action and object, tenant, account, or scope, including revocation or invalidation on rejected requests?
 - Can a caller select an owner, tenant, role, price, status, or permission through request data that should come from trusted context?
 - Are deny-by-default and least-privilege rules preserved when fields, routes, or roles are added?
 - Can stale sessions, revoked credentials, or privilege changes remain effective longer than the stated contract?
+- After a feature is disabled, can authorized callers still list and revoke its grants, cancel work, or disconnect resources?
 - Are state-changing browser requests protected according to the application’s CSRF and cookie model?
 - Do administrative or service credentials cross into lower-trust code or logs?
 - Are roles, scopes, tenant claims, and token metadata validated for authority and meaning rather than accepted because the fields are present?
@@ -52,7 +53,8 @@ Prefer allowlists for finite domains. Preserve the original value only when audi
 - Do process calls pass argument arrays instead of building shell command strings?
 - Is HTML, JavaScript, CSS, URL, CSV, log, and template output encoded for its exact destination context?
 - Can user-controlled values alter file paths, redirects, proxy targets, templates, regular expressions, or dynamic code?
-- For outbound URLs, are schemes, hosts, ports, redirects, DNS resolution, and private address ranges constrained as required?
+- For supplied and discovered endpoints, do scheme, host, port, redirect, DNS, and private-address checks follow the authority source through the actual connection?
+- Can a caller-supplied client or request builder bypass the guarded transport?
 - Does deserialization instantiate types, execute hooks, or accept polymorphic payloads beyond the needed schema?
 
 Sanitization is not a universal substitute for parameterization or contextual encoding. Review the final sink.
@@ -61,12 +63,17 @@ Sanitization is not a universal substitute for parameterization or contextual en
 
 - Are credentials, tokens, private keys, session identifiers, reset links, and sensitive payloads absent from source, errors, logs, telemetry, URLs, and client-visible state?
 - Are secrets obtained from the established secret store and limited to the component that uses them?
+- Are secret references, inherited defaults, and stored credentials restricted to authorized callers and intended destinations, including on reuse?
+- Does redaction cover every credential form in the accepted schema and every output field for its audience?
+- Does sanitization precede truncation and survive alternate encodings, fallback reinsertion, and repeated or streamed output?
 - Are comparisons, random values, signatures, hashes, encryption modes, and key sizes provided by approved platform primitives?
 - Is password storage adaptive, salted, and delegated to the project’s established password-hashing library?
 - Are nonces, initialization vectors, salts, and keys generated with cryptographic randomness and used according to the primitive’s contract?
-- Does data collection, persistence, caching, and response shaping expose more sensitive data than the operation needs?
+- Are collection, storage, caches, and response fields limited to the operation and audience's needs, including when read access expands?
 - If private-key or secret files can be mounted by path, are accepted roots, file type, permissions, and symlink behavior constrained before reading?
 - Are sensitive caches partitioned by identity, tenant, and authorization context, and cleared when those grants expire?
+- Does cleanup retain replay and revocation evidence while dependent credentials remain usable?
+- Can cache freshness or stale reuse outlive required durable records?
 
 Do not propose custom cryptography. Report the broken property and direct the author to the project’s approved primitive or security owner.
 
@@ -96,6 +103,7 @@ Logging is not a security control if the event cannot be tied to an actor and ta
 - Are request size, batch size, pagination, timeout, queue, and decompression limits enforced before resource exhaustion?
 - Are streaming and chunked bodies counted as they are read, so a missing or false declared length cannot bypass the request limit?
 - Are concurrency, retry, and polling limits enforced at the scope where an attacker would otherwise multiply them across requests or identities?
+- Do limits cover request rate, distinct keys, storage growth, and retention as well as concurrency, including the cheapest accepted branch?
 - Can expensive authorization, search, regex, cryptographic, or parsing work be amplified cheaply?
 - Are rate limits keyed to an identity or resource that an attacker cannot rotate without cost?
 - Does failure release connections, locks, file descriptors, memory, and worker capacity?
