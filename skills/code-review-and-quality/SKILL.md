@@ -97,7 +97,13 @@ The main agent reads the relevant guide when validating a delegated finding. It 
 
 ### 3. Validate and report
 
-Validate candidate findings against the source and dimension guide. Deduplicate underlying issues and select one primary dimension per finding. Sort by severity; within a severity, prioritize material structural costs over local legibility notes.
+Validate candidate findings against the source and dimension guide:
+
+- Trace the proposed failure through earlier guards and the actual producer, transformation, and consumer. Confirm that the input can reach the failing path.
+- Check version-specific language or library claims against the resolved types and implementation, or a focused probe.
+- When a defect exposes a repeated pattern, inspect sibling handlers, backends, and alternate paths relevant to the agreed change.
+
+Deduplicate underlying issues and select one primary dimension per finding. Sort by severity; within a severity, prioritize material structural costs over local legibility notes.
 
 Use existing verification evidence and focused checks to resolve material uncertainty. Complete project-required checks that apply to the review. Broaden or repeat checks only when new changes, failures, or unresolved concerns justify them. Do not require tests that merely mirror implementation details.
 

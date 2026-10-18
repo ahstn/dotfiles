@@ -25,7 +25,7 @@ State the cost as a relationship when possible: one query per row, two full payl
 - Does a loop, sort, lookup, join, or recursive walk scale with the intended input size?
 - Are nested operations accidentally quadratic or worse over a growing collection?
 - Is a linear membership check repeated where a set, map, index, or merge pass fits existing patterns?
-- Are full scans, global sorts, or repeated aggregations performed when the caller needs a bounded subset?
+- Are work bounds verified beyond result counts: scans, sorts, aggregations, decoded bytes, queries, time, and retained history? Check frequent, rare, and absent matches.
 - Is pagination stable, bounded, and applied before materializing or transforming the full result?
 - Can fan-out multiply by users, rows, partitions, plugins, or retries without a hard bound?
 - Does incremental or streaming code process each item once, or rescan and rebuild prior state for every chunk or event?
@@ -65,9 +65,10 @@ Prefer eliminating work over making the same work faster. Avoid low-level rewrit
 - Is concurrency bounded to protect the downstream service, connection pool, memory, and scheduler?
 - Is there backpressure when producers can outrun consumers?
 - Are locks held across I/O, callbacks, sleeps, or expensive computation?
+- Are database contention and blocking checked through acquisition, statements, commit, and cleanup, with competing readers and writers, missing rows, and supported backend modes?
 - Does one global lock, queue, or coordinator serialize otherwise independent keys or tenants?
 - Can cancellation and timeout free worker capacity promptly?
-- Does cancellation stop queued retries, polling loops, subprocesses, and downstream calls instead of only abandoning their results?
+- Does cancellation stop work that is safe to cancel, including queued retries, polling loops, subprocesses, and downstream calls? Correctness owns effects that must continue.
 
 Use bounded parallelism, not unlimited task creation. More concurrency can reduce throughput through contention, queueing, or downstream overload.
 

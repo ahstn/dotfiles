@@ -25,10 +25,13 @@ If the sources disagree, report the conflict rather than selecting the most conv
 - Does behavior match the stated task and the expectations of every affected caller?
 - Are null, empty, zero, negative, minimum, maximum, overflow, encoding, locale, and time-zone cases handled where they are valid concerns?
 - Does parsing reject malformed, ambiguous, truncated, or trailing input instead of accepting a misleading partial value?
-- Are defaults applied at the correct layer and only when absence is valid?
+- Are omitted, null, empty, false, zero, and concrete values preserved through parsing, schemas, generated clients, and storage where their meanings differ?
+- Are defaults applied at the correct layer and only when absence is valid? Can later steps distinguish supplied values from defaults when required?
 - Do return values and errors preserve the documented meaning, including partial-success rules?
 - If a schema, enum, protocol, or serialized form changes, can all intended producers and consumers interpret it?
 - Do capability advertisement, dispatch, and documentation use the same explicit classifier?
+- Do previews and dry runs apply execution's validation, active-state rules, inherited principals, restrictions, and limits? Do counts and estimates describe the effective result?
+- For destructive filters or rewrites, are valid near-matches preserved while intended targets change?
 - Is absence from a paginated source concluded only after all relevant pages or an exact provider-side lookup are exhausted?
 - Do case-sensitive wire identifiers, enum values, protocol fields, and terminal-status predicates match the contract at every producer and consumer?
 - Do request and response adapters preserve required correlation identifiers, opaque proof fields, and endpoint-specific envelope semantics through round trips?
@@ -40,8 +43,10 @@ Use exact boundary values. Do not report a generic “edge-case risk” without 
 
 - Does a receipt, digest, cache key, or persisted identity bind the exact admitted bytes and every semantic input, control, unit, and provenance field that affects behavior?
 - Is mutable or external input observed once, then validated, hashed, and used from that same snapshot?
-- Are raw types, required keys, duplicate identifiers, ranges, units, and timestamp domains validated before coercion, membership checks, map construction, or arithmetic?
-- Are cross-record and cross-batch invariants checked over the complete semantic scope rather than only within each chunk?
+- Are raw types, required keys, ranges, units, and timestamp domains validated before coercion, membership checks, map construction, or arithmetic?
+- Are explicit, inferred, reused, and newly allocated identities checked together for collisions before maps or upserts can merge distinct records?
+- Are cross-record and cross-batch invariants checked over the complete semantic scope, including combined configuration sources at startup, reload, and update?
+- Does deduplication merge aliases of one operation while preserving distinct operations with equal content? Does each event retain its own name, encoding, and payload?
 - Does validation inspect every required element and related collection, including fixed-size, singleton, empty, and final-element cases, without a shortcut that can skip malformed data?
 - Are mixed or versioned records normalized independently before union, with explicit compatibility rules?
 - When original bytes or provenance are unavailable, does the code narrow the verification claim instead of implying stronger evidence?
@@ -51,6 +56,8 @@ Use exact boundary values. Do not report a generic “edge-case risk” without 
 Reject missing selectors that would silently broaden a query, filter, authorization, or replay scope. Do not let lossy transformations erase duplicates, ordering, or identity before validation.
 
 ### 3. Invariants and state transitions
+
+For changes to versioned state, single-use operations, or required effects across writes and tasks, read [State transitions and required effects](../references/state-and-effects.md).
 
 - Is every reachable state valid, and is every transition legal from its source state?
 - Can early returns, exceptions, or cancellation leave half-applied state?
@@ -71,12 +78,13 @@ Prefer explicit state transitions, exhaustive matching, transactions, compare-an
 - Does a timeout cover the complete operation rather than one attempt while retries extend work without bound?
 - Are retries limited to transient failures and safe for the operation’s idempotency rules?
 - Can duplicate requests, events, or jobs repeat a non-idempotent side effect?
-- Does cancellation stop downstream work and release resources promptly?
+- Does cancellation stop cancellable work promptly while preserving required effects? Check completion and resource ownership in [State transitions and required effects](../references/state-and-effects.md#completion-and-replay).
 - Does polling distinguish pending, terminal success, terminal failure, cancellation, expiration, and missing ownership without converting one outcome into another?
 - Can cleanup failure hide the primary failure?
 - Are paths, identities, and other preconditions validated before output side effects, and are failed temporary outputs safe to retry?
+- Can advisory diagnostics fail without blocking readiness or discarding unrelated results? Is repeated failure bounded by the intended retry policy?
 
-For retries, check the whole sequence: replayable input, idempotency, attempt limit, backoff, jitter where contention matters, and final error reporting.
+For retries, check the whole sequence: replayable input, idempotency, attempt limit, backoff, jitter where contention matters, and final error reporting. For flows with distinct failure policies, use the [Failure policy](../references/state-and-effects.md#failure-policy) checks.
 
 ### 5. Ordering and concurrency
 
@@ -92,6 +100,7 @@ Name a concrete interleaving when reporting a race. “This is not thread-safe�
 
 ### 6. Tests and verification
 
+- Do path, label, or feature selectors route each new or moved runtime owner to the appropriate verification, including glob and skip-rule precedence?
 - Is there a regression test for the changed contract when existing coverage would not catch it?
 - Do tests cover failure paths and boundary transitions, not only the happy path?
 - For stateful code, do tests cover invalid transitions, repeated operations, and cleanup?

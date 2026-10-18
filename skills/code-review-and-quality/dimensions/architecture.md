@@ -66,6 +66,7 @@ Prefer capability-shaped methods, domain values, immutable results, and boundary
 - If a breaking change is intentional, are all in-scope callers migrated in the same change or the version boundary explicit?
 - Is the required producer/consumer coexistence matrix explicit for rolling deployment, persisted old data, caches, workers, and delayed events?
 - Do compatibility claims cover semantic meaning as well as parseability, including defaults, units, ordering, and omission behavior?
+- Do resolved dependencies meet the peer, engine, plugin, and toolchain contracts used by the application, including aliases, overrides, and enabled optional peers?
 - Is the version or migration boundary observable and reversible enough to diagnose a mixed-version failure?
 
 Do not preserve obsolete internal APIs by default. Do not break an external contract because all callers visible in the repository were updated.
