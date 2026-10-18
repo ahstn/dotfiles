@@ -1,6 +1,6 @@
 ---
 name: "github-yeet"
-description: "Use for any commit, push, or GitHub pull request. Stop after the push unless a PR was requested"
+description: "Use for any commit, push, or GitHub pull request, and to address PR comments or babysit/autofix a PR until it is ready. Stop after the push unless a PR was requested"
 compatibility: requires `gh` cli
 metadata: 
   author: OpenAI
@@ -35,6 +35,20 @@ MUST follow the conventional commits specification for commit, branch and PR tit
 8. If a PR already exists, update that PR in place.
 9. If no PR exists, open a new draft PR with `gh pr create --help`, avoid draft PRs unless explictly requested.
   i. Set the PR title and body so they reflect the actual net change in the diff.
+
+## PR comments and autofix
+
+Two modes. Both assess every comment before acting:
+
+- Fetch the comments on the branch's PR and assess their validity. If they are fair and valid, implement fixes for the findings.
+- Trust but verify. Investigate each comment rather than treating it as factual, bulletproof advice.
+- Commit and push the fixes, then reply to and resolve the threads for the findings you actioned. Dismiss invalid ones with a concrete reason.
+
+**Address PR comments** ("address the comments", "fix the review findings"): one pass over the current comments using the rules above and the triage rubric in `references/pr-autofix.md` (Review threads).
+
+**Babysit or autofix a PR** ("babysit", "watch", "autofix", "get it green"): follow `references/pr-autofix.md`. It runs `scripts/watch-pr/watch-pr` and repeats across CI runs and review rounds, fixing conflicts, valid review threads, and failing checks until the PR is ready or a human has to act. It pushes with its own guarded push instead of step 5.
+
+Neither mode authorizes a new PR or a merge.
 
 ## Determining the PR
 
