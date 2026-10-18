@@ -6,8 +6,18 @@ set -eux -o pipefail
 export DEBIAN_FRONTEND=noninteractive PATH="$HOME/.local/bin:$PATH"
 apt_install() { sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" >/dev/null; }
 
-# The host folder VMPal shares (under /media/VMPal), linked under a stable path.
-[ -z "${SHARE_PATH:-}" ] || ln -sfn "$SHARE_PATH" "$HOME/host-$SHARE_NAME"
+# The host folder VMPal shares (under /media/VMPal), linked as ~/<name>. Links into the share from earlier
+# layouts (~/host-git) are removed; an existing real ~/<name> is left alone.
+for link in "$HOME"/host-*; do
+  [ -L "$link" ] && case "$(readlink "$link")" in /media/VMPal/*) rm "$link" ;; esac
+done
+if [ -n "${SHARE_PATH:-}" ]; then
+  if [ ! -e "$HOME/$SHARE_NAME" ] || [ -L "$HOME/$SHARE_NAME" ]; then
+    ln -sfn "$SHARE_PATH" "$HOME/$SHARE_NAME"
+  else
+    echo "$HOME/$SHARE_NAME exists and is not a link; the share stays at $SHARE_PATH" >&2
+  fi
+fi
 
 # The guest clock stops while the Mac sleeps, and chrony by default steps only in its first updates, then slews
 # for days; apt rejects repos "not valid yet" meanwhile. Step whenever it is more than a second off.

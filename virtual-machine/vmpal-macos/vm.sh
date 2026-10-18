@@ -23,10 +23,12 @@ case "$VM_OS" in
               "${VM_USER:=$(id -un)}" "${VM_PASSWORD=}" ;;
   *) echo "VM_OS must be macos or ubuntu" >&2; exit 1 ;;
 esac
-: "${VM_CPU:=$(( $(sysctl -n hw.ncpu) / 2 ))}"
+# vCPUs run as high-priority host threads: they fill the performance cores first, then spill onto efficiency cores.
+HOST_CORES="$(sysctl -n hw.ncpu)" HOST_PCORES="$(sysctl -n hw.perflevel0.physicalcpu 2>/dev/null || sysctl -n hw.ncpu)"
+: "${VM_CPU:=$(( HOST_CORES / 2 < HOST_PCORES ? HOST_CORES / 2 : HOST_PCORES ))}"   # half the cores, at most the P cores
 : "${VM_MEMORY_GB:=8}"
-: "${VM_SHARE_DIR=$HOME/git}"              # shared live into the guest; empty = none
-: "${VM_SHARE_NAME:=git}"
+: "${VM_SHARE_DIR=$HOME/shared}"           # shared live into the guest; empty = none
+: "${VM_SHARE_NAME:=shared}"
 # VM_USER: the guest account, set at create only. VM_PASSWORD: set by `all`; empty = keep VMPal's generated one.
 : "${VM_NETWORK:=shared}"                  # shared (NAT, this Mac only) | bridged (own LAN address) | host-only
 : "${VM_BRIDGE:=auto}"                     # bridged only: a Mac interface such as en0, or auto for the main one
@@ -126,8 +128,14 @@ cmd_configure() {
   cur="$(vm_field 'v["diskLimitGB"]')"
   [ "$VM_DISK_GB" -le "${cur%.*}" ] || args+=(--disk "$VM_DISK_GB")   # grow only
   [ "$VM_OS" = macos ] || { [ "$VM_ROSETTA" = 1 ] && args+=(--rosetta on) || args+=(--rosetta off); }
+  [ "$VM_CPU" -le "$HOST_PCORES" ] || warn "VM_CPU=$VM_CPU is more than this Mac's $HOST_PCORES performance cores"
+  # The earlier default shared ~/git as "git"; it is removed so repositories stay on the guest's own disk.
+  if [ "$VM_SHARE_NAME" != git ] && [ "$(vm_field 'any(f["name"] == "git" for f in v["settings"]["sharedFolders"])')" = True ]; then
+    log "removing the earlier default share 'git'"
+    vmpal set "$VM_NAME" --unshare git >/dev/null
+  fi
   if [ -n "$VM_SHARE_DIR" ]; then
-    [ -d "$VM_SHARE_DIR" ] || die "share dir $VM_SHARE_DIR missing (set VM_SHARE_DIR, or empty for none)"
+    mkdir -p "$VM_SHARE_DIR"
     # A share by that name from another folder is replaced, before the other settings.
     case "$(VM_SHARE_DIR="$VM_SHARE_DIR" VM_SHARE_NAME="$VM_SHARE_NAME" vm_field 'next((
         "same" if os.path.realpath(f["path"]) == os.path.realpath(os.environ["VM_SHARE_DIR"]) else "other"
@@ -314,7 +322,7 @@ cmd_check() {
     macos) guest -- 'set -x; eval "$(/opt/homebrew/bin/brew shellenv)"; export PATH=$HOME/.local/bin:$PATH
       sw_vers; uname -m; mise ls 2>&1 | head -20; dscl . -read ~ UserShell; df -h / | tail -1
       ls "/Volumes/My Shared Files" || echo "no shared folder"
-      for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
+      for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb Slack Vorssaint; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
       sudo -n tailscale status | head -3 || true
       launchctl print gui/$(id -u)/sh.paseo.daemon 2>/dev/null | grep -E "state|pid" | head -2
       curl -fsS --retry 15 --retry-connrefused --retry-delay 2 -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true

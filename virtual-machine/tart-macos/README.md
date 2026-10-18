@@ -23,8 +23,9 @@ export VM_PASSWORD=...             # optional: replaces the image's admin/admin
 Defaults:
 
 - VM name `macos-dev`;
-- half the host's cores, 8 GiB RAM, a 100 GB disk and a 1920x1200 display;
-- `~/git` shared into the guest;
+- half the host's cores (at most its performance cores), 8 GiB RAM, a 100 GB disk and a 1920x1200 display;
+- the root disk with `caching=cached` (`VM_ROOT_DISK_OPTS`; see [Performance](../README.md#performance));
+- `~/shared` shared into the guest, for passing files (not repositories);
 - NAT networking;
 - a window for the VM. Set `VM_HEADLESS=1` for none.
 
@@ -71,14 +72,14 @@ The base image has one account, `admin` / `admin`:
 |---|---|
 | Image | `tart clone ghcr.io/cirruslabs/macos-tahoe-base:latest <name>`, an APFS copy of the cached OCI image |
 | Hardware | `tart set --cpu --memory --display --disk-size`. The guest daemon grows APFS into the larger disk at boot |
-| Run | `tart run` detached with `nohup`, plus `--dir git:~/git` and optionally `--net-bridged en0` and `--no-graphics`. The log goes to `build/run.log` |
+| Run | `tart run` detached with `nohup`, plus `--root-disk-opts caching=cached` (`VM_ROOT_DISK_OPTS`), `--dir shared:~/shared` and optionally `--net-bridged en0` and `--no-graphics`. The log goes to `build/run.log` |
 | Address | `tart ip --wait` (DHCP leases under NAT, the ARP table when bridged) |
 | SSH | known hosts in `build/known_hosts`; key installed with an `SSH_ASKPASS` helper, then password SSH turned off |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written |
 | Provision | `../guest/macos.sh` and `guest/macos-engine.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
 | Snapshot | `tart stop`, then `tart clone <name> <name>-<tag>` (cheap APFS copy). To restore: `tart delete <name> && tart clone <name>-<tag> <name>` |
 
-The shared folder appears in the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git`.
+The shared folder appears in the guest at `/Volumes/My Shared Files/shared`, linked as `~/shared`.
 
 ## Provisioning
 

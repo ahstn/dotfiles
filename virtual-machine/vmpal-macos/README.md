@@ -39,7 +39,7 @@ Defaults:
 | Disk | 100 GB | 64 GB |
 | Rosetta | n/a | on |
 
-Both get half the host's cores, 8 GB RAM, `~/git` shared live into the guest, and shared (NAT) networking.
+Both get half the host's cores (at most its performance cores), 8 GB RAM, `~/shared` shared live into the guest, and shared (NAT) networking.
 macOS gets the account `admin` / `admin`, as Tart's images. Linux reserves `admin`, so Ubuntu gets your Mac
 user name and VMPal's generated password.
 
@@ -84,7 +84,7 @@ the password with VMPal ([MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)). `vm.sh
 |---|---|
 | Create | `vmpal create <system> --name --cpus --memory --disk --wait` (unattended install) |
 | Hardware | `vmpal set --cpus --memory --disk --rosetta --network-mode --bridge --local-network --share`; `vmpal restart --apply-settings` when a setting needs it |
-| Shared folder | `vmpal set --share ~/git:git`, live via virtiofs at `/media/VMPal/git` (Ubuntu) or `/Volumes/My Shared Files/git` (macOS), linked as `~/host-git` |
+| Shared folder | `vmpal set --share ~/shared:shared`, live via virtiofs at `/media/VMPal/shared` (Ubuntu) or `/Volumes/My Shared Files/shared` (macOS), linked as `~/shared`. `configure` removes the earlier default `git` share |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written. Setting either variable empty removes that key (and the auth key's Host block) from the guest |
 | Provision | the guest script (macOS: `../guest/macos.sh` with `guest/macos-engine.sh`; Ubuntu: `guest/ubuntu.sh`) copied with `vmpal cp` and run with `vmpal exec`: apps, Dock pins, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` (so the next run sees `~/.config/mise/config.toml`'s packages), and `mise bootstrap --skip files,repos` |
 | Snapshot | `vmpal stop`, then `vmpal snapshot <name> provisioned`. Restore with `vmpal revert <name> provisioned`. A Linux VM with GPU acceleration snapshots only when shut down |

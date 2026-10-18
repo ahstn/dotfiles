@@ -15,6 +15,13 @@ cp config.env.example config.env # optional
 ./vm.sh all
 ```
 
+> [!WARNING]
+> Keep repositories, build output and `node_modules` on the guest's own disk (the guest's `~/git`), not in the
+> shared folder. The host's `~/shared` appears in the guest as `~/shared`: use it only to pass files across.
+> Under heavy I/O the share can report existing files as missing
+> ([openai/tart#567](https://github.com/openai/tart/issues/567)), and one user's `fio` run measured it at about a
+> tenth of the guest disk's throughput ([openai/tart#762](https://github.com/openai/tart/issues/762)).
+
 ## Choosing an engine
 
 | | VMPal | Tart |
@@ -74,10 +81,11 @@ Engine-specific steps (creating the VM, the account, its password, sudo, SSH key
 | Account | `admin` / `admin`, with passwordless sudo and automatic login. `VM_PASSWORD` replaces the password; set one before bridging onto the LAN |
 | SSH | `keys` authorises `VM_SSH_PUBKEY` and makes SSH key-only |
 | GitHub | the GitHub keys in the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, and a managed `Host github.com` block |
-| Shared folder | `~/git` shared live into the guest at `/Volumes/My Shared Files/git`, linked as `~/host-git` (`VM_SHARE_DIR`, `VM_SHARE_NAME`) |
+| Shared folder | the host's `~/shared`, created if missing, shared live into the guest at `/Volumes/My Shared Files/shared` and linked as `~/shared` (`VM_SHARE_DIR`, `VM_SHARE_NAME`). For passing files only; see the warning above |
+| Housekeeping | Spotlight indexing off; macOS updates not downloaded or installed automatically (checking, security responses and XProtect data stay on); Reduce Motion and Reduce Transparency on, from the next login. Reapplied on every provision |
 | Dotfiles | on the first run (or `FORCE=1`): `~/git/dotfiles` cloned over HTTPS, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
 | mise | `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`) |
-| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
+| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb, Slack, Vorssaint and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
 | Checks | `./vm.sh check` prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |
 
 ### Apps
@@ -85,11 +93,12 @@ Engine-specific steps (creating the VM, the account, its password, sudo, SSH key
 `provision` installs these on every run, before the already-provisioned check, so it also adds them to existing
 VMs. Steps that are already done are skipped. Homebrew is installed first if missing.
 
-- **Ghostty, Helium, Paseo (desktop), Claude, ChatGPT, bb:** Homebrew casks `ghostty`, `helium-browser`,
-  `paseo`, `claude`, `chatgpt` and `bb` ([get-bb/bb](https://github.com/get-bb/bb)). The cask `helium` is an
-  unrelated, disabled app. The dotfiles make Helium the default browser. ChatGPT stands in for Codex Desktop,
-  whose `codex-app` cask Homebrew deprecated as discontinued upstream. Casks go to `~/Applications` once the
-  dotfiles set `HOMEBREW_CASK_OPTS`; the Dock and `check` look in both.
+- **Ghostty, Helium, Paseo (desktop), Claude, ChatGPT, bb, Slack, Vorssaint:** Homebrew casks `ghostty`,
+  `helium-browser`, `paseo`, `claude`, `chatgpt`, `bb` ([get-bb/bb](https://github.com/get-bb/bb)), `slack` and
+  `vorssaint` ([vorssaint/vorssaint-utils](https://github.com/vorssaint/vorssaint-utils), also in the shared mise
+  config). The cask `helium` is an unrelated, disabled app. The dotfiles make Helium the default browser.
+  ChatGPT stands in for Codex Desktop, whose `codex-app` cask Homebrew deprecated as discontinued upstream. Casks
+  go to `~/Applications` once the dotfiles set `HOMEBREW_CASK_OPTS`; the Dock and `check` look in both.
 - **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
   release's `checksums.txt`.
 - **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release, checked against the
@@ -116,6 +125,24 @@ git pull
 ./vm.sh provision     # apps, Dock, daemons; the dotfiles steps are skipped unless FORCE=1
 ./vm.sh check
 ```
+
+Existing VMs move from the old `~/git` share to `~/shared`: `provision` replaces the guest's `~/host-git` link
+with `~/shared`, Tart mounts the new folder on the next `./vm.sh start`, and VMPal's `./vm.sh configure` removes
+the old `git` share. A `config.env` that still sets `VM_SHARE_DIR=$HOME/git` keeps the old share.
+
+### Performance
+
+- **CPUs:** `VM_CPU` defaults to half the host's cores, at most its performance cores, and `configure` warns
+  above that. Each vCPU runs as a high-priority host thread, filling the performance cores before spilling onto
+  efficiency cores ([Eclectic Light](https://eclecticlight.co/2022/10/27/making-the-most-of-apple-silicon-power-7-virtualisation-and-core-use/)).
+- **Disk caching (Tart only):** `VM_ROOT_DISK_OPTS` defaults to `caching=cached`. In
+  [Tart's benchmarks](https://github.com/openai/tart/blob/main/benchmark/README.md) it ran XcodeBenchmark about
+  10% faster on an M2 Pro (3m59s to 3m35s) and single-process 4 KiB random writes about 35% faster on an M1 Pro. It was slower
+  in some other tests on that Mac, and much slower on an EBS-backed EC2 Mac. Set it empty if a workload
+  regresses. `sync=none` is faster still but can lose data if the host crashes, so it is not used.
+- **Disk headroom:** keep the guest disk well short of full; `./vm.sh check` prints its usage and `VM_DISK_GB`
+  grows it. On the host, `tart prune --older-than=30` clears Tart's cached OCI and IPSW images that have not been
+  used for 30 days. VMs and snapshots are separate copies, so it does not touch them.
 
 ### SSH from another device
 

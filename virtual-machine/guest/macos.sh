@@ -17,12 +17,34 @@ engine_prepare
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH" HOMEBREW_NO_ENV_HINTS=1
 
-# The host folder shared into the guest (Tart's --dir and VMPal's shares both mount there), under a stable path.
-[ -z "${SHARE_NAME:-}" ] || ln -sfn "/Volumes/My Shared Files/$SHARE_NAME" "$HOME/host-$SHARE_NAME"
+# The host folder shared into the guest (Tart's --dir and VMPal's shares both mount there), linked as ~/<name>.
+# Links into the share from earlier layouts (~/host-git) are removed; an existing real ~/<name> is left alone.
+for link in "$HOME"/host-*; do
+  [ -L "$link" ] && case "$(readlink "$link")" in "/Volumes/My Shared Files/"*) rm "$link" ;; esac
+done
+if [ -n "${SHARE_NAME:-}" ]; then
+  if [ ! -e "$HOME/$SHARE_NAME" ] || [ -L "$HOME/$SHARE_NAME" ]; then
+    ln -sfn "/Volumes/My Shared Files/$SHARE_NAME" "$HOME/$SHARE_NAME"
+  else
+    echo "$HOME/$SHARE_NAME exists and is not a link; the share stays at /Volumes/My Shared Files/$SHARE_NAME" >&2
+  fi
+fi
+
+# Housekeeping. Each setting is rewritten on every run, so a change made in System Settings is reverted.
+# Spotlight indexing off: Cirrus Labs' images already have it off; a VMPal install indexes from the start.
+mdutil -s / | grep -q 'disabled' || sudo mdutil -a -i off
+# macOS updates are not downloaded or installed automatically, so a multi-GB update does not fill the guest disk.
+# Checking stays on, as do security responses and system data files (XProtect).
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
+# Reduce Motion and Reduce Transparency: less for the guest's GPU and Screen Sharing to draw. Applied at next login.
+defaults write com.apple.universalaccess reduceMotion -bool true
+defaults write com.apple.universalaccess reduceTransparency -bool true
 
 # Apps, before the provisioned check so `./vm.sh provision` adds them to existing VMs. Each step is a no-op once done.
 # chatgpt is Codex Desktop's replacement: Homebrew deprecated codex-app as discontinued upstream.
-brew install --cask ghostty helium-browser paseo claude chatgpt bb
+# vorssaint is also in the shared mise config; installing it here lets the Dock pin it before the bootstrap.
+brew install --cask ghostty helium-browser paseo claude chatgpt bb slack vorssaint
 
 # app_version <bundle>: installed CFBundleShortVersionString, or empty.
 app_version() { defaults read "$1/Contents/Info" CFBundleShortVersionString 2>/dev/null || true; }
@@ -184,7 +206,7 @@ fi
 # Dock, after the bootstrap: its shared [bootstrap.macos.dock] (bottom, autohide) is for the host Macs. A VM gets
 # exactly these apps (Finder is always first), on the right and always shown. Rewritten only when it differs.
 # Casks land in ~/Applications once the dotfiles' .zshenv sets HOMEBREW_CASK_OPTS, and in /Applications before.
-dock_apps=(Ghostty Helium tty7 Paseo MonoCode Claude ChatGPT bb "System Settings")
+dock_apps=(Ghostty Helium tty7 Paseo MonoCode Claude ChatGPT bb Slack Vorssaint "System Settings")
 want=""
 for name in "${dock_apps[@]}"; do
   for dir in /Applications "$HOME/Applications" /System/Applications; do

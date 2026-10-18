@@ -11,7 +11,7 @@ Check the downloaded macOS entry first: this flow applies when its `account` is 
 ```bash
 export VM_OS=macos VM_NAME=macos-dev VM_USER=admin
 export VM_CPU=5 VM_MEMORY_GB=8 VM_DISK_GB=100
-export VM_SHARE_DIR="$HOME/git" VM_SHARE_NAME=git
+export VM_SHARE_DIR="$HOME/shared" VM_SHARE_NAME=shared
 export VM_NETWORK=shared VM_LOCAL_NETWORK=off   # ./vm.sh configure re-applies these in step 4
 export VM_SSH_PUBKEY="$HOME/.ssh/id_ed25519.pub"
 export VM_GITHUB_AUTH_KEY="$HOME/.ssh/github" VM_GITHUB_SIGNING_KEY=''
@@ -29,7 +29,7 @@ vmpal set "$VM_NAME" --share "$VM_SHARE_DIR:$VM_SHARE_NAME" \
 vmpal set "$VM_NAME" --unshare Downloads
 ```
 
-Set `VM_GITHUB_AUTH_KEY` to your intended GitHub key, or empty to skip copying a private key. The `git` share is live and writable; change `VM_SHARE_DIR` before provisioning if that access is not wanted.
+Set `VM_GITHUB_AUTH_KEY` to your intended GitHub key, or empty to skip copying a private key. The shared folder is live and writable; change `VM_SHARE_DIR` before provisioning if that access is not wanted.
 
 ## 2. Complete Setup Assistant
 
