@@ -1,0 +1,34 @@
+skills/code-review-and-quality/SKILL.md
+  s_a54d91cfb15fa9::t_3c9f6c8ef9d000 100-106
+skills/code-review-and-quality/dimensions/correctness.md
+  s_a54d91cfb15fa9::t_9f79a287071a5f 29
+  s_a54d91cfb15fa9::t_3c9f6c8ef9d000 28,33-34,46-49,60-61,81,85,87,103
+skills/code-review-and-quality/dimensions/architecture.md
+  s_a54d91cfb15fa9::t_3c9f6c8ef9d000 69
+skills/code-review-and-quality/dimensions/security.md
+  s_a54d91cfb15fa9::t_f2957f46e1c5a6 26,30,56-57,66-68,75-76,106
+  s_a54d91cfb15fa9::t_709f348565d83c 72
+skills/code-review-and-quality/dimensions/performance.md
+  s_a54d91cfb15fa9::t_f2957f46e1c5a6 68
+  s_a54d91cfb15fa9::t_709f348565d83c 28
+  s_a54d91cfb15fa9::t_9f79a287071a5f 71
+skills/code-review-and-quality/references/state-and-effects.md
+  s_a54d91cfb15fa9::t_9f79a287071a5f 8
+  s_a54d91cfb15fa9::t_3c9f6c8ef9d000 1-7,9-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e7a81d8521e1f9ce9ffc33a5cc7c47e1d746379",
+  "prompts": {},
+  "sessions": {
+    "s_a54d91cfb15fa9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14a11-4d13-7870-85ed-2cb7d2fbf625",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
