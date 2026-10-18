@@ -1,0 +1,37 @@
+virtual-machine/README.md
+  s_e7bc9ad884f98b::t_6462b5f0d8656b 18-24,84-85,88,96-101,129-146
+virtual-machine/guest/macos.sh
+  s_e7bc9ad884f98b::t_f216b20b53bc36 20-42,46-47,209
+virtual-machine/tart-macos/README.md
+  s_e7bc9ad884f98b::t_b27551dc0eed41 26-28,75,82
+virtual-machine/tart-macos/config.env.example
+  s_e7bc9ad884f98b::t_d1cca8b1af995b 8,14-17
+virtual-machine/tart-macos/vm.sh
+  s_e7bc9ad884f98b::t_adaf9414815ac2 20-22,27-29,40,134,147,149-150,250
+virtual-machine/vmpal-macos/MACOS-MANUAL-SETUP.md
+  s_e7bc9ad884f98b::t_9e7aea5f9e6d8b 14,32
+virtual-machine/vmpal-macos/README.md
+  s_e7bc9ad884f98b::t_39f6b486be8fb2 42,87
+virtual-machine/vmpal-macos/config.env.example
+  s_e7bc9ad884f98b::t_7204e7eae8e04b 9,23-25
+virtual-machine/vmpal-macos/guest/ubuntu.sh
+  s_e7bc9ad884f98b::t_812e60a3294639 9-20
+virtual-machine/vmpal-macos/vm.sh
+  s_e7bc9ad884f98b::t_85327525a3b33e 26-28,30-31,131-136,138,325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98cf5201e1bbe1b8a31ddc602ae58b3a5043e441",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
