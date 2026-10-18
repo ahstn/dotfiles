@@ -4,15 +4,16 @@ Use [Finding requirements](../SKILL.md#finding-requirements) for reportable issu
 
 ## Comment style
 
-Use ASD-STE100 Simplified Technical English and aim for a Flesch–Kincaid Grade Level of 7–10.
+Use ASD-STE100 Simplified Technical English with a Flesch–Kincaid Grade Level no higher than 9.
 
 Guidelines:
 
 - keep the referenced range as small as possible
-- keep the prose to one short paragraph when possible
+- keep comments brief and coherent, usually in one short paragraph
 - state conditionality explicitly when severity depends on inputs or environment
 - make inferences explicit rather than presenting them as facts
-- avoid praise and filler; state uncertainty precisely
+- avoid vague wording, repetition, praise, and filler; state uncertainty precisely
+- use domain terms when they improve precision; avoid ornamental jargon
 - state material structural regressions directly; do not soften a merge blocker into an optional cleanup request
 
 Bad:
