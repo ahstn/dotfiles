@@ -136,6 +136,11 @@ trap 'pkill -P "$timer_pid" 2>/dev/null || true; kill "$timer_pid" 2>/dev/null |
 wait "$sshd_pid" || [ $? -eq 143 ]  # 143 = stopped by the timer
 '''
 
+[tasks.tern-plugins-link]
+description = "Link the Git branch tabs plugin into Tern"
+dir = "{{ config_root }}"
+run = 'tern plugin link "$PWD/.config/tern/plugins/git-branch-tabs"'
+
 [tasks.upgrade-tern]
 description = "Install Tern in ~/.local/opt, link ~/.local/bin/tern, keep the previous install, and restart tern-remote (requires sudo)"
 dir = "{{cwd}}"

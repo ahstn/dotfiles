@@ -1,0 +1,7 @@
+schema = 1
+id = "git-branch-tabs"
+name = "Git Branch Tabs"
+version = "0.1.0"
+description = "Show the focused pane's Git branch below its tab title."
+icon = "git-branch"
+window = "window.luau"
