@@ -44,7 +44,6 @@ Autonomy:
 
 - Data shape, boundaries, file and module structure → `code-structure-and-modularity`.
 - Simplify working code, or size a diff → `code-simplification`. Match the solution to the task: a field change is not a redesign.
-- Surgical edits in an existing codebase → `karpathy-guidelines`.
 - Review a diff or PR → `code-review-and-quality`.
 - Contested design or open decisions that need the user's input, or the user asks for it → `grill`.
 - Upstream source or library internals → `github-librarian`.
@@ -55,6 +54,7 @@ Autonomy:
 ## Code and verification
 
 - Stateful logic, branching, or a shape repeated across files: name the data shape and its organizing structure before writing logic. Trivial edits skip this.
+- Every changed line traces to the request. Match the file's existing style. No speculative abstractions, config, or error handling for impossible states.
 - Reproduce a bug before fixing it, and re-run the failing case live after the fix. When re-running a failed batch, retry one case first, then the rest.
 - Tests exercise real behavior through public entry points, real Git, and real binaries. No tests of mocks, source text, wording, or defaults.
 - Fail closed: missing, malformed, or unknown evidence is a failure or "unknown", never a pass or zero.
