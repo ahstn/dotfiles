@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Install VM_SSH_PUBKEY with the image password, then make SSH key-only"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_keys

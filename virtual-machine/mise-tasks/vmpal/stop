@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Shut the VM down"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_stop

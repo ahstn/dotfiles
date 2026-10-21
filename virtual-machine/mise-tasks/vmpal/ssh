@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="SSH into the guest, or run a command there"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_ssh "$@"

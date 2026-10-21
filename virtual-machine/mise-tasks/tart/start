@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run the VM in the background (a window unless VM_HEADLESS=1) and wait for its IP"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_start

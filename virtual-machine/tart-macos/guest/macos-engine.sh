@@ -7,6 +7,6 @@ engine_prepare() {
   [ ! -f ~/.gitconfig ] || [ -L ~/.gitconfig ] || mv ~/.gitconfig ~/.gitconfig.base-image
 }
 
-# vm.sh provision streams VM_TAILSCALE_AUTHKEY over SSH's stdin into this private file, so the key is in neither
+# tart:provision streams VM_TAILSCALE_AUTHKEY over SSH's stdin into this private file, so the key is in neither
 # side's process list.
 engine_tailscale_authkey_file() { [ ! -f "$HOME/.tailscale-authkey" ] || echo "$HOME/.tailscale-authkey"; }

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Print the guest's IP"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_ip

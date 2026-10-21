@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Give the guest account passwordless sudo (also run by keys and provision)"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_sudo

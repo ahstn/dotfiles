@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Copy GitHub keys and run guest/macos.sh (apps, daemons, mise bootstrap) over SSH"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_provision

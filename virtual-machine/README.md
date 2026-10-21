@@ -9,11 +9,16 @@ disk performance are about equal, and both run the same guest script, so the VMs
 | [VMPal](https://vmpal.com) | [`vmpal-macos/`](vmpal-macos/README.md) | The default on macOS 27 hosts: unattended macOS install, guest tools and UI control for agents, Ubuntu desktops with GPU |
 | [Tart](https://tart.run) | [`tart-macos/`](tart-macos/README.md) | Any recent host: a prebuilt, already set-up image, headless runs, everything over SSH |
 
+Both are driven by [mise](https://mise.jdx.dev) tasks from this folder:
+
 ```bash
-cd virtual-machine/vmpal-macos   # or tart-macos
-cp config.env.example config.env # optional
-./vm.sh all
+cd virtual-machine
+cp mise.local.toml.example mise.local.toml   # optional
+mise trust
+mise run vmpal:all                           # or tart:all
 ```
+
+`mise tasks` lists every task, and `mise run <task> --help` shows a task's arguments.
 
 > [!WARNING]
 > Keep repositories, build output and `node_modules` on the guest's own disk (the guest's `~/git`), not in the
@@ -33,7 +38,7 @@ cp config.env.example config.env # optional
 | GPU | Paravirtualised on macOS; OpenGL 4.1 (virgl) on Linux | Paravirtualised on macOS; none on Linux |
 | Talking to the guest | VMPal Tools: `vmpal exec` / `vmpal cp`, no SSH or password needed to provision | SSH, after `keys` uses the image password once |
 | Agent tooling | `vmpal ui` observes, screenshots and clicks the guest's screen (used to accept dialogs such as the default browser's); `vmpal exec` runs commands | SSH only |
-| Networking | `VM_NETWORK`: `shared` (NAT), `bridged` or `host-only`, plus an optional local network | `VM_NET`: `nat` or `bridged` |
+| Networking | `VM_NETWORK`: `shared` (NAT), `bridged` or `host-only`, plus an optional local network | `VM_NETWORK`: `shared` (NAT) or `bridged` |
 | Snapshots | `vmpal snapshot` / `vmpal revert` | `tart clone` to `<name>-<tag>` (APFS copy) |
 | Reusable base | `vmpal clone`, or `vmpal compress` / `vmpal import` (`.vmpalvm`) | push or clone OCI images |
 
@@ -45,16 +50,21 @@ Choose **Tart** on a macOS 26 host, for headless or scripted runs, or when nothi
 ```text
 virtual-machine/
 ├── README.md               # this file: what both engines share
+├── mise.toml               # the tasks' config: Tart for the tart:* tasks, the lint task
+├── mise.local.toml.example # your settings, as mise.local.toml (git-ignored)
+├── .miserc.toml            # keeps the dotfiles repo's own mise config out of this folder
+├── mise-tasks/tart/*, mise-tasks/vmpal/*   # one file task per command: tart:start, vmpal:provision, ...
+├── lib/common.sh, lib/tart.sh, lib/vmpal.sh  # the tasks' bash
 ├── guest/macos.sh          # the macOS guest script, shared by both engines
 ├── tart-macos/
-│   ├── vm.sh, config.env.example, README.md
+│   ├── README.md
 │   └── guest/macos-engine.sh
 └── vmpal-macos/
-    ├── vm.sh, config.env.example, README.md, MACOS-MANUAL-SETUP.md
+    ├── README.md, MACOS-MANUAL-SETUP.md
     └── guest/macos-engine.sh, guest/ubuntu.sh
 ```
 
-Each engine's `vm.sh provision` copies `guest/macos.sh` into the guest beside that engine's
+Each engine's `provision` task copies `guest/macos.sh` into the guest beside that engine's
 `guest/macos-engine.sh`, which defines two hooks the shared script calls:
 
 - `engine_prepare`, run first: Tart moves the base image's CI `~/.gitconfig` aside; VMPal has nothing to do.
@@ -62,7 +72,24 @@ Each engine's `vm.sh provision` copies `guest/macos.sh` into the guest beside th
   nothing. The shared script logs in with it and deletes it.
 
 Engine-specific steps (creating the VM, the account, its password, sudo, SSH keys, networking) stay in each
-`vm.sh`. Both read settings from exported env vars, then the git-ignored `config.env` beside them, then defaults.
+engine's `lib/<engine>.sh`. Each task file sources it and calls one function.
+
+### Settings
+
+Settings are `VM_*` environment variables. mise sets them from `[env]` in `mise.local.toml`, and the libs fill
+in defaults for the rest. `mise.local.toml.example` lists them all. Written as `VM_CPU = { default = "6" }`, a
+value still gives way to one exported in your shell, so `VM_CPU=4 mise run tart:configure` works for one run.
+Secrets (`VM_TAILSCALE_AUTHKEY`, a real `VM_PASSWORD`) are exported for the one run and never go in the file.
+
+The `.miserc.toml` here leaves out the repo's root `mise.toml` and `.config/mise/`, so a task doesn't first
+install every tool the dotfiles declare. Tart comes from the mise registry (`aqua:openai/tart`), pinned in
+`mise.toml` and installed for the `tart:*` tasks only. `mise run lint` runs shellcheck over the tasks, the libs
+and the guest scripts.
+
+Moving from `vm.sh`: copy the settings from an old `config.env` into `mise.local.toml`. Tart's `VM_NET`
+(`nat`/`bridged`), `VM_BRIDGE_IF` and `VM_MEMORY_MIB` are now `VM_NETWORK` (`shared`/`bridged`), `VM_BRIDGE`
+and `VM_MEMORY_GB`, the same names as VMPal. Tart's `build/` moved from `tart-macos/build` to `build/tart`, so
+the first SSH connection records the guest's host key again.
 
 ## Shared prerequisites
 
@@ -71,8 +98,10 @@ Engine-specific steps (creating the VM, the account, its password, sudo, SSH key
 3. Optionally, GitHub keys for the guest: `VM_GITHUB_AUTH_KEY` (`~/.ssh/github`) and `VM_GITHUB_SIGNING_KEY`
    (`~/.ssh/github-signing-key`). Set either empty to skip it.
 4. Apple's licence allows two macOS VMs running at once per Mac, across both engines.
-5. Optionally, a Tailscale auth key, exported as `VM_TAILSCALE_AUTHKEY` for one `./vm.sh provision` run. Never
-   put it in `config.env`.
+5. Optionally, a Tailscale auth key, exported as `VM_TAILSCALE_AUTHKEY` for one `provision` run. Never put it
+   in `mise.local.toml`.
+6. [mise](https://mise.jdx.dev/getting-started.html) 2026.10.12 or later, which runs the tasks and installs
+   Tart.
 
 ## What every macOS VM gets
 
@@ -86,7 +115,7 @@ Engine-specific steps (creating the VM, the account, its password, sudo, SSH key
 | Dotfiles | on the first run (or `FORCE=1`): `~/git/dotfiles` cloned over HTTPS, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
 | mise | `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`) |
 | Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb, Slack, Vorssaint and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
-| Checks | `./vm.sh check` prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |
+| Checks | the `check` task prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |
 
 ### Apps
 
@@ -108,11 +137,11 @@ VMs. Steps that are already done are skipped. Homebrew is installed first if mis
 - **MonoCode host:** `monocode-host-darwin-arm64.tar.gz`, checked against its `.sha256`, into
   `~/.local/opt/monocode-host/<ver>` with a wrapper in `~/.local/bin`, and registered as the `com.monocode.host`
   launchd agent. From the host Mac's MonoCode, add the VM under Settings → Connections → Add machine, as
-  `admin@<./vm.sh ip>`.
+  `admin@<mise run tart:ip>`.
 - **Paseo daemon:** the `sh.paseo.daemon` launchd agent runs the cask's `paseo daemon run` on `127.0.0.1:6767`,
   with the web UI on and the relay off, logging to `~/Library/Logs/paseo-daemon.log`. The cask's CLI runs on the
   app's bundled runtime, so it needs no Node. The agent reloads only when its plist changes. The host Mac's Paseo
-  can add `ssh://admin@<./vm.sh ip>` as a Remote SSH host.
+  can add `ssh://admin@<mise run tart:ip>` as a Remote SSH host.
 - **Tailscale:** `brew:tailscale` from the bootstrap, run as a root launchd daemon
   (`tailscaled install-system-daemon`) on every provision. The Tailscale app is not used: its network extension
   needs approval in the GUI. Without `VM_TAILSCALE_AUTHKEY`, run `sudo tailscale up` in the guest afterwards.
@@ -121,14 +150,14 @@ VMs. Steps that are already done are skipped. Homebrew is installed first if mis
 
 ```bash
 git pull
-./vm.sh start
-./vm.sh provision     # apps, Dock, daemons; the dotfiles steps are skipped unless FORCE=1
-./vm.sh check
+mise run tart:start       # or vmpal:start
+mise run tart:provision   # apps, Dock, daemons; the dotfiles steps are skipped unless FORCE=1
+mise run tart:check
 ```
 
 Existing VMs move from the old `~/git` share to `~/shared`: `provision` replaces the guest's `~/host-git` link
-with `~/shared`, Tart mounts the new folder on the next `./vm.sh start`, and VMPal's `./vm.sh configure` removes
-the old `git` share. A `config.env` that still sets `VM_SHARE_DIR=$HOME/git` keeps the old share.
+with `~/shared`, Tart mounts the new folder on the next `tart:start`, and `vmpal:configure` removes the old `git`
+share. A `VM_SHARE_DIR` that still points at `~/git` keeps the old share.
 
 ### Performance
 
@@ -140,16 +169,16 @@ the old `git` share. A `config.env` that still sets `VM_SHARE_DIR=$HOME/git` kee
   10% faster on an M2 Pro (3m59s to 3m35s) and single-process 4 KiB random writes about 35% faster on an M1 Pro. It was slower
   in some other tests on that Mac, and much slower on an EBS-backed EC2 Mac. Set it empty if a workload
   regresses. `sync=none` is faster still but can lose data if the host crashes, so it is not used.
-- **Disk headroom:** keep the guest disk well short of full; `./vm.sh check` prints its usage and `VM_DISK_GB`
+- **Disk headroom:** keep the guest disk well short of full; the `check` task prints its usage and `VM_DISK_GB`
   grows it. On the host, `tart prune --older-than=30` clears Tart's cached OCI and IPSW images that have not been
   used for 30 days. VMs and snapshots are separate copies, so it does not touch them.
 
 ### SSH from another device
 
 Both engines can bridge the guest onto the LAN and run the dotfiles' sshd template and task in it
-(`./vm.sh sshd start [minutes]`, `status`, `stop`). It listens on port `VM_SSHD_PORT` (`48222`), with keys only
-(`VM_SSHD_AUTHORIZED_KEYS`) and `AllowUsers <user>@<VM_SSHD_ALLOW_FROM>`. See each engine's README for its
-network settings.
+(`mise run tart:sshd start --minutes 180`, `status`, `stop`; or `vmpal:sshd`). It listens on port
+`VM_SSHD_PORT` (`48222`), with keys only (`VM_SSHD_AUTHORIZED_KEYS`) and `AllowUsers <user>@<VM_SSHD_ALLOW_FROM>`.
+See each engine's README for its network settings.
 
 ## Known blockers in the dotfiles repo
 
@@ -161,4 +190,4 @@ Not changed here; provisioning works around them:
    `~/.gitconfig.pre-dotfiles` (Tart's base image: `~/.gitconfig.base-image`).
 4. `[tasks.bootstrap]` installs the crontab in the VM too.
 
-Rerun with `FORCE=1 ./vm.sh provision`.
+Rerun with `FORCE=1 mise run tart:provision` (or `vmpal:provision`).

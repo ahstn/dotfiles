@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Copy GitHub keys and run the guest script (guest/macos.sh or vmpal-macos/guest/ubuntu.sh)"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_provision

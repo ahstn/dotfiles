@@ -1,7 +1,7 @@
 #!/bin/bash
-# Provisions a macOS guest for both engines. Runs inside the guest as the signed-in user: the engine's vm.sh
-# provision copies it in beside that engine's guest/macos-engine.sh and runs it (tart-macos over SSH,
-# vmpal-macos through VMPal Tools). Needs passwordless sudo, which Homebrew's unattended install also uses.
+# Provisions a macOS guest for both engines. Runs inside the guest as the signed-in user: the engine's provision
+# task (tart:provision or vmpal:provision) copies it in beside that engine's guest/macos-engine.sh and runs it
+# (Tart over SSH, VMPal through VMPal Tools). Needs passwordless sudo, which Homebrew's unattended install also uses.
 # Env: FORCE=1 reruns the dotfiles bootstrap; SHARE_NAME names the host folder shared into the guest.
 set -eux -o pipefail
 
@@ -41,7 +41,8 @@ sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyI
 defaults write com.apple.universalaccess reduceMotion -bool true
 defaults write com.apple.universalaccess reduceTransparency -bool true
 
-# Apps, before the provisioned check so `./vm.sh provision` adds them to existing VMs. Each step is a no-op once done.
+# Apps, before the provisioned check so rerunning the provision task adds them to existing VMs. Each step is a
+# no-op once done.
 # chatgpt is Codex Desktop's replacement: Homebrew deprecated codex-app as discontinued upstream.
 # vorssaint is also in the shared mise config; installing it here lets the Dock pin it before the bootstrap.
 brew install --cask ghostty helium-browser paseo claude chatgpt bb slack vorssaint

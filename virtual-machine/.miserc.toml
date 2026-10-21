@@ -1,0 +1,4 @@
+# This folder is a mise project of its own: leave out the dotfiles repo's config above it, so a VM task does not
+# first install every tool the dotfiles declare. A ~/.config/mise/config.toml linked from the repo still loads,
+# as the global config.
+ignored_config_paths = ["../mise.toml", "../.config/mise"]

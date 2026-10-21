@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Check the host and VMPal; link the vmpal CLI into ~/.local/bin"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_prereqs

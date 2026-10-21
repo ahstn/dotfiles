@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Authorise VM_SSH_PUBKEY and turn on key-only SSH in the guest"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_keys

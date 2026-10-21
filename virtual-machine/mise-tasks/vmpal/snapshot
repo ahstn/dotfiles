@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Stop the VM and take a VMPal snapshot"
+#USAGE arg "[tag]" default="provisioned" help="Snapshot name"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+# shellcheck disable=SC2154 # usage_* come from the #USAGE spec
+cmd_snapshot "$usage_tag"

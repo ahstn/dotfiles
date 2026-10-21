@@ -1,10 +1,10 @@
 # shellcheck shell=bash
-# VMPal hooks for the shared ../../guest/macos.sh, which sources this file in the guest. vm.sh sudo gives the
+# VMPal hooks for the shared ../../guest/macos.sh, which sources this file in the guest. vmpal:sudo gives the
 # account passwordless sudo first; the shared script installs Homebrew, which a fresh VMPal install lacks.
 
 engine_prepare() { :; }
 
-# vm.sh provision passes VM_TAILSCALE_AUTHKEY with `vmpal exec --env`. Write it to a private file without tracing,
+# vmpal:provision passes VM_TAILSCALE_AUTHKEY with `vmpal exec --env`. Write it to a private file without tracing,
 # since the shared script runs under set -x.
 engine_tailscale_authkey_file() {
   { set +x; } 2>/dev/null

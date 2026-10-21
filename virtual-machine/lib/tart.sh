@@ -1,58 +1,24 @@
-#!/bin/bash
-# Reproducible macOS VM on Tart (Apple Silicon). See README.md, and ../README.md for both engines.
-# Targets macOS's bash 3.2: no associative arrays, no mapfile.
-set -euo pipefail
-
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD="$HERE/build"
-
-# Precedence: environment > config.env > defaults below.
-_env_overrides="$(export -p | grep -E '^declare -x (VM_|TART=)' || true)"
-# shellcheck disable=SC1091
-[ -f "$HERE/config.env" ] && . "$HERE/config.env"
-eval "$_env_overrides"
-unset _env_overrides
+# shellcheck shell=bash
+# Reproducible macOS VM on Tart (Apple Silicon), for the tart:* tasks. See ../tart-macos/README.md, and
+# ../README.md for both engines. Tart itself comes from the tasks' `tart` template in ../mise.toml.
+# shellcheck source=lib/common.sh
+. "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 : "${VM_NAME:=macos-dev}"
 : "${VM_IMAGE:=ghcr.io/cirruslabs/macos-tahoe-base:latest}"
 : "${VM_USER:=admin}"                      # the base image's account
 : "${VM_IMAGE_PASSWORD:=admin}"            # its published password, used once to install the SSH key
-# vCPUs run as high-priority host threads: they fill the performance cores first, then spill onto efficiency cores.
-HOST_CORES="$(sysctl -n hw.ncpu)" HOST_PCORES="$(sysctl -n hw.perflevel0.physicalcpu 2>/dev/null || sysctl -n hw.ncpu)"
-: "${VM_CPU:=$(( HOST_CORES / 2 < HOST_PCORES ? HOST_CORES / 2 : HOST_PCORES ))}"   # half the cores, at most the P cores
-: "${VM_MEMORY_MIB:=8192}"
 : "${VM_DISK_GB:=100}"                     # grow only; the base image ships 50 GB
 : "${VM_DISPLAY:=1920x1200}"
 : "${VM_HEADLESS:=0}"                      # 1 = no window (--no-graphics); Screen Sharing still works
-: "${VM_SHARE_DIR=$HOME/shared}"           # mounted in the guest at "/Volumes/My Shared Files/<name>"; empty = none
-: "${VM_SHARE_NAME:=shared}"
 : "${VM_ROOT_DISK_OPTS=caching=cached}"    # tart run --root-disk-opts; empty = Tart's default
-: "${VM_NET:=nat}"                         # nat (host-only reachable) | bridged (own LAN address)
-: "${VM_BRIDGE_IF:=en0}"
-: "${VM_SSH_PUBKEY:=$HOME/.ssh/id_ed25519.pub}"
-: "${VM_SSHD_PORT:=48222}"
-: "${VM_SSHD_ALLOW_FROM:=192.168.1.168}"   # LAN clients allowed into the ephemeral sshd (bridged only)
-: "${VM_SSHD_AUTHORIZED_KEYS:=$VM_SSH_PUBKEY}"
-: "${VM_GITHUB_AUTH_KEY=$HOME/.ssh/github}"                 # private key for git@github.com; empty = skip
-: "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
+: "${VM_BRIDGE:=auto}"                     # bridged only: en0, en1, ... or auto (see cmd_start)
+# VM_ADDRESS: reach the guest at this host name or IP instead of asking Tart, e.g. its Tailscale name for a VM
+# on another Mac. The SSH tasks (keys, provision, check, github-keys, sshd, ssh) then work from anywhere.
 
-# Release used when Homebrew cannot install the tap (cirruslabs/cli/tart breaks on Homebrew 7's `depends_on`).
-TART_VERSION=2.41.1
-TART_TEAM_ID=9M2P8L4D89   # Cirrus Labs, Inc. Developer ID
-TART_HOME="$HOME/.local/opt/tart"
-
-log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
-
-find_tart() {
-  if [ -n "${TART:-}" ]; then return; fi
-  if command -v tart >/dev/null; then TART="$(command -v tart)"
-  elif [ -x "$TART_HOME/$TART_VERSION/tart.app/Contents/MacOS/tart" ]; then TART="$TART_HOME/$TART_VERSION/tart.app/Contents/MacOS/tart"
-  else TART=""; fi
-}
-find_tart
-tart() { [ -n "$TART" ] || die "tart not installed; run: $0 prereqs"; "$TART" "$@"; }
+TART_TEAM_ID=9M2P8L4D89   # Cirrus Labs, Inc. Developer ID, which still signs the openai/tart releases
+BUILD="$BUILD/tart"
+mkdir -p "$BUILD"
 
 vm_exists() { tart get "$VM_NAME" >/dev/null 2>&1; }
 vm_state()  { tart list --format json | python3 -c 'import json, sys
@@ -62,63 +28,37 @@ running()   { [ "$(vm_state)" = running ]; }
 
 # Bridged guests are not in the host's vmnet DHCP leases, so ask the ARP table instead.
 vm_ip() {
-  local resolver=dhcp; [ "$VM_NET" = bridged ] && resolver=arp
+  local resolver=dhcp; [ "$VM_NETWORK" = bridged ] && resolver=arp
   tart ip --wait "${1:-120}" --resolver "$resolver" "$VM_NAME"
 }
 
-mkdir -p "$BUILD"
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$BUILD/known_hosts" -o ConnectTimeout=10)
 [ -f "${VM_SSH_PUBKEY%.pub}" ] && SSH_OPTS+=(-i "${VM_SSH_PUBKEY%.pub}" -o IdentitiesOnly=yes)
 
-GUEST_IP=""
-guest_addr() { [ -n "$GUEST_IP" ] || GUEST_IP="$(vm_ip)" || die "no IP for '$VM_NAME'; is it running? ($0 start)"; echo "$VM_USER@$GUEST_IP"; }
+GUEST_IP="${VM_ADDRESS:-}"
+guest_addr() { [ -n "$GUEST_IP" ] || GUEST_IP="$(vm_ip)" || die "no IP for '$VM_NAME'; is it running? (mise run tart:start)"; echo "$VM_USER@$GUEST_IP"; }
 guest_ssh()  { local a; a="$(guest_addr)"; ssh "${SSH_OPTS[@]}" -o BatchMode=yes "$a" "$@"; }
 
 wait_for_ssh() {
   # Resolve once here, outside a subshell, so later guest_addr calls reuse it.
-  [ -n "$GUEST_IP" ] || GUEST_IP="$(vm_ip)" || die "no IP for '$VM_NAME'; is it running? ($0 start)"
+  [ -n "$GUEST_IP" ] || GUEST_IP="$(vm_ip)" || die "no IP for '$VM_NAME'; is it running? (mise run tart:start)"
   local waited=0 a; a="$(guest_addr)"
   until ssh "${SSH_OPTS[@]}" -o BatchMode=yes "$a" true 2>/dev/null; do
-    [ "$waited" -ge 300 ] && die "no key-based SSH to $a after 5 minutes (run: $0 keys)"
+    [ "$waited" -ge 300 ] && die "no key-based SSH to $a after 5 minutes (run: mise run tart:keys)"
     sleep 5; waited=$((waited + 5))
   done
 }
 
-# --- subcommands -------------------------------------------------------------
+# --- tasks -------------------------------------------------------------------
 
+# mise installs tart before any tart:* task runs; this checks the host and the binary it installed.
 cmd_prereqs() {
-  [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || die "needs an Apple Silicon Mac"
-  find_tart
-  if [ -z "$TART" ]; then
-    log "installing tart"
-    if command -v brew >/dev/null && brew install cirruslabs/cli/tart; then find_tart
-    else
-      warn "Homebrew install failed; using the notarized GitHub release v$TART_VERSION"
-      install_tart_release; find_tart
-    fi
-  fi
-  [ -n "$TART" ] || die "tart install failed"
-  log "tart $("$TART" --version) at $TART"
-}
-
-# Release tarball, checked against the release's checksum list, its code signature and notarization.
-install_tart_release() {
-  local dir="$TART_HOME/$TART_VERSION" tmp base="https://github.com/cirruslabs/tart/releases/download/$TART_VERSION" want got
-  tmp="$(mktemp -d)"
-  curl -fsSL -o "$tmp/tart.tar.gz" "$base/tart.tar.gz"
-  curl -fsSL -o "$tmp/sums.txt" "$base/tart_${TART_VERSION}_checksums.txt"
-  want="$(awk '$2 == "tart.tar.gz" {print $1}' "$tmp/sums.txt")"
-  got="$(shasum -a 256 "$tmp/tart.tar.gz" | awk '{print $1}')"
-  [ -n "$want" ] && [ "$want" = "$got" ] || die "tart.tar.gz checksum mismatch"
-  mkdir -p "$tmp/x" && tar -xzf "$tmp/tart.tar.gz" -C "$tmp/x"
-  codesign --verify --deep --strict "$tmp/x/tart.app" || die "tart.app signature invalid"
-  codesign -dv "$tmp/x/tart.app" 2>&1 | grep -qx "TeamIdentifier=$TART_TEAM_ID" || die "tart.app not signed by Cirrus Labs"
-  spctl -a -t exec "$tmp/x/tart.app" 2>/dev/null || warn "Gatekeeper did not accept tart.app (spctl)"
-  rm -rf "$dir" && mkdir -p "$(dirname "$dir")" && mv "$tmp/x" "$dir" && rm -rf "$tmp"
-  mkdir -p ~/.local/bin
-  printf '#!/bin/sh\nexec %s/tart.app/Contents/MacOS/tart "$@"\n' "$dir" > ~/.local/bin/tart
-  chmod 755 ~/.local/bin/tart
-  log "installed tart $TART_VERSION to $dir (wrapper: ~/.local/bin/tart)"
+  need_apple_silicon
+  local app; app="$(cd "$(dirname "$(command -v tart)")/../.." && pwd)"
+  codesign --verify --deep --strict "$app" || die "$app: signature invalid"
+  codesign -dv "$app" 2>&1 | grep -qx "TeamIdentifier=$TART_TEAM_ID" || die "$app: not signed by Cirrus Labs ($TART_TEAM_ID)"
+  spctl -a -t exec "$app" 2>/dev/null || warn "Gatekeeper did not accept $app (spctl)"
+  log "tart $(tart --version) at $app"
 }
 
 cmd_create() {
@@ -130,10 +70,10 @@ cmd_create() {
 }
 
 cmd_configure() {
-  running && die "stop the VM first ($0 stop)"
-  [ "$VM_CPU" -le "$HOST_PCORES" ] || warn "VM_CPU=$VM_CPU is more than this Mac's $HOST_PCORES performance cores"
-  log "configuring: $VM_CPU CPUs, $VM_MEMORY_MIB MiB, ${VM_DISK_GB} GB disk, $VM_DISPLAY display"
-  tart set "$VM_NAME" --cpu "$VM_CPU" --memory "$VM_MEMORY_MIB" --display "$VM_DISPLAY"
+  running && die "stop the VM first (mise run tart:stop)"
+  warn_cpu
+  log "configuring: $VM_CPU CPUs, $VM_MEMORY_GB GB, ${VM_DISK_GB} GB disk, $VM_DISPLAY display"
+  tart set "$VM_NAME" --cpu "$VM_CPU" --memory "$(( VM_MEMORY_GB * 1024 ))" --display "$VM_DISPLAY"
   local cur; cur="$(tart get "$VM_NAME" --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["Disk"])')"
   if [ "$VM_DISK_GB" -gt "$cur" ]; then
     tart set "$VM_NAME" --disk-size "$VM_DISK_GB"   # the guest daemon grows APFS into it at boot
@@ -142,21 +82,27 @@ cmd_configure() {
 
 cmd_start() {
   running && { log "'$VM_NAME' already running at $(vm_ip 5 || echo '?')"; return; }
-  local args=()
+  local args=() bridge="$VM_BRIDGE"
   [ "$VM_HEADLESS" = 1 ] && args+=(--no-graphics)
   [ -z "$VM_ROOT_DISK_OPTS" ] || args+=(--root-disk-opts "$VM_ROOT_DISK_OPTS")
   if [ -n "$VM_SHARE_DIR" ]; then
     mkdir -p "$VM_SHARE_DIR"
     args+=(--dir "$VM_SHARE_NAME:$VM_SHARE_DIR")
   fi
-  case "$VM_NET" in
-    nat) ;;
-    bridged) args+=(--net-bridged "$VM_BRIDGE_IF") ;;
-    *) die "VM_NET must be nat or bridged" ;;
+  case "$VM_NETWORK" in
+    shared|nat) ;;
+    bridged)
+      # auto: the default route's interface, unless that is a VPN tunnel (utun*), which cannot be bridged.
+      if [ "$bridge" = auto ]; then
+        bridge="$(route -n get default 2>/dev/null | awk '/interface:/ {print $2}')"
+        case "$bridge" in en*) ;; *) bridge=en0 ;; esac
+      fi
+      args+=(--net-bridged "$bridge") ;;
+    *) die "VM_NETWORK must be shared or bridged on Tart" ;;
   esac
   log "starting '$VM_NAME' ${args[*]:-}"
-  # Detached from this shell so the VM outlives it; closing the window (or `vm.sh stop`) shuts it down.
-  nohup "$TART" run "$VM_NAME" "${args[@]}" > "$BUILD/run.log" 2>&1 < /dev/null &
+  # Detached from this shell so the VM outlives the task; closing the window (or tart:stop) shuts it down.
+  nohup tart run "$VM_NAME" "${args[@]}" > "$BUILD/run.log" 2>&1 < /dev/null &
   local waited=0
   until running; do
     [ "$waited" -ge 30 ] && { tail -20 "$BUILD/run.log" >&2; die "VM did not start"; }
@@ -173,9 +119,9 @@ cmd_stop() {
 }
 
 # Install VM_SSH_PUBKEY with the image's published password (once), then turn password logins off for sshd:
-# the account keeps admin/admin for the console, but SSH is key-only, which matters with VM_NET=bridged.
+# the account keeps admin/admin for the console, but SSH is key-only, which matters with VM_NETWORK=bridged.
 cmd_keys() {
-  [ -f "$VM_SSH_PUBKEY" ] || die "no SSH public key at $VM_SSH_PUBKEY (ssh-keygen -t ed25519)"
+  need_pubkey
   local a; a="$(guest_addr)"
   if ! ssh "${SSH_OPTS[@]}" -o BatchMode=yes "$a" true 2>/dev/null; then
     log "installing $VM_SSH_PUBKEY with the image password"
@@ -193,7 +139,7 @@ cmd_keys() {
   wait_for_ssh
   guest_ssh 'sudo -n true' || die "$VM_USER has no passwordless sudo; provisioning needs it"
   guest_ssh 'f=/etc/ssh/sshd_config.d/100-vm-keys-only.conf
-    printf "%s\n" "# vm.sh: key-only SSH" "PasswordAuthentication no" "KbdInteractiveAuthentication no" | sudo tee "$f" >/dev/null'
+    printf "%s\n" "# vm: key-only SSH" "PasswordAuthentication no" "KbdInteractiveAuthentication no" | sudo tee "$f" >/dev/null'
   log "SSH is key-only: ssh $a"
 }
 
@@ -210,17 +156,13 @@ cmd_password() {
   fi
   [ "${#pw}" -ge 4 ] || die "guest password must be at least 4 characters"
   wait_for_ssh
-  printf '%s\n%s\n' "$VM_IMAGE_PASSWORD" "$pw" | guest_ssh 'IFS= read -r old; IFS= read -r new
+  { printf '%s\n%s\n' "$VM_IMAGE_PASSWORD" "$pw"; printf '%s' "$pw" | kcpassword_b64; } | guest_ssh '
+    IFS= read -r old; IFS= read -r new; IFS= read -r kc
     dscl . -passwd "/Users/$USER" "$old" "$new" || { echo "current password is not VM_IMAGE_PASSWORD" >&2; exit 1; }
     security set-keychain-password -o "$old" -p "$new" ~/Library/Keychains/login.keychain-db \
       || echo "warn: login keychain password unchanged" >&2
     if [ "$(sudo -n defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null)" = "$USER" ]; then
-      # sysadminctl -autologin set fails here (SACSetAutoLoginPassword error 22) yet exits 0, so write
-      # /etc/kcpassword directly: the password XORed with a fixed, published key, NUL-padded to 12-byte blocks.
-      printf "%s" "$new" | python3 -c "import sys
-k = [0x7D, 0x89, 0x52, 0x23, 0xD2, 0xBC, 0xDD, 0xEA, 0xA3, 0xB9, 0x1F]
-p = sys.stdin.buffer.read(); p += bytes(12 - len(p) % 12)
-sys.stdout.buffer.write(bytes(b ^ k[i % len(k)] for i, b in enumerate(p)))" | sudo -n tee /etc/kcpassword >/dev/null
+      printf "%s" "$kc" | base64 -D | sudo -n tee /etc/kcpassword >/dev/null
       sudo -n chmod 600 /etc/kcpassword
     fi'
   log "password changed for $VM_USER"
@@ -233,11 +175,11 @@ cmd_provision() {
     # Over stdin into a private file, so the key is not in either side's process list; ../guest/macos.sh deletes it.
     printf '%s' "$VM_TAILSCALE_AUTHKEY" | guest_ssh 'umask 077 && cat > ~/.tailscale-authkey'
   fi
-  # The provisioning shared with vmpal-macos, which sources this engine's hooks from beside it.
-  log "running ../guest/macos.sh as $VM_USER"
+  # The provisioning shared with VMPal, which sources this engine's hooks from beside it.
+  log "running guest/macos.sh as $VM_USER"
   guest_ssh 'rm -rf /tmp/vm-provision && mkdir -p /tmp/vm-provision'
-  guest_ssh 'cat > /tmp/vm-provision/provision.sh' < "$HERE/../guest/macos.sh"
-  guest_ssh 'cat > /tmp/vm-provision/macos-engine.sh' < "$HERE/guest/macos-engine.sh"
+  guest_ssh 'cat > /tmp/vm-provision/provision.sh' < "$VM_ROOT/guest/macos.sh"
+  guest_ssh 'cat > /tmp/vm-provision/macos-engine.sh' < "$VM_ROOT/tart-macos/guest/macos-engine.sh"
   ssh -t "${SSH_OPTS[@]}" "$(guest_addr)" \
     "FORCE=${FORCE:-0} SHARE_NAME='${VM_SHARE_DIR:+$VM_SHARE_NAME}' bash /tmp/vm-provision/provision.sh"
 }
@@ -264,18 +206,13 @@ cmd_snapshot() {
 }
 
 # Ephemeral LAN sshd in the guest, using the dotfiles' `mise run sshd` task + template. Only reachable from
-# the LAN with VM_NET=bridged; under NAT just the host can reach the guest. Tracked through the template's
-# PidFile (macOS shows the listener as "sshd: /usr/sbin/sshd -D ..."); open sessions are its children and end first.
-SSHD_PID_FN='pidf=$HOME/.config/sshd/sshd.pid
-sshd_pid() { p=$(cat "$pidf" 2>/dev/null) && ps -p "$p" -o command= 2>/dev/null | grep -q "sshd -D" && echo "$p"; }
-sshd_stop() { pkill -TERM -P "$1" 2>/dev/null; kill "$1"; }'
-
+# the LAN with VM_NETWORK=bridged; under NAT just the host can reach the guest.
 cmd_sshd() {
   local action="${1:-start}" minutes="${2:-180}"
   case "$action" in
     start)
       [ -f "$VM_SSHD_AUTHORIZED_KEYS" ] || die "no client public key at $VM_SSHD_AUTHORIZED_KEYS (set VM_SSHD_AUTHORIZED_KEYS)"
-      [ "$VM_NET" = bridged ] || warn "VM_NET=$VM_NET: the guest is not on the LAN, so only this Mac can reach the sshd"
+      [ "$VM_NETWORK" = bridged ] || warn "VM_NETWORK=$VM_NETWORK: the guest is not on the LAN, so only this Mac can reach the sshd"
       wait_for_ssh
       guest_ssh 'mkdir -p ~/.config/sshd && umask 077 && cat > ~/.config/sshd/authorized_keys' < "$VM_SSHD_AUTHORIZED_KEYS"
       # The template's default listen address is the guest's en0, which is its LAN address when bridged.
@@ -296,13 +233,13 @@ cmd_sshd() {
     status)
       guest_ssh "$SSHD_PID_FN
         if p=\$(sshd_pid); then echo \"running (pid \$p)\"; else echo stopped; fi" ;;
-    *) die "usage: $0 sshd [start [minutes]|stop|status]" ;;
+    *) die "usage: mise run tart:sshd [start|stop|status] [--minutes N]" ;;
   esac
 }
 
-# Copy the Mac's GitHub auth and signing keys into the guest's ~/.ssh, pin github.com's host keys
-# (from the TLS-served api.github.com/meta) and add a managed Host block. Separate from
-# VM_SSH_PUBKEY, which only authorises SSH *into* the guest. Files stream straight into place.
+# Copy the Mac's GitHub auth and signing keys into the guest's ~/.ssh, pin github.com's host keys and add a
+# managed Host block. Separate from VM_SSH_PUBKEY, which only authorises SSH *into* the guest. Files stream
+# straight into place.
 cmd_github_keys() {
   local pair key b pub hosts n=0
   wait_for_ssh
@@ -321,8 +258,7 @@ cmd_github_keys() {
   done
   [ "$n" -gt 0 ] || { warn "no GitHub keys copied"; return 0; }
 
-  hosts="$(curl -fsSL https://api.github.com/meta \
-    | grep -oE '"(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/=]+"' | tr -d '"' | sed 's/^/github.com /')" || hosts=""
+  hosts="$(github_host_keys)"
   if [ -n "$hosts" ]; then
     printf '%s\n' "$hosts" | guest_ssh 'cd ~/.ssh && touch known_hosts &&
       { grep -v "^github\.com " known_hosts || true; cat; } > known_hosts.tmp &&
@@ -352,39 +288,11 @@ cmd_ssh() { local a; a="$(guest_addr)"; exec ssh "${SSH_OPTS[@]}" "$a" "$@"; }
 cmd_ip()  { running || die "'$VM_NAME' is not running"; vm_ip 5; }
 
 cmd_all() {
-  [ -f "$VM_SSH_PUBKEY" ] || die "no SSH public key at $VM_SSH_PUBKEY (ssh-keygen -t ed25519)"
+  need_pubkey
   cmd_prereqs; cmd_create; cmd_start; cmd_keys
   if [ -n "${VM_PASSWORD:-}" ]; then cmd_password
-  else warn "'$VM_USER' keeps the image password '$VM_IMAGE_PASSWORD' (console and Screen Sharing); change it with: $0 password"
+  else warn "'$VM_USER' keeps the image password '$VM_IMAGE_PASSWORD' (console and Screen Sharing); change it with: mise run tart:password"
   fi
   cmd_provision; cmd_snapshot
   cmd_start
 }
-
-usage() {
-  cat <<EOF
-Usage: $0 <command>
-  prereqs     check host, install tart (Homebrew, else the verified GitHub release)
-  create      clone VM_IMAGE to VM_NAME and apply CPU/memory/disk/display
-  configure   re-apply CPU/memory/disk/display (VM stopped)
-  start       run the VM in the background (window unless VM_HEADLESS=1) and wait for its IP
-  stop        shut the VM down
-  keys        install VM_SSH_PUBKEY with the image password, then make SSH key-only
-  password    change the guest password (VM_PASSWORD or prompt); keychain and auto-login follow
-  provision   GitHub keys + ../guest/macos.sh (apps, mise bootstrap) over SSH
-  check       print acceptance-check results
-  github-keys copy GitHub auth/signing keys into the guest (also run by provision)
-  sshd        sshd start [minutes] | stop | status  (ephemeral LAN sshd; needs VM_NET=bridged)
-  snapshot    stop and clone to VM_NAME-<tag> (default tag: provisioned)
-  ssh [cmd]   ssh into the guest
-  ip          print the guest's IP
-  all         prereqs -> create -> start -> keys -> [password] -> provision -> snapshot -> start
-Config: env vars or config.env (see config.env.example).
-EOF
-}
-
-case "${1:-}" in
-  prereqs|create|configure|start|stop|keys|password|provision|check|snapshot|sshd|ssh|ip|all) c="$1"; shift; "cmd_$c" "$@" ;;
-  github-keys) shift; cmd_github_keys "$@" ;;
-  *) usage; exit 1 ;;
-esac

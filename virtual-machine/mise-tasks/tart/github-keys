@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Copy GitHub auth and signing keys into the guest (also run by provision)"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_github_keys
