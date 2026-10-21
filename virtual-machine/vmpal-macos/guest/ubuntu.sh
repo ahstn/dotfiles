@@ -6,8 +6,18 @@ set -eux -o pipefail
 export DEBIAN_FRONTEND=noninteractive PATH="$HOME/.local/bin:$PATH"
 apt_install() { sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" >/dev/null; }
 
-# The host folder VMPal shares (under /media/VMPal), linked under a stable path.
-[ -z "${SHARE_PATH:-}" ] || ln -sfn "$SHARE_PATH" "$HOME/host-$SHARE_NAME"
+# The host folder VMPal shares (under /media/VMPal), linked as ~/<name>. Links into the share from earlier
+# layouts (~/host-git) are removed; an existing real ~/<name> is left alone.
+for link in "$HOME"/host-*; do
+  [ -L "$link" ] && case "$(readlink "$link")" in /media/VMPal/*) rm "$link" ;; esac
+done
+if [ -n "${SHARE_PATH:-}" ]; then
+  if [ ! -e "$HOME/$SHARE_NAME" ] || [ -L "$HOME/$SHARE_NAME" ]; then
+    ln -sfn "$SHARE_PATH" "$HOME/$SHARE_NAME"
+  else
+    echo "$HOME/$SHARE_NAME exists and is not a link; the share stays at $SHARE_PATH" >&2
+  fi
+fi
 
 # The guest clock stops while the Mac sleeps, and chrony by default steps only in its first updates, then slews
 # for days; apt rejects repos "not valid yet" meanwhile. Step whenever it is more than a second off.
@@ -85,14 +95,19 @@ apt_repo tailscale https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg
   'Types: deb' 'URIs: https://pkgs.tailscale.com/stable/ubuntu' 'Suites: resolute' 'Components: main'
 apt_install tailscale
 # Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
-# on no command line. --operator lets $USER run `tailscale` without sudo.
+# on no command line. The trace is off while the key is expanded. --operator lets $USER run `tailscale` without sudo.
+{ set +x; } 2>/dev/null
+key='' has_key=''
 if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-  if ! tailscale status >/dev/null 2>&1; then
-    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
-    sudo tailscale up --operator="$USER" --auth-key="file:$key"
-    rm -f "$key" && trap - EXIT
-  fi
-elif ! tailscale status >/dev/null 2>&1; then
+  has_key=1
+  tailscale status >/dev/null 2>&1 || { key="$(mktemp)" && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"; }
+fi
+set -x
+if [ -n "$key" ]; then
+  trap 'rm -f "$key"' EXIT
+  sudo tailscale up --operator="$USER" --auth-key="file:$key"
+  rm -f "$key" && trap - EXIT
+elif [ -z "$has_key" ] && ! tailscale status >/dev/null 2>&1; then
   echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up --operator=\$USER"
 fi
 

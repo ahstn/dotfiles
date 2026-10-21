@@ -1,5 +1,5 @@
 #!/bin/bash
-# Reproducible macOS VM on Tart (Apple Silicon). See README.md; superseded by ../vm.sh (VMPal).
+# Reproducible macOS VM on Tart (Apple Silicon). See README.md, and ../README.md for both engines.
 # Targets macOS's bash 3.2: no associative arrays, no mapfile.
 set -euo pipefail
 
@@ -17,13 +17,16 @@ unset _env_overrides
 : "${VM_IMAGE:=ghcr.io/cirruslabs/macos-tahoe-base:latest}"
 : "${VM_USER:=admin}"                      # the base image's account
 : "${VM_IMAGE_PASSWORD:=admin}"            # its published password, used once to install the SSH key
-: "${VM_CPU:=$(( $(sysctl -n hw.ncpu) / 2 ))}"
+# vCPUs run as high-priority host threads: they fill the performance cores first, then spill onto efficiency cores.
+HOST_CORES="$(sysctl -n hw.ncpu)" HOST_PCORES="$(sysctl -n hw.perflevel0.physicalcpu 2>/dev/null || sysctl -n hw.ncpu)"
+: "${VM_CPU:=$(( HOST_CORES / 2 < HOST_PCORES ? HOST_CORES / 2 : HOST_PCORES ))}"   # half the cores, at most the P cores
 : "${VM_MEMORY_MIB:=8192}"
 : "${VM_DISK_GB:=100}"                     # grow only; the base image ships 50 GB
 : "${VM_DISPLAY:=1920x1200}"
 : "${VM_HEADLESS:=0}"                      # 1 = no window (--no-graphics); Screen Sharing still works
-: "${VM_SHARE_DIR:=$HOME/git}"             # mounted in the guest at "/Volumes/My Shared Files/<name>"; empty = none
-: "${VM_SHARE_NAME:=git}"
+: "${VM_SHARE_DIR=$HOME/shared}"           # mounted in the guest at "/Volumes/My Shared Files/<name>"; empty = none
+: "${VM_SHARE_NAME:=shared}"
+: "${VM_ROOT_DISK_OPTS=caching=cached}"    # tart run --root-disk-opts; empty = Tart's default
 : "${VM_NET:=nat}"                         # nat (host-only reachable) | bridged (own LAN address)
 : "${VM_BRIDGE_IF:=en0}"
 : "${VM_SSH_PUBKEY:=$HOME/.ssh/id_ed25519.pub}"
@@ -34,7 +37,7 @@ unset _env_overrides
 : "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
 
 # Release used when Homebrew cannot install the tap (cirruslabs/cli/tart breaks on Homebrew 7's `depends_on`).
-TART_VERSION=2.40.1
+TART_VERSION=2.41.1
 TART_TEAM_ID=9M2P8L4D89   # Cirrus Labs, Inc. Developer ID
 TART_HOME="$HOME/.local/opt/tart"
 
@@ -128,6 +131,7 @@ cmd_create() {
 
 cmd_configure() {
   running && die "stop the VM first ($0 stop)"
+  [ "$VM_CPU" -le "$HOST_PCORES" ] || warn "VM_CPU=$VM_CPU is more than this Mac's $HOST_PCORES performance cores"
   log "configuring: $VM_CPU CPUs, $VM_MEMORY_MIB MiB, ${VM_DISK_GB} GB disk, $VM_DISPLAY display"
   tart set "$VM_NAME" --cpu "$VM_CPU" --memory "$VM_MEMORY_MIB" --display "$VM_DISPLAY"
   local cur; cur="$(tart get "$VM_NAME" --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["Disk"])')"
@@ -140,8 +144,10 @@ cmd_start() {
   running && { log "'$VM_NAME' already running at $(vm_ip 5 || echo '?')"; return; }
   local args=()
   [ "$VM_HEADLESS" = 1 ] && args+=(--no-graphics)
+  [ -z "$VM_ROOT_DISK_OPTS" ] || args+=(--root-disk-opts "$VM_ROOT_DISK_OPTS")
   if [ -n "$VM_SHARE_DIR" ]; then
-    [ -d "$VM_SHARE_DIR" ] && args+=(--dir "$VM_SHARE_NAME:$VM_SHARE_DIR") || warn "share dir $VM_SHARE_DIR missing; skipping"
+    mkdir -p "$VM_SHARE_DIR"
+    args+=(--dir "$VM_SHARE_NAME:$VM_SHARE_DIR")
   fi
   case "$VM_NET" in
     nat) ;;
@@ -224,13 +230,16 @@ cmd_provision() {
   wait_for_ssh
   cmd_github_keys
   if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-    # Over stdin into a private file, so the key is not in either side's process list; provision.sh deletes it.
+    # Over stdin into a private file, so the key is not in either side's process list; ../guest/macos.sh deletes it.
     printf '%s' "$VM_TAILSCALE_AUTHKEY" | guest_ssh 'umask 077 && cat > ~/.tailscale-authkey'
   fi
-  log "running guest/provision.sh as $VM_USER"
-  guest_ssh 'cat > /tmp/vm-provision.sh' < "$HERE/guest/provision.sh"
+  # The provisioning shared with vmpal-macos, which sources this engine's hooks from beside it.
+  log "running ../guest/macos.sh as $VM_USER"
+  guest_ssh 'rm -rf /tmp/vm-provision && mkdir -p /tmp/vm-provision'
+  guest_ssh 'cat > /tmp/vm-provision/provision.sh' < "$HERE/../guest/macos.sh"
+  guest_ssh 'cat > /tmp/vm-provision/macos-engine.sh' < "$HERE/guest/macos-engine.sh"
   ssh -t "${SSH_OPTS[@]}" "$(guest_addr)" \
-    "FORCE=${FORCE:-0} SHARE_NAME='$VM_SHARE_NAME' bash /tmp/vm-provision.sh"
+    "FORCE=${FORCE:-0} SHARE_NAME='${VM_SHARE_DIR:+$VM_SHARE_NAME}' bash /tmp/vm-provision/provision.sh"
 }
 
 cmd_check() {
@@ -238,7 +247,7 @@ cmd_check() {
   guest_ssh 'set -x; sw_vers; uname -m; eval "$(/opt/homebrew/bin/brew shellenv)"; export PATH=$HOME/.local/bin:$PATH
     mise ls 2>&1 | head -20; dscl . -read ~ UserShell; df -h / | tail -1
     ls "/Volumes/My Shared Files" || echo "no shared folder"
-    ls -d /Applications/{Ghostty,Helium,Paseo,MonoCode,tty7}.app
+    for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb Slack Vorssaint; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
     sudo -n tailscale status | head -3 || true
     launchctl print gui/$(id -u)/sh.paseo.daemon 2>/dev/null | grep -E "state|pid" | head -2
     curl -fsS -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true
@@ -362,7 +371,7 @@ Usage: $0 <command>
   stop        shut the VM down
   keys        install VM_SSH_PUBKEY with the image password, then make SSH key-only
   password    change the guest password (VM_PASSWORD or prompt); keychain and auto-login follow
-  provision   GitHub keys + guest/provision.sh (apps, mise bootstrap) over SSH
+  provision   GitHub keys + ../guest/macos.sh (apps, mise bootstrap) over SSH
   check       print acceptance-check results
   github-keys copy GitHub auth/signing keys into the guest (also run by provision)
   sshd        sshd start [minutes] | stop | status  (ephemeral LAN sshd; needs VM_NET=bridged)

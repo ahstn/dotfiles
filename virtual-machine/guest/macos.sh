@@ -1,18 +1,50 @@
 #!/bin/bash
-# Runs inside the macOS guest as the signed-in user (copied in and run by vm.sh provision through VMPal Tools).
-# Needs passwordless sudo (vm.sh sudo), which Homebrew's unattended install also uses.
+# Provisions a macOS guest for both engines. Runs inside the guest as the signed-in user: the engine's vm.sh
+# provision copies it in beside that engine's guest/macos-engine.sh and runs it (tart-macos over SSH,
+# vmpal-macos through VMPal Tools). Needs passwordless sudo, which Homebrew's unattended install also uses.
+# Env: FORCE=1 reruns the dotfiles bootstrap; SHARE_NAME names the host folder shared into the guest.
 set -eux -o pipefail
 
-# A fresh macOS install from VMPal has no Homebrew; its installer runs unattended with NONINTERACTIVE and sudo.
+# Engine hooks: engine_prepare, run first; engine_tailscale_authkey_file, printing the path of a private file
+# holding a Tailscale auth key, or nothing. This script deletes that file.
+# shellcheck source=/dev/null
+. "$(dirname "$0")/macos-engine.sh"
+engine_prepare
+
+# Cirrus Labs' Tart images ship Homebrew; a fresh VMPal install has none. The installer runs unattended with
+# NONINTERACTIVE and sudo.
 [ -x /opt/homebrew/bin/brew ] || NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH" HOMEBREW_NO_ENV_HINTS=1
 
-# The host folder VMPal shares, under a stable path.
-[ -z "${SHARE_PATH:-}" ] || ln -sfn "$SHARE_PATH" "$HOME/host-$SHARE_NAME"
+# The host folder shared into the guest (Tart's --dir and VMPal's shares both mount there), linked as ~/<name>.
+# Links into the share from earlier layouts (~/host-git) are removed; an existing real ~/<name> is left alone.
+for link in "$HOME"/host-*; do
+  [ -L "$link" ] && case "$(readlink "$link")" in "/Volumes/My Shared Files/"*) rm "$link" ;; esac
+done
+if [ -n "${SHARE_NAME:-}" ]; then
+  if [ ! -e "$HOME/$SHARE_NAME" ] || [ -L "$HOME/$SHARE_NAME" ]; then
+    ln -sfn "/Volumes/My Shared Files/$SHARE_NAME" "$HOME/$SHARE_NAME"
+  else
+    echo "$HOME/$SHARE_NAME exists and is not a link; the share stays at /Volumes/My Shared Files/$SHARE_NAME" >&2
+  fi
+fi
+
+# Housekeeping. Each setting is rewritten on every run, so a change made in System Settings is reverted.
+# Spotlight indexing off: Cirrus Labs' images already have it off; a VMPal install indexes from the start.
+mdutil -s / | grep -q 'disabled' || sudo mdutil -a -i off
+# macOS updates are not downloaded or installed automatically, so a multi-GB update does not fill the guest disk.
+# Checking stays on, as do security responses and system data files (XProtect).
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
+# Reduce Motion and Reduce Transparency: less for the guest's GPU and Screen Sharing to draw. Applied at next login.
+defaults write com.apple.universalaccess reduceMotion -bool true
+defaults write com.apple.universalaccess reduceTransparency -bool true
 
 # Apps, before the provisioned check so `./vm.sh provision` adds them to existing VMs. Each step is a no-op once done.
-brew install --cask ghostty helium-browser paseo
+# chatgpt is Codex Desktop's replacement: Homebrew deprecated codex-app as discontinued upstream.
+# vorssaint is also in the shared mise config; installing it here lets the Dock pin it before the bootstrap.
+brew install --cask ghostty helium-browser paseo claude chatgpt bb slack vorssaint
 
 # app_version <bundle>: installed CFBundleShortVersionString, or empty.
 app_version() { defaults read "$1/Contents/Info" CFBundleShortVersionString 2>/dev/null || true; }
@@ -161,7 +193,7 @@ else
   [ ! -f ~/.gitconfig ] || [ -L ~/.gitconfig ] || mv ~/.gitconfig ~/.gitconfig.pre-dotfiles
   # Bootstrap installs brew packages before it links dotfiles, from the config it loaded at the start, so the
   # packages in ~/.config/mise/config.toml need that link first. `files` needs Tern secrets; `repos` uses an SSH
-  # clone URL. See ../README.md for other known blockers.
+  # clone URL. See virtual-machine/README.md for the other blockers.
   mise bootstrap --only dotfiles
   mise bootstrap --skip files,repos
 
@@ -173,10 +205,14 @@ fi
 
 # Dock, after the bootstrap: its shared [bootstrap.macos.dock] (bottom, autohide) is for the host Macs. A VM gets
 # exactly these apps (Finder is always first), on the right and always shown. Rewritten only when it differs.
-dock_apps=(/Applications/Ghostty.app /Applications/Helium.app /Applications/tty7.app /Applications/Paseo.app
-  /Applications/MonoCode.app "/System/Applications/System Settings.app")
+# Casks land in ~/Applications once the dotfiles' .zshenv sets HOMEBREW_CASK_OPTS, and in /Applications before.
+dock_apps=(Ghostty Helium tty7 Paseo MonoCode Claude ChatGPT bb Slack Vorssaint "System Settings")
 want=""
-for app in "${dock_apps[@]}"; do [ ! -d "$app" ] || want+="$app"$'\n'; done
+for name in "${dock_apps[@]}"; do
+  for dir in /Applications "$HOME/Applications" /System/Applications; do
+    [ ! -d "$dir/$name.app" ] || { want+="$dir/$name.app"$'\n'; break; }
+  done
+done
 have="$(defaults export com.apple.dock - | python3 -c '
 import plistlib, sys, urllib.parse
 for t in plistlib.loads(sys.stdin.buffer.read()).get("persistent-apps", []):
@@ -208,14 +244,13 @@ ts_ready=""
 for _ in $(seq 30); do sudo "$ts/tailscale" status --json >/dev/null 2>&1 && { ts_ready=1; break; }; sleep 1; done
 [ -n "$ts_ready" ] || { echo "tailscaled did not respond within 30s" >&2; exit 1; }
 ts_up() { sudo "$ts/tailscale" status --json | python3 -c 'import json, sys; sys.exit(json.load(sys.stdin)["BackendState"] != "Running")'; }
-# Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
-# on no command line.
-if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-  if ! ts_up; then
-    key="$(mktemp)" && trap 'rm -f "$key"' EXIT && printf '%s' "$VM_TAILSCALE_AUTHKEY" > "$key"
-    sudo "$ts/tailscale" up --auth-key="file:$key"
-    rm -f "$key" && trap - EXIT
-  fi
+# Log in only with an auth key the engine passed in (VM_TAILSCALE_AUTHKEY on the host), from a private file it names,
+# so the key is in no command line or trace.
+key="$(engine_tailscale_authkey_file)"
+if [ -n "$key" ]; then
+  trap 'rm -f "$key"' EXIT
+  ts_up || sudo "$ts/tailscale" up --auth-key="file:$key"
+  rm -f "$key" && trap - EXIT
 elif ! ts_up; then
   echo "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up"
 fi
