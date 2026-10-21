@@ -150,7 +150,22 @@ Tested bridged on Wi-Fi: start, connect from the host's LAN address, status, sto
 - GitHub SSH auth.
 
 By hand: open the apps in the VM window, and check that clipboard sharing works both ways (it needs the
-guest agent, which the image runs).
+guest agent, which the image runs). See [Clipboard sharing](#clipboard-sharing) if it doesn't.
+
+## Clipboard sharing
+
+Tart shares plain text between the host and the guest through the image's guest agent
+(`org.cirruslabs.tart-guest-agent`), a launchd agent in the guest's login session. Copying works only in Tart's
+VM window: Screen Sharing (port 5900) has its own clipboard, under Edit → Use Shared Clipboard.
+
+If copying stops working while the agent is still running, restart it from a Terminal in the guest:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/org.cirruslabs.tart-guest-agent
+```
+
+This fixed the clipboard on a running VM with no restart. It has to run in the guest's login session, so it
+fails over SSH (`tart:ssh`). The agent logs to `/tmp/tart-guest-agent.log` in the guest.
 
 ## Known blockers
 
