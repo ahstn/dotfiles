@@ -80,6 +80,12 @@ apps = [
   "/System/Applications/System Settings.app",
 ]
 
+# Dark appearance, not Auto. mise has no named key for it, so it is the raw preference System Settings › Appearance
+# writes. Running apps pick it up when relaunched; the rest of the system at next login.
+[bootstrap.macos.defaults.NSGlobalDomain]
+AppleInterfaceStyle = "Dark"
+AppleInterfaceStyleSwitchesAutomatically = false
+
 # Reduce Motion and Reduce Transparency: less for the guest's GPU and Screen Sharing to draw. Applied at next login.
 [bootstrap.macos.defaults."com.apple.universalaccess"]
 reduceMotion = true

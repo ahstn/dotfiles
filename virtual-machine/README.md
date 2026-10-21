@@ -137,7 +137,7 @@ the first SSH connection records the guest's host key again.
 | SSH | `keys` authorises `VM_SSH_PUBKEY` and makes SSH key-only |
 | GitHub | the GitHub keys in the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, and a managed `Host github.com` block |
 | Shared folder | the host's `~/shared`, created if missing, shared live into the guest at `/Volumes/My Shared Files/shared` and linked as `~/shared` (`VM_SHARE_DIR`, `VM_SHARE_NAME`). For passing files only; see the warning above |
-| Housekeeping | Spotlight indexing off; macOS updates not downloaded or installed automatically (checking, security responses and XProtect data stay on); Reduce Motion and Reduce Transparency on, from the next login. Reapplied on every provision |
+| Housekeeping | Spotlight indexing off; macOS updates not downloaded or installed automatically (checking, security responses and XProtect data stay on); Reduce Motion and Reduce Transparency on, and the Dark appearance, from the next login. Reapplied on every provision |
 | Dotfiles | the dotfiles pass (above): `VM_DOTFILES_REPO` (`https://github.com/ahstn/dotfiles.git`) cloned over HTTPS into `~/git/dotfiles` and applied once |
 | mise | the host's version at `~/.local/bin/mise`. `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which loads the dotfiles' `config.vm.toml` |
 | Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb, Slack, Vorssaint and System Settings (after Finder), on the right and always shown |
