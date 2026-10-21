@@ -96,6 +96,7 @@ cmd_create() {
   log "creating '$VM_NAME' from $VM_SYSTEM as $VM_USER: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk (installs unattended)"
   vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
     --user "$VM_USER" --wait --timeout 2h -q >/dev/null
+  rm -f "$BUILD/known_hosts"   # a VM recreated with the same name can get a cached address with a new host key
   log "'$VM_NAME' installed as $(guest_user); VMPal keeps its password (vmpal info '$VM_NAME' --show-password)"
   cmd_configure
 }
@@ -244,6 +245,11 @@ cmd_password() {
 # the base pass would change, and changes nothing.
 cmd_provision() {
   need_running
+  if [ "${1:-}" = --dry-run ]; then
+    [ "$VM_OS" = macos ] || die "--dry-run is for macOS guests only"
+    guest_base "$(guest_user)@$(guest_ip)" "$BUILD/known_hosts" --dry-run
+    return
+  fi
   cmd_sudo
   if [ "$VM_OS" = ubuntu ]; then
     cmd_github_keys
@@ -259,7 +265,6 @@ cmd_provision() {
     return
   fi
   local dest; dest="$(guest_user)@$(guest_ip)"
-  if [ "${1:-}" = --dry-run ]; then guest_base "$dest" "$BUILD/known_hosts" --dry-run; return; fi
   cmd_keys
   cmd_github_keys
   guest_base "$dest" "$BUILD/known_hosts"
@@ -407,7 +412,7 @@ cmd_sshd() {
       guest --env "SSHD_LISTEN=$ip:$VM_SSHD_PORT" --env "SSHD_ALLOW_FROM=$VM_SSHD_ALLOW_FROM" -- "$SSHD_PID_FN
         export PATH=\$HOME/.local/bin:/opt/homebrew/bin:\$PATH MISE_YES=1 SSHD_USER=\$(id -un)
         [ -d /run/sshd ] || [ \"\$(uname -s)\" = Darwin ] || sudo -n mkdir -p /run/sshd
-        cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
+        cd \"\$HOME/$VM_DOTFILES_DIR\" && mise dot apply ~/.config/sshd/sshd_config --force
         if p=\$(sshd_pid); then sshd_stop \$p; sleep 1; fi
         # The task needs no tools; without this, mise first installs every tool in mise.toml.
         detach=\$(command -v setsid || true)

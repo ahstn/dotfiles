@@ -224,7 +224,7 @@ cmd_sshd() {
       # The template's default listen address is the guest's en0, which is its LAN address when bridged.
       guest_ssh "$SSHD_PID_FN
         export PATH=\$HOME/.local/bin:/opt/homebrew/bin:\$PATH MISE_YES=1 SSHD_USER='$VM_USER' SSHD_LISTEN=\"\$(ipconfig getifaddr en0):$VM_SSHD_PORT\" SSHD_ALLOW_FROM='$VM_SSHD_ALLOW_FROM'
-        cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
+        cd \"\$HOME/$VM_DOTFILES_DIR\" && mise dot apply ~/.config/sshd/sshd_config --force
         if p=\$(sshd_pid); then sshd_stop \$p; sleep 1; fi
         # The task needs no tools; without this, mise first installs every tool in mise.toml.
         MISE_TASK_RUN_AUTO_INSTALL=false nohup mise run sshd -m $minutes > ~/.config/sshd/sshd.log 2>&1 < /dev/null &
