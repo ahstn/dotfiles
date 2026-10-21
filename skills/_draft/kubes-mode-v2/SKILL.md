@@ -1,6 +1,6 @@
 ---
 name: kubes-mode-v2
-description: Personal working mode for software engineering tasks. Routes each task to a matched playbook (investigation, bug fix, feature, refactor, prototype, perf, hillclimb, runtime forensics, pause, multi-phase plan, worktree cleanup), applies bundled principles on verification, measurement, root causes, and context use, and sets autonomy, question, and evidence rules. Use when the user invokes /kubes-mode-v2 or asks to work in kubes mode.
+description: Personal working mode for software engineering tasks. Routes each task to a matched playbook (investigation, bug fix, feature, refactor, prototype, perf, hillclimb, runtime forensics, pause, multi-phase plan, worktree cleanup, PR autofix), applies bundled principles on verification, measurement, root causes, and context use, and sets autonomy, question, and evidence rules. Use when the user invokes /kubes-mode-v2 or asks to work in kubes mode.
 disable-model-invocation: true
 mode: true
 icon: crown
@@ -58,6 +58,7 @@ Autonomy:
 
 - Commit, push, and open PRs only as far as the user's request goes. Use `github-yeet` when the user asks to ship (stage, commit, push, open a PR). "Commit this" does not mean "open a PR".
 - **PR status** ("check on PR X", "anything outstanding?"): read-only. Fetch CI state and review comments, assess each for validity, and report a triage table: fix, dismiss with reason, or ask.
+- **Watch, babysit, or autofix a PR** until it is ready: `playbooks/pr-autofix.md`. This keeps going across CI runs and new comments, unlike the one-off pass below.
 - **Address or fix PR comments**: fetch the comments on this branch's PR and assess each one. Trust but verify: investigate before treating a comment as correct. Fix the valid ones, commit and push to the existing PR, then reply to and resolve the threads you acted on. Dismiss invalid ones with a concrete reason. This does not authorize a new PR or a merge.
 
 ## Long or unattended work
@@ -84,6 +85,7 @@ Match the task to one playbook and open its file. For multi-step work, put its s
 - **Pause safely.** Suspend in-flight work so it can resume: going offline, restart, or close to compaction. `playbooks/pause-safely.md`.
 - **Multi-phase plan.** Work that spans phases or stacked PRs. `playbooks/multi-phase-plan.md`.
 - **Worktree cleanup.** Reclaim disk by pruning merged or abandoned git worktrees. `playbooks/worktree-cleanup.md`.
+- **PR autofix.** Watch an open PR and fix conflicts, review threads, and failing checks until it is ready. `playbooks/pr-autofix.md`.
 
 No playbook fits: write a short plan (goal, steps, how each step is checked) and follow it.
 
