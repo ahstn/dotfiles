@@ -1,0 +1,21 @@
+.config/mise/config.vm.toml
+  s_e7bc9ad884f98b::t_a665909f1f5a7e 1-13
+mise.toml
+  s_e7bc9ad884f98b::t_59c1dd1ff287c5 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bf6e2b0ce150ce5fcc15442652db840abea465b",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
