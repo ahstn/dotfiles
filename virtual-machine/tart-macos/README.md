@@ -77,34 +77,35 @@ The tasks keep that account (`VM_USER=admin`).
 | Address | `tart ip --wait` (DHCP leases under NAT, the ARP table when bridged) |
 | SSH | known hosts in `build/tart/known_hosts`; key installed with an `SSH_ASKPASS` helper, then password SSH turned off |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` streamed into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written |
-| Provision | `guest/macos.sh` and `tart-macos/guest/macos-engine.sh` uploaded and run over SSH: apps, Dock pins, Paseo daemon, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
+| Provision | the GitHub keys over SSH, then `guest/mise.toml` with `mise bootstrap remote` and, on the first run, `guest/dotfiles.sh` ([Provisioning a macOS guest](../README.md#provisioning-a-macos-guest)) |
 | Snapshot | `tart stop`, then `tart clone <name> <name>-<tag>` (cheap APFS copy). To restore: `tart delete <name> && tart clone <name>-<tag> <name>` |
 
 The shared folder appears in the guest at `/Volumes/My Shared Files/shared`, linked as `~/shared`.
 
 ## Provisioning
 
-`provision` runs the shared [`../guest/macos.sh`](../guest/macos.sh): apps, daemons, the dotfiles bootstrap and
-the Dock, as listed in [the overview](../README.md#what-every-macos-vm-gets). This engine's
-`guest/macos-engine.sh` first moves the base image's CI `~/.gitconfig` (git-credential-manager, LFS), which blocks
-the dotfiles' symlink, to `~/.gitconfig.base-image`.
+`tart:provision` applies the shared [`../guest/mise.toml`](../guest/mise.toml) and runs the dotfiles pass, as
+described in [the overview](../README.md#provisioning-a-macos-guest). The image's own mise (Homebrew's, in
+`/opt/homebrew/bin`) is left alone; the host's version at `~/.local/bin/mise` comes first on `PATH` once the
+dotfiles are linked. The dotfiles pass moves the image's CI `~/.gitconfig` (git-credential-manager, LFS), which
+blocks the dotfiles' symlink, to `~/.gitconfig.pre-dotfiles`.
 
-To log in to Tailscale unattended, export `VM_TAILSCALE_AUTHKEY` for `mise run tart:provision`. The key goes over SSH's
-stdin into a private `~/.tailscale-authkey`, which `tailscale up --auth-key=file:...` reads and provisioning
-deletes.
+To log in to Tailscale unattended, export `VM_TAILSCALE_AUTHKEY` for `mise run tart:provision`. The key goes over
+SSH's stdin into a private temporary file, which `tailscale up --auth-key=file:...` reads and the task deletes.
 
 Unlike VMPal, nothing here clicks through macOS dialogs. If the default-browser confirmation appears, click
 `Use “Helium”` in the VM window.
 
-Tested in a VM (macOS 26.6.2 guest on a macOS 27 host), with the Tart-only guest script that preceded the
-shared one:
+Tested in a VM (macOS 26.6.2 guest on a macOS 27 host), with the Tart-only guest script that preceded
+`guest/mise.toml`:
 
 - all five apps installed and accepted by Gatekeeper;
 - the Paseo daemon (web UI returns 200) and the MonoCode host running as launchd agents, including after a reboot;
 - `tailscaled` up and awaiting login;
 - auto-login working after a password change.
 
-The Tailscale auth-key login was not exercised, and the shared script has not been run on Tart yet.
+The Tailscale auth-key login was not exercised. `guest/mise.toml` has been dry-run against a provisioned Tart
+guest (`tart:provision --dry-run`), not yet applied.
 
 ## Networking and the LAN sshd
 

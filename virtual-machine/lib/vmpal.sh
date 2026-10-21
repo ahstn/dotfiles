@@ -20,6 +20,9 @@ esac
 : "${VM_BRIDGE:=auto}"                     # bridged only: a Mac interface such as en0, or auto for the main one
 : "${VM_LOCAL_NETWORK:=default}"           # on | off | default: a 2nd NIC on 192.168.128.x with this Mac and its VMs
 
+BUILD="$BUILD/vmpal"
+mkdir -p "$BUILD"
+
 VMPAL_APP=/Applications/VMPal.app
 VMPAL_BIN="$VMPAL_APP/Contents/Helpers/VMPalMachine.app/Contents/MacOS/VMPalMachine"
 
@@ -235,27 +238,46 @@ cmd_password() {
   log "password changed for $(guest_user), and VMPal keeps the new one"
 }
 
+# Ubuntu runs vmpal-macos/guest/ubuntu.sh through VMPal Tools. macOS gets what tart:provision does, over SSH:
+# GitHub keys; the base pass (guest/mise.toml); on the first run or with FORCE=1, the dotfiles pass
+# (guest/dotfiles.sh) and the base's macOS defaults again; then the Tailscale login. --dry-run (macOS) shows what
+# the base pass would change, and changes nothing.
 cmd_provision() {
   need_running
   cmd_sudo
+  if [ "$VM_OS" = ubuntu ]; then
+    cmd_github_keys
+    local share=""
+    [ -z "$VM_SHARE_DIR" ] || share="/media/VMPal/$VM_SHARE_NAME"
+    log "running vmpal-macos/guest/ubuntu.sh as $(guest_user)"
+    guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
+    vmpal cp "$VM_ROOT/vmpal-macos/guest/ubuntu.sh" "$VM_NAME:.cache/vm/provision.sh"
+    # The Tailscale auth key, when set, goes as an environment variable and lands in no file on this side.
+    local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}")
+    [ -z "${VM_TAILSCALE_AUTHKEY:-}" ] || env+=(--env VM_TAILSCALE_AUTHKEY)
+    guest "${env[@]}" -- 'bash ~/.cache/vm/provision.sh'
+    return
+  fi
+  local dest; dest="$(guest_user)@$(guest_ip)"
+  if [ "${1:-}" = --dry-run ]; then guest_base "$dest" "$BUILD/known_hosts" --dry-run; return; fi
+  cmd_keys
   cmd_github_keys
-  local share=""
-  [ -z "$VM_SHARE_DIR" ] || case "$VM_OS" in
-    ubuntu) share="/media/VMPal/$VM_SHARE_NAME" ;;
-    macos)  share="/Volumes/My Shared Files/$VM_SHARE_NAME" ;;
-  esac
-  # macOS runs the provisioning shared with tart-macos, which sources this engine's hooks from beside it.
-  local script="$VM_ROOT/vmpal-macos/guest/ubuntu.sh"
-  [ "$VM_OS" != macos ] || script="$VM_ROOT/guest/macos.sh"
-  log "running ${script#"$VM_ROOT/"} as $(guest_user)"
-  guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
-  vmpal cp "$script" "$VM_NAME:.cache/vm/provision.sh"
-  [ "$VM_OS" != macos ] || vmpal cp "$VM_ROOT/vmpal-macos/guest/macos-engine.sh" "$VM_NAME:.cache/vm/macos-engine.sh"
-  # The Tailscale auth key, when set, goes as an environment variable and lands in no file on this side.
-  local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}")
-  [ -z "${VM_TAILSCALE_AUTHKEY:-}" ] || env+=(--env VM_TAILSCALE_AUTHKEY)
-  guest "${env[@]}" -- 'bash ~/.cache/vm/provision.sh'
-  [ "$VM_OS" != macos ] || confirm_default_browser
+  guest_base "$dest" "$BUILD/known_hosts"
+  if [ -n "$VM_DOTFILES_REPO" ] && { [ "${FORCE:-0}" = 1 ] || ! guest -- 'test -f ~/.provisioned'; }; then
+    log "dotfiles pass: $VM_DOTFILES_REPO"
+    guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
+    vmpal cp "$VM_ROOT/guest/dotfiles.sh" "$VM_NAME:.cache/vm/dotfiles.sh"
+    guest --env "DOTFILES_REPO=$VM_DOTFILES_REPO" --env "DOTFILES_DIR=$VM_DOTFILES_DIR" -- 'bash ~/.cache/vm/dotfiles.sh'
+    guest_base "$dest" "$BUILD/known_hosts" --only macos-defaults
+  fi
+  if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
+    # As an environment variable, so it lands in no file on this side and on no command line.
+    guest --env VM_TAILSCALE_AUTHKEY -- "$TS_LOGIN_FN"'
+      f="$(mktemp)" && printf "%s" "$VM_TAILSCALE_AUTHKEY" > "$f" && ts_login "$f"'
+  elif ! guest -- 'sudo -n /opt/homebrew/opt/tailscale/bin/tailscale status >/dev/null 2>&1'; then
+    log "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up"
+  fi
+  confirm_default_browser
 }
 
 # The dotfiles' mise hook makes Helium the default browser, which macOS confirms in a dialog. Click its
@@ -290,12 +312,12 @@ cmd_check() {
       curl -fsS --retry 15 --retry-connrefused --retry-delay 2 -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true
       systemctl is-active ssh
       ssh -T -o BatchMode=yes git@github.com 2>&1 | head -n1' ;;
-    macos) guest -- 'set -x; eval "$(/opt/homebrew/bin/brew shellenv)"; export PATH=$HOME/.local/bin:$PATH
+    macos) guest -- 'set -x; export PATH=$HOME/.local/bin:/opt/homebrew/bin:$PATH
       sw_vers; uname -m; mise ls 2>&1 | head -20; dscl . -read ~ UserShell; df -h / | tail -1
       ls "/Volumes/My Shared Files" || echo "no shared folder"
       for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb Slack Vorssaint; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
       sudo -n tailscale status | head -3 || true
-      launchctl print gui/$(id -u)/sh.paseo.daemon 2>/dev/null | grep -E "state|pid" | head -2
+      launchctl print gui/$(id -u)/dev.mise.paseo-daemon 2>/dev/null | grep -E "state|pid" | head -2
       curl -fsS --retry 15 --retry-connrefused --retry-delay 2 -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true
       ssh -T -o BatchMode=yes git@github.com 2>&1 | head -n1' ;;
   esac
@@ -383,8 +405,7 @@ cmd_sshd() {
         'mkdir -p ~/.config/sshd && umask 077 && printf "%s\n" "$VM_KEYS" > ~/.config/sshd/authorized_keys'
       # setsid (Linux) or nohup alone (macOS) keeps the task running once `vmpal exec` returns.
       guest --env "SSHD_LISTEN=$ip:$VM_SSHD_PORT" --env "SSHD_ALLOW_FROM=$VM_SSHD_ALLOW_FROM" -- "$SSHD_PID_FN
-        [ ! -x /opt/homebrew/bin/brew ] || eval \"\$(/opt/homebrew/bin/brew shellenv)\"
-        export PATH=\$HOME/.local/bin:\$PATH MISE_YES=1 SSHD_USER=\$(id -un)
+        export PATH=\$HOME/.local/bin:/opt/homebrew/bin:\$PATH MISE_YES=1 SSHD_USER=\$(id -un)
         [ -d /run/sshd ] || [ \"\$(uname -s)\" = Darwin ] || sudo -n mkdir -p /run/sshd
         cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
         if p=\$(sshd_pid); then sshd_stop \$p; sleep 1; fi

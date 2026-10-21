@@ -131,16 +131,16 @@ VMPal's recorded username may still be the host's. Do not edit VM metadata to fi
 
 ## 4. Provision the development environment
 
-Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` copies `guest/macos.sh` and `vmpal-macos/guest/macos-engine.sh` with `vmpal cp` and runs it with `vmpal exec`, including the shared-folder environment.
+Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` applies `guest/mise.toml` with `mise bootstrap remote` over SSH, then the dotfiles pass (`guest/dotfiles.sh`), including the shared-folder link; see [Provisioning a macOS guest](../README.md#provisioning-a-macos-guest).
 
 ```bash
 mise run vmpal:configure
 mise run vmpal:keys        # passwordless sudo, host public key, key-only guest SSH
-mise run vmpal:provision   # configured GitHub key, Homebrew/apps, mise/dotfiles, host daemons
+mise run vmpal:provision   # configured GitHub key, apps, mise/dotfiles, host daemons
 mise run vmpal:check
 ```
 
-Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the mise bootstrap on reruns unless `FORCE=1` is supplied. The guest clones the dotfiles from GitHub, so it gets the `.zsh-plugins` Unicode-path compilation fix once that is pushed. To use this checkout's copy before then:
+Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the dotfiles pass on reruns unless `FORCE=1` is supplied. The guest clones the dotfiles from GitHub, so it gets the `.zsh-plugins` Unicode-path compilation fix once that is pushed. To use this checkout's copy before then:
 
 ```bash
 vmpal cp ../.config/zsh/.zsh-plugins macos-dev:git/dotfiles/.config/zsh/.zsh-plugins
@@ -189,7 +189,7 @@ ObjC.import("AppKit"); const w = $.NSWorkspace.sharedWorkspace;
 vmpal exec macos-dev -- /bin/bash -c '
 set -e
 launchctl print "gui/$(id -u)/com.monocode.host" | grep "state = running"
-launchctl print "gui/$(id -u)/sh.paseo.daemon" | grep "state = running"
+launchctl print "gui/$(id -u)/dev.mise.paseo-daemon" | grep "state = running"
 curl -fsS -o /dev/null -w "Paseo HTTP %{http_code}\n" http://127.0.0.1:6767/
 sudo -n /opt/homebrew/bin/tailscale status --json'
 ```

@@ -168,30 +168,36 @@ cmd_password() {
   log "password changed for $VM_USER"
 }
 
+# GitHub keys; the base pass (guest/mise.toml); on the first run or with FORCE=1, the dotfiles pass
+# (guest/dotfiles.sh) and the base's macOS defaults again, over the host Macs' ones; then the Tailscale login.
+# --dry-run shows what the base pass would change, and changes nothing.
 cmd_provision() {
   wait_for_ssh
+  if [ "${1:-}" = --dry-run ]; then guest_base "$(guest_addr)" "$BUILD/known_hosts" --dry-run; return; fi
   cmd_github_keys
-  if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
-    # Over stdin into a private file, so the key is not in either side's process list; ../guest/macos.sh deletes it.
-    printf '%s' "$VM_TAILSCALE_AUTHKEY" | guest_ssh 'umask 077 && cat > ~/.tailscale-authkey'
+  guest_base "$(guest_addr)" "$BUILD/known_hosts"
+  if [ -n "$VM_DOTFILES_REPO" ] && { [ "${FORCE:-0}" = 1 ] || ! guest_ssh 'test -f ~/.provisioned'; }; then
+    log "dotfiles pass: $VM_DOTFILES_REPO"
+    guest_ssh "DOTFILES_REPO='$VM_DOTFILES_REPO' DOTFILES_DIR='$VM_DOTFILES_DIR' bash -s" < "$VM_ROOT/guest/dotfiles.sh"
+    guest_base "$(guest_addr)" "$BUILD/known_hosts" --only macos-defaults
   fi
-  # The provisioning shared with VMPal, which sources this engine's hooks from beside it.
-  log "running guest/macos.sh as $VM_USER"
-  guest_ssh 'rm -rf /tmp/vm-provision && mkdir -p /tmp/vm-provision'
-  guest_ssh 'cat > /tmp/vm-provision/provision.sh' < "$VM_ROOT/guest/macos.sh"
-  guest_ssh 'cat > /tmp/vm-provision/macos-engine.sh' < "$VM_ROOT/tart-macos/guest/macos-engine.sh"
-  ssh -t "${SSH_OPTS[@]}" "$(guest_addr)" \
-    "FORCE=${FORCE:-0} SHARE_NAME='${VM_SHARE_DIR:+$VM_SHARE_NAME}' bash /tmp/vm-provision/provision.sh"
+  if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then
+    # Over stdin into a private file, so the key is not in either side's process list.
+    printf '%s' "$VM_TAILSCALE_AUTHKEY" | guest_ssh "$TS_LOGIN_FN"'
+      f="$(mktemp)" && cat > "$f" && ts_login "$f"'
+  elif ! guest_ssh 'sudo -n /opt/homebrew/opt/tailscale/bin/tailscale status >/dev/null 2>&1'; then
+    log "Tailscale is installed but not logged in. In the guest, run: sudo tailscale up"
+  fi
 }
 
 cmd_check() {
   log "acceptance checks (guest)"
-  guest_ssh 'set -x; sw_vers; uname -m; eval "$(/opt/homebrew/bin/brew shellenv)"; export PATH=$HOME/.local/bin:$PATH
+  guest_ssh 'set -x; sw_vers; uname -m; export PATH=$HOME/.local/bin:/opt/homebrew/bin:$PATH
     mise ls 2>&1 | head -20; dscl . -read ~ UserShell; df -h / | tail -1
     ls "/Volumes/My Shared Files" || echo "no shared folder"
     for a in Ghostty Helium Paseo MonoCode tty7 Claude ChatGPT bb Slack Vorssaint; do ls -d /Applications/$a.app ~/Applications/$a.app 2>/dev/null | grep . || echo "missing $a.app"; done
     sudo -n tailscale status | head -3 || true
-    launchctl print gui/$(id -u)/sh.paseo.daemon 2>/dev/null | grep -E "state|pid" | head -2
+    launchctl print gui/$(id -u)/dev.mise.paseo-daemon 2>/dev/null | grep -E "state|pid" | head -2
     curl -fsS -o /dev/null -w "paseo web ui: %{http_code}\n" http://127.0.0.1:6767/ || true
     ssh -T -o BatchMode=yes git@github.com 2>&1 | head -n1'
 }
@@ -217,8 +223,7 @@ cmd_sshd() {
       guest_ssh 'mkdir -p ~/.config/sshd && umask 077 && cat > ~/.config/sshd/authorized_keys' < "$VM_SSHD_AUTHORIZED_KEYS"
       # The template's default listen address is the guest's en0, which is its LAN address when bridged.
       guest_ssh "$SSHD_PID_FN
-        eval \"\$(/opt/homebrew/bin/brew shellenv)\"
-        export PATH=\$HOME/.local/bin:\$PATH MISE_YES=1 SSHD_USER='$VM_USER' SSHD_LISTEN=\"\$(ipconfig getifaddr en0):$VM_SSHD_PORT\" SSHD_ALLOW_FROM='$VM_SSHD_ALLOW_FROM'
+        export PATH=\$HOME/.local/bin:/opt/homebrew/bin:\$PATH MISE_YES=1 SSHD_USER='$VM_USER' SSHD_LISTEN=\"\$(ipconfig getifaddr en0):$VM_SSHD_PORT\" SSHD_ALLOW_FROM='$VM_SSHD_ALLOW_FROM'
         cd ~/git/dotfiles && mise dot apply ~/.config/sshd/sshd_config --force
         if p=\$(sshd_pid); then sshd_stop \$p; sleep 1; fi
         # The task needs no tools; without this, mise first installs every tool in mise.toml.

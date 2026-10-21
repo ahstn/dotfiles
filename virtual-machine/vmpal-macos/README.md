@@ -89,11 +89,10 @@ with `id -un`, because VMPal's recorded username can remain the host's after Set
 | Hardware | `vmpal set --cpus --memory --disk --rosetta --network-mode --bridge --local-network --share`; `vmpal restart --apply-settings` when a setting needs it |
 | Shared folder | `vmpal set --share ~/shared:shared`, live via virtiofs at `/media/VMPal/shared` (Ubuntu) or `/Volumes/My Shared Files/shared` (macOS), linked as `~/shared`. `configure` removes the earlier default `git` share |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written. Setting either variable empty removes that key (and the auth key's Host block) from the guest |
-| Provision | the guest script (macOS: `../guest/macos.sh` with `guest/macos-engine.sh`; Ubuntu: `guest/ubuntu.sh`) copied with `vmpal cp` and run with `vmpal exec`: apps, Dock pins, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` (so the next run sees `~/.config/mise/config.toml`'s packages), and `mise bootstrap --skip files,repos` |
+| Provision | macOS: `keys`, the GitHub keys, then over SSH `guest/mise.toml` with `mise bootstrap remote` and, on the first run or with `FORCE=1`, `guest/dotfiles.sh` ([Provisioning a macOS guest](../README.md#provisioning-a-macos-guest)). Ubuntu: `guest/ubuntu.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` and `mise bootstrap --skip files,repos` |
 | Snapshot | `vmpal stop`, then `vmpal snapshot <name> provisioned`. Restore with `vmpal revert <name> provisioned`. A Linux VM with GPU acceleration snapshots only when shut down |
 
-Re-running `mise run vmpal:provision` is idempotent. Apps update to their latest release; the dotfiles bootstrap
-runs again only with `FORCE=1`.
+Re-running `mise run vmpal:provision` is idempotent. The dotfiles pass runs again only with `FORCE=1`.
 
 ## Ubuntu: apps and Rosetta
 
@@ -125,10 +124,10 @@ For macOS before 27, follow the [manual setup runbook](MACOS-MANUAL-SETUP.md): c
 Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
 Those images reject `--user`, so `vmpal:create` and `all` do not apply.
 
-`provision` runs the shared [`../guest/macos.sh`](../guest/macos.sh) (apps, daemons, dotfiles, Dock; see
-[the overview](../README.md#what-every-macos-vm-gets)) with this engine's `guest/macos-engine.sh`. A fresh VMPal
-install has no Homebrew, so the script installs it first, using the passwordless sudo from `vmpal:sudo`. The
-dotfiles make Helium the default browser, which macOS confirms in a dialog: `vmpal:provision` accepts it through
+`provision` applies the shared [`../guest/mise.toml`](../guest/mise.toml) (apps, daemons, Dock; see
+[the overview](../README.md#what-every-macos-vm-gets)) and the dotfiles pass over SSH, so it runs `keys` first.
+A fresh VMPal install has no Homebrew, and needs none: mise installs the casks and formulae itself, using the
+passwordless sudo from `vmpal:sudo`. The dotfiles make Helium the default browser, which macOS confirms in a dialog: `vmpal:provision` accepts it through
 VMPal's UI control (`vmpal ui ... click`), only while another browser is still the default.
 
 ## Networking
@@ -218,7 +217,7 @@ Also on VMPal 0.66 with Ubuntu 26.04.1: `create`, `keys`, `password`, `ssh`, bri
 start, connect, `status` and `stop`. `provision` was not run again.
 
 On VMPal 0.69, macOS 26.6.2 (25G83) was created through the manual Setup Assistant path above and provisioned
-with `../guest/macos.sh`. Verified admin SSH/passwordless sudo, GitHub SSH authentication, installed apps and
+with the guest script that preceded `guest/mise.toml`. Verified admin SSH/passwordless sudo, GitHub SSH authentication, installed apps and
 mise tools, Paseo HTTP 200, the running MonoCode host, signed-out Tailscale, Helium's HTTP/HTTPS defaults,
 hidden widgets, the right-hand Dock, and an interactive Ghostty shell running Node and `omp`. The Unicode
 plugin-cache fix was also exercised against a fresh plugin clone.

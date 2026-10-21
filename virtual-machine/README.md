@@ -2,7 +2,8 @@
 
 Builds a macOS dev VM, then applies [ahstn/dotfiles](https://github.com/ahstn/dotfiles) and the usual apps
 inside it. There are two engines; pick one per VM. Both use Apple's Virtualization.framework, so CPU, memory and
-disk performance are about equal, and both run the same guest script, so the VMs end up the same.
+disk performance are about equal, and both apply the same guest config (`guest/mise.toml`), so the VMs end up
+the same.
 
 | Engine | Directory | In short |
 |---|---|---|
@@ -55,21 +56,46 @@ virtual-machine/
 ├── .miserc.toml            # keeps the dotfiles repo's own mise config out of this folder
 ├── mise-tasks/tart/*, mise-tasks/vmpal/*   # one file task per command: tart:start, vmpal:provision, ...
 ├── lib/common.sh, lib/tart.sh, lib/vmpal.sh  # the tasks' bash
-├── guest/macos.sh          # the macOS guest script, shared by both engines
-├── tart-macos/
-│   ├── README.md
-│   └── guest/macos-engine.sh
+├── guest/                  # every macOS guest, both engines
+│   ├── mise.toml           # the base: apps, Dock, defaults, agents and hooks, as mise bootstrap config
+│   ├── mise.local.toml     # optional, git-ignored: your changes to the base
+│   ├── monocode-host.sh    # run by the base's hooks
+│   └── dotfiles.sh         # the dotfiles pass
+├── tart-macos/README.md
 └── vmpal-macos/
     ├── README.md, MACOS-MANUAL-SETUP.md
-    └── guest/macos-engine.sh, guest/ubuntu.sh
+    └── guest/ubuntu.sh     # the Ubuntu guest script
 ```
 
-Each engine's `provision` task copies `guest/macos.sh` into the guest beside that engine's
-`guest/macos-engine.sh`, which defines two hooks the shared script calls:
+### Provisioning a macOS guest
 
-- `engine_prepare`, run first: Tart moves the base image's CI `~/.gitconfig` aside; VMPal has nothing to do.
-- `engine_tailscale_authkey_file`, which prints the path of a private file holding a Tailscale auth key, or
-  nothing. The shared script logs in with it and deletes it.
+Each engine's `provision` task does the same, over SSH:
+
+1. Copies the GitHub keys into the guest.
+2. **Base pass:** `mise bootstrap remote` sends `guest/` into the guest and applies `guest/mise.toml` there.
+   mise stages its own version in the guest and keeps it at `~/.local/bin/mise`, so the host and the guest run
+   the same mise. Remote runs pass no environment, so the task writes the share name into the copy it sends, as
+   `mise.vm.local.toml`.
+3. **Dotfiles pass**, on the first run or with `FORCE=1`, unless `VM_DOTFILES_REPO` is empty: `guest/dotfiles.sh`
+   clones `VM_DOTFILES_REPO` into `~/VM_DOTFILES_DIR` (`~/git/dotfiles`) and applies its mise config:
+   `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos,macos-defaults`. A second base pass,
+   `--only macos-defaults`, then applies the dotfiles' macOS defaults with the base's on top.
+4. Logs in to Tailscale when `VM_TAILSCALE_AUTHKEY` is set.
+
+`mise run tart:provision --dry-run` (or `vmpal:provision --dry-run`) runs the base pass with `--dry-run`: it
+connects and inspects the guest, prints what would change, and changes nothing.
+
+Once the dotfiles are linked, the guest's global mise config (`~/.config/mise/config.toml`) loads in every base
+pass too, so its packages and defaults are kept up to date. Where it and the base set the same thing, the base
+wins: the dotfiles' Dock settings are for the host Macs. To add to or change the base:
+
+| Where | Loaded | Use for |
+|---|---|---|
+| `.config/mise/config.vm.toml` in the dotfiles | in the guest, with the `vm` config environment that the base selects | your additions for every VM: packages, tools, defaults, hooks. It cannot change what the base sets |
+| `guest/mise.local.toml` (git-ignored) | sent along with `guest/` | anything, including the base's own values, for the VMs this checkout provisions |
+
+`[bootstrap.packages]` replaces an entry with the same key, `[bootstrap.macos.*]` a value with the same domain
+and key, and hooks from every file all run.
 
 Engine-specific steps (creating the VM, the account, its password, sudo, SSH keys, networking) stay in each
 engine's `lib/<engine>.sh`. Each task file sources it and calls one function.
@@ -112,38 +138,35 @@ the first SSH connection records the guest's host key again.
 | GitHub | the GitHub keys in the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, and a managed `Host github.com` block |
 | Shared folder | the host's `~/shared`, created if missing, shared live into the guest at `/Volumes/My Shared Files/shared` and linked as `~/shared` (`VM_SHARE_DIR`, `VM_SHARE_NAME`). For passing files only; see the warning above |
 | Housekeeping | Spotlight indexing off; macOS updates not downloaded or installed automatically (checking, security responses and XProtect data stay on); Reduce Motion and Reduce Transparency on, from the next login. Reapplied on every provision |
-| Dotfiles | on the first run (or `FORCE=1`): `~/git/dotfiles` cloned over HTTPS, `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos` |
-| mise | `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which adds `~/.config/mise/config.toml`'s VM-only packages (`brew:tailscale`) |
-| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb, Slack, Vorssaint and System Settings (after Finder), on the right and always shown. The shared mise config's Dock settings are for the host Macs |
+| Dotfiles | the dotfiles pass (above): `VM_DOTFILES_REPO` (`https://github.com/ahstn/dotfiles.git`) cloned over HTTPS into `~/git/dotfiles` and applied once |
+| mise | the host's version at `~/.local/bin/mise`. `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which loads the dotfiles' `config.vm.toml` |
+| Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb, Slack, Vorssaint and System Settings (after Finder), on the right and always shown |
 | Checks | the `check` task prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |
 
 ### Apps
 
-`provision` installs these on every run, before the already-provisioned check, so it also adds them to existing
-VMs. Steps that are already done are skipped. Homebrew is installed first if missing.
+The base pass installs these on every run, so it also adds them to existing VMs; mise skips what is already
+installed. mise installs Homebrew formulae and casks itself, without Homebrew, and takes over
+(`[bootstrap.brew] adopt`) apps that are already there when they match the download.
 
-- **Ghostty, Helium, Paseo (desktop), Claude, ChatGPT, bb, Slack, Vorssaint:** Homebrew casks `ghostty`,
+- **Ghostty, Helium, Paseo (desktop), Claude, ChatGPT, bb, Slack, Vorssaint:** casks `ghostty`,
   `helium-browser`, `paseo`, `claude`, `chatgpt`, `bb` ([get-bb/bb](https://github.com/get-bb/bb)), `slack` and
   `vorssaint` ([vorssaint/vorssaint-utils](https://github.com/vorssaint/vorssaint-utils), also in the shared mise
   config). The cask `helium` is an unrelated, disabled app. The dotfiles make Helium the default browser.
-  ChatGPT stands in for Codex Desktop, whose `codex-app` cask Homebrew deprecated as discontinued upstream. Casks
-  go to `~/Applications` once the dotfiles set `HOMEBREW_CASK_OPTS`; the Dock and `check` look in both.
-- **tty7:** no cask. The newest stable `vX.Y.Z` release's `tty7-<ver>-macos-arm64.zip`, checked against the
-  release's `checksums.txt`.
-- **MonoCode (desktop):** no cask. `MonoCode_<ver>_aarch64.dmg` from the latest release, checked against the
-  sha256 digest GitHub publishes for the asset (the DMG has no checksum file).
-- tty7 and MonoCode must pass `codesign --verify --deep --strict` and Gatekeeper. They are copied into
-  `/Applications` and replaced only when the version changes.
+  ChatGPT stands in for Codex Desktop, whose `codex-app` cask Homebrew deprecated as discontinued upstream. Claude,
+  ChatGPT and bb go to `~/Applications`, where the first VMs had them, and the rest to `/Applications`.
+- **tty7 and MonoCode (desktop):** no casks. `macos-app` entries pinned to a release and its sha256 (tty7: the
+  release's `checksums.txt`; MonoCode: the digest GitHub publishes for the DMG), installed into `/Applications`.
+  Bump `version` and `sha256` together to update.
 - **MonoCode host:** `monocode-host-darwin-arm64.tar.gz`, checked against its `.sha256`, into
   `~/.local/opt/monocode-host/<ver>` with a wrapper in `~/.local/bin`, and registered as the `com.monocode.host`
-  launchd agent. From the host Mac's MonoCode, add the VM under Settings → Connections → Add machine, as
+  launchd agent, by the base's `guest/monocode-host.sh` hook. From the host Mac's MonoCode, add the VM under Settings → Connections → Add machine, as
   `admin@<mise run tart:ip>`.
-- **Paseo daemon:** the `sh.paseo.daemon` launchd agent runs the cask's `paseo daemon run` on `127.0.0.1:6767`,
-  with the web UI on and the relay off, logging to `~/Library/Logs/paseo-daemon.log`. The cask's CLI runs on the
-  app's bundled runtime, so it needs no Node. The agent reloads only when its plist changes. The host Mac's Paseo
-  can add `ssh://admin@<mise run tart:ip>` as a Remote SSH host.
-- **Tailscale:** `brew:tailscale` from the bootstrap, run as a root launchd daemon
-  (`tailscaled install-system-daemon`) on every provision. The Tailscale app is not used: its network extension
+- **Paseo daemon:** the `dev.mise.paseo-daemon` launchd agent (`[bootstrap.macos.launchd.agents]`) runs the
+  cask's `paseo daemon run` on `127.0.0.1:6767`, with the web UI on and the relay off, logging to
+  `~/Library/Logs/paseo-daemon.log`. The cask's CLI runs on the app's bundled runtime, so it needs no Node. The
+  host Mac's Paseo can add `ssh://admin@<mise run tart:ip>` as a Remote SSH host.
+- **Tailscale:** `brew:tailscale`, run as a root launchd daemon (`tailscaled install-system-daemon`) by a hook. The Tailscale app is not used: its network extension
   needs approval in the GUI. Without `VM_TAILSCALE_AUTHKEY`, run `sudo tailscale up` in the guest afterwards.
 
 ### Updating an existing VM
@@ -151,9 +174,18 @@ VMs. Steps that are already done are skipped. Homebrew is installed first if mis
 ```bash
 git pull
 mise run tart:start       # or vmpal:start
-mise run tart:provision   # apps, Dock, daemons; the dotfiles steps are skipped unless FORCE=1
+mise run tart:provision   # apps, Dock, daemons; the dotfiles pass is skipped unless FORCE=1
 mise run tart:check
 ```
+
+VMs provisioned before the base moved to mise:
+
+- The Paseo daemon moves from `sh.paseo.daemon` to `dev.mise.paseo-daemon`. A hook removes the old agent, so the
+  daemon restarts once.
+- mise takes over tty7 and MonoCode only when the installed build is the pinned one. Remove an older bundle
+  (`/Applications/MonoCode.app` before 0.16.0) first; the base pass then installs the pinned release.
+- The dotfiles link `~/.config/mise/config.vm.toml` on their next apply: `git pull` in the guest's
+  `~/git/dotfiles`, then `mise dot apply`, or provision with `FORCE=1`.
 
 Existing VMs move from the old `~/git` share to `~/shared`: `provision` replaces the guest's `~/host-git` link
 with `~/shared`, Tart mounts the new folder on the next `tart:start`, and `vmpal:configure` removes the old `git`
@@ -185,9 +217,9 @@ See each engine's README for its network settings.
 Not changed here; provisioning works around them:
 
 1. The bootstrap's `files` phase needs `TERN_TAILSCALE_EMAIL` / `TERN_SSH_FINGERPRINT`, so it is skipped.
-2. `[bootstrap.repos]` uses an SSH URL, so it is skipped; `~/git/dotfiles` is cloned over HTTPS.
-3. A `~/.gitconfig` that is not the dotfiles' symlink blocks the bootstrap, so it is moved to
-   `~/.gitconfig.pre-dotfiles` (Tart's base image: `~/.gitconfig.base-image`).
+2. `[bootstrap.repos]` uses an SSH URL, so it is skipped in both passes; `~/git/dotfiles` is cloned over HTTPS.
+3. A `~/.gitconfig` that is not the dotfiles' symlink, such as the CI one in Tart's base image, blocks the
+   bootstrap, so it is moved to `~/.gitconfig.pre-dotfiles`.
 4. `[tasks.bootstrap]` installs the crontab in the VM too.
 
 Rerun with `FORCE=1 mise run tart:provision` (or `vmpal:provision`).

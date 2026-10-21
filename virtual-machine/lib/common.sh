@@ -24,6 +24,8 @@ HOST_CORES="$(sysctl -n hw.ncpu)" HOST_PCORES="$(sysctl -n hw.perflevel0.physica
 : "${VM_SSHD_AUTHORIZED_KEYS:=$VM_SSH_PUBKEY}"
 : "${VM_GITHUB_AUTH_KEY=$HOME/.ssh/github}"                 # private key for git@github.com; empty = skip
 : "${VM_GITHUB_SIGNING_KEY=$HOME/.ssh/github-signing-key}"  # private key for SSH commit signing; empty = skip
+: "${VM_DOTFILES_REPO=https://github.com/ahstn/dotfiles.git}" # cloned and applied by the dotfiles pass; empty = skip
+: "${VM_DOTFILES_DIR:=git/dotfiles}"       # where, relative to the guest's home
 
 need_apple_silicon() { [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || die "needs an Apple Silicon Mac"; }
 need_pubkey() { [ -f "$VM_SSH_PUBKEY" ] || die "no SSH public key at $VM_SSH_PUBKEY (ssh-keygen -t ed25519)"; }
@@ -52,5 +54,34 @@ github_host_keys() {
 SSHD_PID_FN='pidf=$HOME/.config/sshd/sshd.pid
 sshd_pid() { p=$(cat "$pidf" 2>/dev/null) && ps -p "$p" -o command= 2>/dev/null | grep -q "sshd.* -D" && echo "$p"; }
 sshd_stop() { pkill -TERM -P "$1" 2>/dev/null; kill "$1"; }'
+
+# guest_base <user@host> <known_hosts> [mise bootstrap flags...]: apply ../guest/mise.toml in the guest with
+# `mise bootstrap remote`, over SSH with VM_SSH_PUBKEY's key. The guest gets this mise's version and keeps it at
+# ~/.local/bin/mise. Remote runs pass no environment, so the share name goes in a generated mise.vm.local.toml.
+# repos is skipped: the dotfiles' [bootstrap.repos] uses an SSH clone URL.
+guest_base() {
+  local dest="$1" known_hosts="$2" src="$BUILD/guest"; shift 2
+  rm -rf "$src" && mkdir -p "$src" && cp -R "$VM_ROOT/guest/." "$src/"
+  printf '# Written by the provision task.\n[vars]\nshare_name = "%s"\n' "${VM_SHARE_DIR:+$VM_SHARE_NAME}" \
+    > "$src/mise.vm.local.toml"
+  local opts=(--host "$dest" --source "$src" --remote-env vm --install-mise --yes --skip repos
+    --ssh-option StrictHostKeyChecking=accept-new --ssh-option "UserKnownHostsFile=$known_hosts")
+  [ ! -f "${VM_SSH_PUBKEY%.pub}" ] || opts+=(-i "${VM_SSH_PUBKEY%.pub}" --ssh-option IdentitiesOnly=yes)
+  log "applying guest/mise.toml to $dest ${*:-}"
+  mise bootstrap remote "${opts[@]}" "$@"
+}
+
+# Guest-side Tailscale login: ts_login <file> logs in with the auth key in <file>, unless already logged in, and
+# deletes the file, so the key is in no command line. No python3: a fresh guest has only the installer stub.
+# shellcheck disable=SC2034 # used by the engine libs
+TS_LOGIN_FN='ts_login() {
+  ts=/opt/homebrew/opt/tailscale/bin/tailscale ok=""
+  for _ in $(seq 30); do sudo "$ts" status --json >/dev/null 2>&1 && { ok=1; break; }; sleep 1; done
+  if [ -z "$ok" ]; then echo "tailscaled did not respond within 30s" >&2
+  elif sudo "$ts" status --json | grep -q "\"BackendState\": *\"Running\""; then echo "Tailscale is already logged in"
+  else sudo "$ts" up --auth-key="file:$1"
+  fi
+  rm -f "$1"; [ -n "$ok" ]
+}'
 
 mkdir -p "$BUILD"
