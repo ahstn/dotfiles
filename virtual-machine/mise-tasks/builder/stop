@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Stop the host's `builder` Colima profile"
+#MISE extends="builder"
+# shellcheck source=lib/builder.sh
+. "$MISE_CONFIG_ROOT/lib/builder.sh"
+cmd_stop

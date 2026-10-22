@@ -20,6 +20,10 @@
 # VM_GITHUB_AUTH_KEY = { default = "{{ env.HOME }}/.ssh/github" }                 # empty = skip
 # VM_GITHUB_SIGNING_KEY = { default = "{{ env.HOME }}/.ssh/github-signing-key" }  # empty = skip
 
+# Container builder (builder:*), on the Mac that hosts the VMs
+# VM_BUILDER_ADDRESS = { default = "" }     # default: the vmnet gateway, or the bridged interface's LAN address
+# VM_BUILDER_PORT = { default = "1234" }
+
 # Tart
 # VM_IMAGE = { default = "ghcr.io/cirruslabs/macos-tahoe-base:latest" }
 # VM_USER = { default = "admin" }            # the base image's account

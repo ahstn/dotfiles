@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Show the builder profile, its BuildKit container and platforms"
+#MISE extends="builder"
+# shellcheck source=lib/builder.sh
+. "$MISE_CONFIG_ROOT/lib/builder.sh"
+cmd_status

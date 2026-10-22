@@ -84,4 +84,22 @@ TS_LOGIN_FN='ts_login() {
   rm -f "$1"; [ -n "$ok" ]
 }'
 
+# Guest side of the builder (lib/builder.sh): registers the BuildKit at BUILDER_ENDPOINT as the guest's current
+# buildx builder, with the client certificates the engine task copied to ~/.docker/certs/vm-builder.
+# shellcheck disable=SC2034 # used by the engine libs
+BUILDER_CONNECT='set -eu
+export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+d="$HOME/.docker/certs/vm-builder"
+chmod 700 "$d" && chmod 600 "$d/key.pem"
+docker buildx rm vm-builder >/dev/null 2>&1 || true
+docker buildx create --name vm-builder --driver remote --use --bootstrap \
+  --driver-opt "cacert=$d/ca.pem,cert=$d/cert.pem,key=$d/key.pem" "tcp://$BUILDER_ENDPOINT"
+docker buildx inspect vm-builder | grep -i platforms'
+
+# builder_endpoint: host:port that builder:start wrote, or exit telling you to run it.
+builder_endpoint() {
+  cat "$VM_ROOT/build/builder/endpoint" 2>/dev/null \
+    || die "no builder on this Mac yet: run mise run builder:start here first (on the Mac that hosts the VM)"
+}
+
 mkdir -p "$BUILD"

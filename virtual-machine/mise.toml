@@ -8,6 +8,10 @@ min_version = { hard = "2026.10.12" }
 [task_templates.tart]
 tools = { tart = "2.41.1" }
 
+# Colima, Lima and the docker CLI for the builder:* tasks (lib/builder.sh).
+[task_templates.builder]
+tools = { colima = "0.10.3", lima = "2.2.1", docker-cli = "29.9.1" }
+
 [tasks.lint]
 description = "shellcheck the VM tasks, their libs and the guest scripts"
 tools = { shellcheck = "0.11.0" }

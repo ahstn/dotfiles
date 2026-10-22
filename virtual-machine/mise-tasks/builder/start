@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Start BuildKit in the host's `builder` Colima profile (vz + Rosetta), on the address the VMs reach"
+#MISE extends="builder"
+# shellcheck source=lib/builder.sh
+. "$MISE_CONFIG_ROOT/lib/builder.sh"
+cmd_start

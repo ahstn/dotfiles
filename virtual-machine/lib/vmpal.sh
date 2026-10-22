@@ -431,6 +431,18 @@ cmd_sshd() {
   esac
 }
 
+# Register this Mac's builder (builder:start) as the guest's buildx builder, through VMPal Tools.
+cmd_builder() {
+  need_running
+  local ep f; ep="$(builder_endpoint)"
+  guest -- 'd=~/.docker/certs/vm-builder && rm -rf "$d" && mkdir -p "$d"'
+  for f in ca.pem cert.pem key.pem; do
+    vmpal cp "$VM_ROOT/build/builder/certs/client/$f" "$VM_NAME:.docker/certs/vm-builder/$f"
+  done
+  guest --env "BUILDER_ENDPOINT=$ep" -- "$BUILDER_CONNECT"
+  log "builds in the guest now go to tcp://$ep; add --load to get an image into the guest's docker"
+}
+
 cmd_ip()   { need_running; guest_ip; }
 cmd_exec() { need_running; vmpal exec "$VM_NAME" -- "$@"; }
 

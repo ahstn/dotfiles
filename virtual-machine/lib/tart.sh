@@ -289,6 +289,16 @@ EOF
   fi
 }
 
+# Register this Mac's builder (builder:start) as the guest's buildx builder, over SSH.
+cmd_builder() {
+  local ep; ep="$(builder_endpoint)"
+  wait_for_ssh
+  tar -C "$VM_ROOT/build/builder/certs/client" -cf - ca.pem cert.pem key.pem \
+    | guest_ssh 'd=~/.docker/certs/vm-builder && rm -rf "$d" && mkdir -p "$d" && tar -C "$d" -xf -'
+  guest_ssh "BUILDER_ENDPOINT='$ep' bash -s" <<< "$BUILDER_CONNECT"
+  log "builds in the guest now go to tcp://$ep; add --load to get an image into the guest's docker"
+}
+
 cmd_ssh() { local a; a="$(guest_addr)"; exec ssh "${SSH_OPTS[@]}" "$a" "$@"; }
 cmd_ip()  { running || die "'$VM_NAME' is not running"; vm_ip 5; }
 

@@ -205,6 +205,35 @@ share. A `VM_SHARE_DIR` that still points at `~/git` keeps the old share.
   grows it. On the host, `tart prune --older-than=30` clears Tart's cached OCI and IPSW images that have not been
   used for 30 days. VMs and snapshots are separate copies, so it does not touch them.
 
+### Container builds
+
+A macOS guest has no hardware virtualization (`sysctl kern.hv_support` is 0), so Colima in a VM falls back to
+QEMU's software emulation (`accel=tcg`), and a `--platform linux/amd64` build is emulated twice. Build on the
+host instead: the `builder` [Colima profile](../.colima/builder/colima.yaml) runs on Apple's Virtualization
+framework with Rosetta, so arm64 builds run natively and amd64 ones through Rosetta. A guest's buildx talks to
+its BuildKit over TCP with mutual TLS; nothing in the guest gets SSH or a docker socket on the host.
+
+On the Mac that hosts the VM, with the VM running:
+
+```bash
+mise run builder:start    # copies the profile to ~/.colima/builder, starts it, then BuildKit; prints its platforms
+mise run tart:builder     # or vmpal:builder: makes it the guest's current buildx builder
+```
+
+Then in the guest, `docker build --platform linux/amd64 --load -t app .` builds on the host and loads the image
+into the guest's docker. `--push` sends it to a registry instead.
+
+- BuildKit listens on one host address, the one the VM reaches: the vmnet gateway (`bridge100`, which exists only
+  while a NAT VM runs) or, with `VM_NETWORK=bridged`, the bridged interface's LAN address, where other LAN devices
+  can connect too but need the client certificate. `VM_BUILDER_ADDRESS` overrides it.
+- `build/builder/certs` holds a private CA, the server certificate for that address and the client certificate.
+  The CA and client certificate are kept, so rerunning `builder:start` (after a reboot, or when the address
+  changes) leaves the guest's builder working; delete the folder to start over, then rerun `tart:builder`.
+- The profile mounts only `~/shared`, read-only: Colima would otherwise mount your home directory writable, and
+  BuildKit runs privileged. Its build cache is the `vm-buildkit-state` volume in the profile.
+- `builder:status` shows the profile and BuildKit's platforms; `builder:stop` stops the profile. If macOS asks
+  whether `limactl` or `ssh` may accept incoming connections, allow it, or the VM cannot connect.
+
 ### SSH from another device
 
 Both engines can bridge the guest onto the LAN and run the dotfiles' sshd template and task in it
