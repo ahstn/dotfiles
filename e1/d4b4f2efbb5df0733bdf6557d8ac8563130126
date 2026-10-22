@@ -1,0 +1,43 @@
+.colima/builder/colima.yaml
+  s_e7bc9ad884f98b::t_15fa4686f6e8f1 1-51
+virtual-machine/README.md
+  s_e7bc9ad884f98b::t_cb6caeaa232149 208-236
+virtual-machine/lib/builder.sh
+  s_e7bc9ad884f98b::t_eee8eedcd85ecd 1-124
+virtual-machine/lib/common.sh
+  s_e7bc9ad884f98b::t_d53ec2d97a9ae3 87-104
+virtual-machine/lib/tart.sh
+  s_e7bc9ad884f98b::t_06768ed4105526 292-301
+virtual-machine/lib/vmpal.sh
+  s_e7bc9ad884f98b::t_e1d2991404f684 434-445
+virtual-machine/mise-tasks/builder/start
+  s_e7bc9ad884f98b::t_6ed77116d6e84e 1-6
+virtual-machine/mise-tasks/builder/status
+  s_e7bc9ad884f98b::t_54de924eeb3e3c 1-6
+virtual-machine/mise-tasks/builder/stop
+  s_e7bc9ad884f98b::t_c645d505855ba3 1-6
+virtual-machine/mise-tasks/tart/builder
+  s_e7bc9ad884f98b::t_c0c99cdf4cc12c 1-6
+virtual-machine/mise-tasks/vmpal/builder
+  s_e7bc9ad884f98b::t_bf545f5065f6df 1-5
+virtual-machine/mise.local.toml.example
+  s_e7bc9ad884f98b::t_79bd9b76c0e71c 23-26
+virtual-machine/mise.toml
+  s_e7bc9ad884f98b::t_33947a7dbfbfdf 11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1d4b4f2efbb5df0733bdf6557d8ac8563130126",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
