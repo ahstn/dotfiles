@@ -1,0 +1,25 @@
+virtual-machine/_tart_macos/README.md
+  s_940c186323c6f9::t_611ad4d4dc418c 79
+virtual-machine/_tart_macos/guest/provision.sh
+  s_940c186323c6f9::t_c4689b1284fac8 176-179
+virtual-machine/_utm_ubuntu/README.md
+  s_940c186323c6f9::t_1f17a2512131be 76
+virtual-machine/_utm_ubuntu/guest/provision.sh
+  s_940c186323c6f9::t_18c1928161c5bb 182-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4690e7dae717e0952b4fe07d9b90d80425cbb7a",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

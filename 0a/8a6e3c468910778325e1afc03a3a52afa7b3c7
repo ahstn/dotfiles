@@ -1,0 +1,19 @@
+skills/github-librarian/SKILL.md
+  s_43a41eb17af2a9::t_ee043bca7e593a 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a8a6e3c468910778325e1afc03a3a52afa7b3c7",
+  "prompts": {},
+  "sessions": {
+    "s_43a41eb17af2a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8215722-6ffc-4b99-944b-cbd5810921b7",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+.config/ghostty/config.ghostty
+  h_2f452a9c375069 4,6
+mise.toml
+  h_2f452a9c375069 18
+.config/mise/config.toml
+  h_2f452a9c375069 82,96
+.config/herdr/config.toml
+  h_2f452a9c375069 25,29
+.config/starship.toml
+  h_2f452a9c375069 30-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "738426cfa320bb3d7a6110a09eb142525a7f2510",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

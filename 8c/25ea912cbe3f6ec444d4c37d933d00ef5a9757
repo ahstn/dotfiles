@@ -1,0 +1,21 @@
+virtual-machine/README.md
+  s_940c186323c6f9::t_e84aec4f6fd5ec 54,86-88
+virtual-machine/guest/provision.sh
+  s_940c186323c6f9::t_20b53d06f35d85 15-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c25ea912cbe3f6ec444d4c37d933d00ef5a9757",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

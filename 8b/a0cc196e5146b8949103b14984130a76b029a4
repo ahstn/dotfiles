@@ -1,0 +1,19 @@
+skills/code-review-and-quality/references/communication.md
+  s_a54d91cfb15fa9::t_1634b80bfd1e4e 7,12,15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ba0cc196e5146b8949103b14984130a76b029a4",
+  "prompts": {},
+  "sessions": {
+    "s_a54d91cfb15fa9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14a11-4d13-7870-85ed-2cb7d2fbf625",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

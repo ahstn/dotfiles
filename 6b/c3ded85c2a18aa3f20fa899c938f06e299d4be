@@ -1,0 +1,23 @@
+skills/_draft/kubes-mode-v2/playbooks/pr-autofix.md
+  s_70f26d58e0c223::t_fe0c8f0dd9b73f 140
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.test.ts
+  s_70f26d58e0c223::t_d9a0edc1e58da1 16,435-468
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.ts
+  s_70f26d58e0c223::t_ead4e841968b12 596-602,604-608
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bc3ded85c2a18aa3f20fa899c938f06e299d4be",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

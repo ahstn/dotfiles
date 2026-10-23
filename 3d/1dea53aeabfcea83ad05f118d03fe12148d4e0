@@ -1,0 +1,21 @@
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.test.ts
+  s_1c39eca6a8bf5f::t_be937069f00215 64-65,73-79,87-89,109,113-114
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.ts
+  s_1c39eca6a8bf5f::t_fbcde814e4be6a 80,400,402,404-412,417-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d1dea53aeabfcea83ad05f118d03fe12148d4e0",
+  "prompts": {},
+  "sessions": {
+    "s_1c39eca6a8bf5f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e39a-93c5-7f21-b398-3a83ab99f84f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

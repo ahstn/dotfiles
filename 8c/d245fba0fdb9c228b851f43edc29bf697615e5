@@ -1,0 +1,18 @@
+.omp/agent/config.yml
+  h_2f452a9c375069 41-69,71-73,75
+.omp/agent/extensions/skill-mentions.js
+  h_2f452a9c375069 1-55
+.omp/agent/models.yml
+  h_2f452a9c375069 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8cd245fba0fdb9c228b851f43edc29bf697615e5",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

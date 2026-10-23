@@ -1,0 +1,16 @@
+.config/ghostty/config
+  h_2f452a9c375069 5-6
+.config/mise/config.toml
+  h_2f452a9c375069 7-11,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72b8985ded16c6e208979ee9467c1a957f6abf8f",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

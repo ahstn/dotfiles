@@ -1,0 +1,29 @@
+.pi/agent/extensions/pr-autofix.ts
+  s_70f26d58e0c223::t_802004c3a42969 126-129,137-141,145
+skills/github-yeet/scripts/watch-pr/github.test.ts
+  s_70f26d58e0c223::t_23a6fb662e1619 269-273,277,282,294,298,303,308-320,324,339-340,343-344
+skills/github-yeet/scripts/watch-pr/github.ts
+  s_70f26d58e0c223::t_9e088ebdaaea33 19,22,24,32-40,319-322,328-332,334,338,343-345,351,357-358,361-362,364-387,389-395,437,448-451,454-458,473-487,579,583-590,736-738,745-760,763-767,827-830
+skills/github-yeet/scripts/watch-pr/policy.test.ts
+  s_70f26d58e0c223::t_3fc8038c0a7ef8 2,160,194,197,199,233-296
+skills/github-yeet/scripts/watch-pr/policy.ts
+  s_70f26d58e0c223::t_a177f54452a38d 72-113,218
+skills/github-yeet/scripts/watch-pr/types.ts
+  s_70f26d58e0c223::t_48346c5d58fba5 65-66,69-70,73-77,86-88,90,253-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1235c94fe660516a91bed3375eaf1a3f01d62700",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

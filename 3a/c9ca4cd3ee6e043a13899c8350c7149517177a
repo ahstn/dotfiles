@@ -1,0 +1,19 @@
+mise.toml
+  s_bed1b98cb9a5d0::t_b43e6f69b37429 34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ac9ca4cd3ee6e043a13899c8350c7149517177a",
+  "prompts": {},
+  "sessions": {
+    "s_bed1b98cb9a5d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "523cae2f-e509-4490-9a51-dd82b39b61b7",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

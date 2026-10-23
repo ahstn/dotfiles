@@ -1,0 +1,33 @@
+skills/_draft/kubes-mode-v2/scripts/bootstrap.ts
+  s_70f26d58e0c223::t_ed7f12c90ffa12 52-54,56-60,68,75,78-102,109-111,134-135,137-138,142-144
+skills/_draft/kubes-mode-v2/scripts/watch-pr/cli.test.ts
+  s_70f26d58e0c223::t_000d553bca1219 130-192
+skills/_draft/kubes-mode-v2/scripts/watch-pr/fakes.test-helper.ts
+  s_70f26d58e0c223::t_eb68a9f87f7b32 99-103
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.ts
+  s_70f26d58e0c223::t_7fce1d9522a37c 749,759,761,763-764,768-775
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.test.ts
+  s_70f26d58e0c223::t_d1d1953833f524 114,323-324,344,603-604,620-646
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.ts
+  s_70f26d58e0c223::t_16f8e39f55b9c5 78,80,93-94,97-101,108
+skills/_draft/kubes-mode-v2/scripts/watch-pr/render.ts
+  s_70f26d58e0c223::t_b1748fa2f70f5a 25-33,48-52
+skills/_draft/kubes-mode-v2/scripts/watch-pr/types.ts
+  s_70f26d58e0c223::t_5fc04c2c5d0a5e 55-68,300-305,509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dcfc717b507ff3a5ac0ddc62d4a6e13806d239bf",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

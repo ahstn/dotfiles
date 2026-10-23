@@ -1,0 +1,33 @@
+.pi/agent/extensions/pr-autofix.ts
+  s_70f26d58e0c223::t_d75ed006ac7379 64-69
+skills/github-yeet/references/autofix.md
+  s_70f26d58e0c223::t_c9d30fcc9dae97 26,28
+skills/github-yeet/scripts/watch-pr/fakes.test-helper.ts
+  s_70f26d58e0c223::t_66befd56e5fffe 19,106-109
+skills/github-yeet/scripts/watch-pr/github.test.ts
+  s_70f26d58e0c223::t_421957d5fb2712 278-280
+skills/github-yeet/scripts/watch-pr/github.ts
+  s_70f26d58e0c223::t_1b568ec3bdc6e3 30,371,390,467,670-683,710-742
+skills/github-yeet/scripts/watch-pr/policy.test.ts
+  s_70f26d58e0c223::t_6dfa79eebdb1a0 160,183-237
+skills/github-yeet/scripts/watch-pr/policy.ts
+  s_70f26d58e0c223::t_a5552ce71fb154 1-5,53,72-76,93-110,112-114
+skills/github-yeet/scripts/watch-pr/types.ts
+  s_70f26d58e0c223::t_916711a0f4ec78 79,407-408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "052204a08b61a7401e39a80b12ea9d8465fd4877",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

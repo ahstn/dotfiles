@@ -1,0 +1,123 @@
+virtual-machine/README.md
+  s_a1df639cf4045d::t_47afee06c20115 12-13,15-18,21-22,41,53-57,60,63,67,75-92,101-104,118,140,144,153-155,159-160,172,179-181,193
+virtual-machine/lib/tart.sh
+  s_a1df639cf4045d::t_1897e6da28cb34 1-5,15-17,19-21,31,38-39,44,47,52,54,56-61,73-76,85,92-101,104-105,122,124,142,159-160,165,178-179,181-182,209,215,236,240-242,261,291,294
+virtual-machine/lib/vmpal.sh
+  s_a1df639cf4045d::t_952bb58d47ea6d 1-6,16,19,31,41,56-57,72,75,107,135,174,177,188,192,197,222-223,248-250,253,342,371,380,404,407,412
+virtual-machine/mise.local.toml.example
+  s_a1df639cf4045d::t_9a1ad2b1e7a9d9 1-3,6-21,23-30,32-39
+virtual-machine/tart-macos/guest/macos-engine.sh
+  s_a1df639cf4045d::t_c754fac736d269 10
+virtual-machine/vmpal-macos/MACOS-MANUAL-SETUP.md
+  s_a1df639cf4045d::t_7237cccc6aa026 5,15,19,130,134,137-140,146,179-180
+virtual-machine/vmpal-macos/README.md
+  s_a1df639cf4045d::t_9215ae1487fcc0 13-16,23-25,28-30,58-60,68-69,95-96,126,130-131,136-137,142,147-148,154-158,180,188,192,207-209,212,214
+virtual-machine/vmpal-macos/guest/macos-engine.sh
+  s_a1df639cf4045d::t_acdb8f46b9a4f7 2,7
+virtual-machine/.gitignore
+  s_e7bc9ad884f98b::t_9c774d4c73a0e3 2
+virtual-machine/.miserc.toml
+  s_e7bc9ad884f98b::t_b482dc8511e014 1-4
+virtual-machine/.shellcheckrc
+  s_e7bc9ad884f98b::t_edb64799cd1771 1-2
+virtual-machine/guest/macos.sh
+  s_e7bc9ad884f98b::t_3c1afccc2486f7 2-4,44-45
+virtual-machine/lib/common.sh
+  s_e7bc9ad884f98b::t_5b35db687c090f 1-56
+virtual-machine/mise-tasks/tart/all
+  s_e7bc9ad884f98b::t_ed1b21ef7eea86 1-6
+virtual-machine/mise-tasks/tart/check
+  s_e7bc9ad884f98b::t_ccf96a796bb226 1-6
+virtual-machine/mise-tasks/tart/configure
+  s_e7bc9ad884f98b::t_9b8ff54ae59bf8 1-6
+virtual-machine/mise-tasks/tart/create
+  s_e7bc9ad884f98b::t_8a09e989d52683 1-6
+virtual-machine/mise-tasks/tart/github-keys
+  s_e7bc9ad884f98b::t_cf9ab6d9d3f8b6 1-6
+virtual-machine/mise-tasks/tart/ip
+  s_e7bc9ad884f98b::t_aca0feb90a5461 1-6
+virtual-machine/mise-tasks/tart/keys
+  s_e7bc9ad884f98b::t_aac41ffad7bfc9 1-6
+virtual-machine/mise-tasks/tart/password
+  s_e7bc9ad884f98b::t_f98b3ef4746248 1-6
+virtual-machine/mise-tasks/tart/prereqs
+  s_e7bc9ad884f98b::t_fa2ccb3698e576 1-6
+virtual-machine/mise-tasks/tart/provision
+  s_e7bc9ad884f98b::t_2bab656a69c0ec 1-6
+virtual-machine/mise-tasks/tart/snapshot
+  s_e7bc9ad884f98b::t_b9fcae617d06af 1-8
+virtual-machine/mise-tasks/tart/ssh
+  s_e7bc9ad884f98b::t_332e641e672239 1-6
+virtual-machine/mise-tasks/tart/sshd
+  s_e7bc9ad884f98b::t_f8886be80fca6c 1-9
+virtual-machine/mise-tasks/tart/start
+  s_e7bc9ad884f98b::t_16e6dcfceb707f 1-6
+virtual-machine/mise-tasks/tart/stop
+  s_e7bc9ad884f98b::t_56d263157ecc30 1-6
+virtual-machine/mise-tasks/vmpal/all
+  s_e7bc9ad884f98b::t_bcb5e9be3ea724 1-5
+virtual-machine/mise-tasks/vmpal/check
+  s_e7bc9ad884f98b::t_abbaf742e6311f 1-5
+virtual-machine/mise-tasks/vmpal/configure
+  s_e7bc9ad884f98b::t_6d290af16cb738 1-5
+virtual-machine/mise-tasks/vmpal/create
+  s_e7bc9ad884f98b::t_466dbe88799557 1-5
+virtual-machine/mise-tasks/vmpal/exec
+  s_e7bc9ad884f98b::t_99af13c5a6a0d4 1-5
+virtual-machine/mise-tasks/vmpal/github-keys
+  s_e7bc9ad884f98b::t_3dde093b475dec 1-5
+virtual-machine/mise-tasks/vmpal/ip
+  s_e7bc9ad884f98b::t_db469fd56a0a19 1-5
+virtual-machine/mise-tasks/vmpal/keys
+  s_e7bc9ad884f98b::t_0aea8ce61160ae 1-5
+virtual-machine/mise-tasks/vmpal/password
+  s_e7bc9ad884f98b::t_5b7afe37e57f32 1-5
+virtual-machine/mise-tasks/vmpal/prereqs
+  s_e7bc9ad884f98b::t_e7603d144a8f9b 1-5
+virtual-machine/mise-tasks/vmpal/provision
+  s_e7bc9ad884f98b::t_2f15e5578eba23 1-5
+virtual-machine/mise-tasks/vmpal/restart
+  s_e7bc9ad884f98b::t_e0183ad032305c 1-5
+virtual-machine/mise-tasks/vmpal/snapshot
+  s_e7bc9ad884f98b::t_7f8c7fc34ff59b 1-7
+virtual-machine/mise-tasks/vmpal/ssh
+  s_e7bc9ad884f98b::t_d05b19d4483fae 1-5
+virtual-machine/mise-tasks/vmpal/sshd
+  s_e7bc9ad884f98b::t_3c1e7fa7d2e48c 1-8
+virtual-machine/mise-tasks/vmpal/start
+  s_e7bc9ad884f98b::t_9a09c5a865ee9e 1-5
+virtual-machine/mise-tasks/vmpal/stop
+  s_e7bc9ad884f98b::t_73a63cafbd9c4c 1-5
+virtual-machine/mise-tasks/vmpal/sudo
+  s_e7bc9ad884f98b::t_00268005a2c5af 1-5
+virtual-machine/mise.toml
+  s_e7bc9ad884f98b::t_c65d9c3a8acc2e 1-14
+virtual-machine/tart-macos/README.md
+  s_e7bc9ad884f98b::t_2618e661f72471 6,13-16,19-21,26,32-33,37-42,56,67,76,78,80,92,111,113-114,119-122,141,157
+virtual-machine/vmpal-macos/guest/ubuntu.sh
+  s_e7bc9ad884f98b::t_35fb1751f9d736 2-3,65-66,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f28392713f307f5faf3dd06babd81e45d402841",
+  "prompts": {},
+  "sessions": {
+    "s_a1df639cf4045d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15d73-2535-7ff2-be40-90ad31bfd1b1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

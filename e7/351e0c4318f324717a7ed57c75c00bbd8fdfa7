@@ -1,0 +1,19 @@
+virtual-machine/vm.sh
+  s_940c186323c6f9::t_fc1f2588f44385 135,137,140-141,146,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7351e0c4318f324717a7ed57c75c00bbd8fdfa7",
+  "prompts": {},
+  "sessions": {
+    "s_940c186323c6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e2098b1-7d2c-4d4c-a950-9815c54f1282",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

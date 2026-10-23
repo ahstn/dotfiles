@@ -1,0 +1,24 @@
+.config/Code/User/settings.json
+  h_2f452a9c375069 7-8,26-27
+.config/ghostty/config.ghostty
+  h_2f452a9c375069 7
+.config/mise/config.toml
+  h_2f452a9c375069 26-27,34-35,90
+.config/tty7/config.json
+  h_2f452a9c375069 1-108
+README.md
+  h_2f452a9c375069 21,85-92,108-111,138
+mise.toml
+  h_2f452a9c375069 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "025b5f59fa3aa42e9a94bfbb2499bb9cfadb5c97",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

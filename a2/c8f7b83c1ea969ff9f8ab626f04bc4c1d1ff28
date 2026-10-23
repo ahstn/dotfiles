@@ -1,0 +1,19 @@
+.pi/agent/extensions/pr-autofix.ts
+  s_70f26d58e0c223::t_e5c212cd5687fa 67,72,79,83-87,94-114,118-121,125-142,286-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2c8f7b83c1ea969ff9f8ab626f04bc4c1d1ff28",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

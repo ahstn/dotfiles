@@ -1,0 +1,25 @@
+.config/tern/plugins/git-branch-tabs/README.md
+  s_c1dcef61d5dc95::t_8220fe49703cb5 1-31
+.config/tern/plugins/git-branch-tabs/plugin.toml
+  s_c1dcef61d5dc95::t_47609c35b5f0d3 1-7
+.config/tern/plugins/git-branch-tabs/window.luau
+  s_c1dcef61d5dc95::t_377d956fae3f53 1-197
+mise.toml
+  s_c1dcef61d5dc95::t_eeee63906396db 139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79492b7b1c70f9cbdb61155d4756531989e1cce5",
+  "prompts": {},
+  "sessions": {
+    "s_c1dcef61d5dc95": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14231-3fa6-72b3-9cea-07f2dbb0a11d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

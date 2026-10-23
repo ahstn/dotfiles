@@ -1,0 +1,15 @@
+skills/computer-use-cua-driver/references/slack.md
+  h_2f452a9c375069 32,34,36-39,92-137,210,212-214
+  h_2f452a9c375069 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a787129d23f3ac08320888044fd7226afe6285e4",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

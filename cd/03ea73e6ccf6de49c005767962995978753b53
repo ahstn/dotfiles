@@ -1,0 +1,39 @@
+skills/_draft/kubes-mode-v2/scripts/watch-pr/cli.test.ts
+  s_01674f4e1b5bdc::t_0da52c3820bde5 147-148
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.test.ts
+  s_01674f4e1b5bdc::t_aed25d2eb38449 238-239,302
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.ts
+  s_01674f4e1b5bdc::t_2089bf71d1e323 273-286
+skills/_draft/kubes-mode-v2/playbooks/pr-autofix.md
+  s_70f26d58e0c223::t_d540e4b3654ca9 110,132
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.test.ts
+  s_70f26d58e0c223::t_06539d3b9c44b7 59-111
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.ts
+  s_70f26d58e0c223::t_154400516b52aa 80,382-383,399-407,410-415,419-426,428,430-452,791,810,813-818,1188-1213,1229
+skills/_draft/kubes-mode-v2/scripts/watch-pr/types.ts
+  s_70f26d58e0c223::t_adff0e88dc4d53 141-154,165-170,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd03ea73e6ccf6de49c005767962995978753b53",
+  "prompts": {},
+  "sessions": {
+    "s_01674f4e1b5bdc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12b47-bf04-76f3-8675-5d67766468fd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

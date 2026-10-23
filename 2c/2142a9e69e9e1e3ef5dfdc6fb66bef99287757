@@ -1,0 +1,50 @@
+skills/_draft/kubes-mode-v2/SKILL.md
+  h_2f452a9c375069 1-110
+skills/_draft/kubes-mode-v2/playbooks/bug-fix.md
+  h_2f452a9c375069 1-12
+skills/_draft/kubes-mode-v2/playbooks/feature.md
+  h_2f452a9c375069 1-12
+skills/_draft/kubes-mode-v2/playbooks/hillclimb.md
+  h_2f452a9c375069 1-15
+skills/_draft/kubes-mode-v2/playbooks/investigation.md
+  h_2f452a9c375069 1-12
+skills/_draft/kubes-mode-v2/playbooks/multi-phase-plan.md
+  h_2f452a9c375069 1-112
+skills/_draft/kubes-mode-v2/playbooks/pause-safely.md
+  h_2f452a9c375069 1-10
+skills/_draft/kubes-mode-v2/playbooks/perf-issue.md
+  h_2f452a9c375069 1-19
+skills/_draft/kubes-mode-v2/playbooks/prototype.md
+  h_2f452a9c375069 1-12
+skills/_draft/kubes-mode-v2/playbooks/refactoring.md
+  h_2f452a9c375069 1-13
+skills/_draft/kubes-mode-v2/playbooks/runtime-forensics.md
+  h_2f452a9c375069 1-11
+skills/_draft/kubes-mode-v2/playbooks/worktree-cleanup.md
+  h_2f452a9c375069 1-13
+skills/_draft/kubes-mode-v2/principles/context-window.md
+  h_2f452a9c375069 1-13
+skills/_draft/kubes-mode-v2/principles/enforce-lessons.md
+  h_2f452a9c375069 1-13
+skills/_draft/kubes-mode-v2/principles/explain-the-number.md
+  h_2f452a9c375069 1-15
+skills/_draft/kubes-mode-v2/principles/fix-root-causes.md
+  h_2f452a9c375069 1-16
+skills/_draft/kubes-mode-v2/principles/prove-it-works.md
+  h_2f452a9c375069 1-15
+skills/_draft/kubes-mode-v2/scripts/check-plan.mjs
+  h_2f452a9c375069 1-167
+skills/_draft/kubes-mode-v2/scripts/worktree-audit.sh
+  h_2f452a9c375069 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c2142a9e69e9e1e3ef5dfdc6fb66bef99287757",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

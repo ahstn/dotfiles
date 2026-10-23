@@ -1,0 +1,15 @@
+.pi/agent/settings.json
+  h_2f452a9c375069 6,28,31,34,37,40,46
+  h_2f452a9c375069 17,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14ea281b7f5486dc92a334018d338e48a3d30c02",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

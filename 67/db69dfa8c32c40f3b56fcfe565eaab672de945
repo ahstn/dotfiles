@@ -1,0 +1,21 @@
+virtual-machine/lib/tart.sh
+  s_e7bc9ad884f98b::t_bba127c51f9735 227
+virtual-machine/lib/vmpal.sh
+  s_e7bc9ad884f98b::t_7804df8640849a 99,248-252,415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67db69dfa8c32c40f3b56fcfe565eaab672de945",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

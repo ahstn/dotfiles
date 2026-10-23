@@ -1,0 +1,27 @@
+skills/_draft/kubes-mode-v2/scripts/watch-pr/fakes.test-helper.ts
+  s_70f26d58e0c223::t_67abd8d9e8bf79 22,150-153
+skills/_draft/kubes-mode-v2/scripts/watch-pr/github.ts
+  s_70f26d58e0c223::t_d987de50878507 79-80,1097-1108
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.test.ts
+  s_70f26d58e0c223::t_e30fb88cdb06f4 79-103,1678-1706,1745-1782
+skills/_draft/kubes-mode-v2/scripts/watch-pr/policy.ts
+  s_70f26d58e0c223::t_f8a9b341cb6d4a 19-24,34-40,83-87,987-1002,1005-1014,1412,1417-1443
+skills/_draft/kubes-mode-v2/scripts/watch-pr/types.ts
+  s_70f26d58e0c223::t_821c3658d84e29 219-228,585-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "debd6997240e7b89993858d1912aff10656f97cd",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

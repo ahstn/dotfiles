@@ -1,0 +1,20 @@
+skills/computer-use-cua-driver/SKILL.md
+  h_2f452a9c375069 1-223
+skills/computer-use-cua-driver/references/setup.md
+  h_2f452a9c375069 1-109
+skills/computer-use-cua-driver/references/slack.md
+  h_2f452a9c375069 1-104
+skills/computer-use-cua-driver/sensitive/.gitignore
+  h_2f452a9c375069 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2218c9d1f7d388637ab3bd31ab0d88782f6c0fc8",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

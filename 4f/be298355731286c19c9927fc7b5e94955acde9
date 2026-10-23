@@ -1,0 +1,38 @@
+skills/computer-use-cua-driver/references/variables.example.jsonc
+  s_59157d20cea1ea::t_1d4a9732a8e9a5 19
+  s_59157d20cea1ea::t_f6ab98dfe88041 1-18,20-27
+skills/computer-use-cua-driver/SKILL.md
+  s_59157d20cea1ea::t_edbede85d226c3 157-158,170-173,206-207,228
+  s_59157d20cea1ea::t_e92656fcd2f309 24
+skills/computer-use-cua-driver/references/slack.md
+  s_59157d20cea1ea::t_b160fa1941e3ef 27,34,41-42,58,62,77,89-90,96
+  s_59157d20cea1ea::t_65d1485fdd6b08 50,52-53,55-57,59-61,63-70,72-76,78-82
+  s_59157d20cea1ea::t_c59491a33bb4b9 85-88,91-93,95,97-98,172
+  s_59157d20cea1ea::t_b8f098823cc590 94
+  s_59157d20cea1ea::t_3008b24e07f88b 36-40,43-49
+  s_59157d20cea1ea::t_8b91bde5d07051 99
+  s_59157d20cea1ea::t_86b240c490ff39 23,25,28-33,35,51,54,84
+  s_59157d20cea1ea::t_8016b4f7aeb99c 71,83
+  s_59157d20cea1ea::t_95561f6b36eab7 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4fbe298355731286c19c9927fc7b5e94955acde9",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_59157d20cea1ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ecb7-636a-72e6-af23-46660b933e55",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

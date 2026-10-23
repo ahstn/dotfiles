@@ -1,0 +1,14 @@
+skills/github-yeet/SKILL.md
+  h_2f452a9c375069 75-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba5591ebbda28c40ede76ff794d5bf2621bba503",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
