@@ -1,0 +1,23 @@
+skills/slack-message/SKILL.md
+  s_8e0d9f5454015b::t_d721751f336a89 1-44
+skills/slack-message/references/variables.example.jsonc
+  s_8e0d9f5454015b::t_b28603b56ebbe2 1-22
+skills/slack-message/sensitive/.gitignore
+  s_8e0d9f5454015b::t_4dd1afbd0ea873 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "439a576b06395a661eeb383ec0a722e9606942cc",
+  "prompts": {},
+  "sessions": {
+    "s_8e0d9f5454015b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a167bf-2cab-7459-9bb9-123d4eeac2bd",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <adam.houston@bazaarvoice.com>"
+    }
+  }
+}
