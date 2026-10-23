@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Stop, then start (not `vmpal restart`, which hangs)"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_restart

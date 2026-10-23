@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run a command in the guest through VMPal Tools"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_exec "$@"

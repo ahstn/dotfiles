@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Copy GitHub auth and signing keys into the guest (also run by provision)"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_github_keys

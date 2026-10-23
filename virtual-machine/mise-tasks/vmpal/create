@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Create VM_NAME from VM_SYSTEM (unattended install), then configure"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_create

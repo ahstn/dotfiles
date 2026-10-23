@@ -13,6 +13,8 @@ enter = "mise outdated oh-my-pi pi"
 [dotfiles]
 # Listing only directories & files to inherit, ignoring others that shouldn't be tracked (e.g. `~/.aws`)
 "~/.config/mise/config.toml" = { source = ".config/mise/config.toml" }
+# Loaded only with the `vm` config environment, which virtual-machine/guest/mise.toml selects in VM guests.
+"~/.config/mise/config.vm.toml" = { source = ".config/mise/config.vm.toml" }
 "~/.config/cron" = { source = ".config/cron" }
 "~/.config/ghostty" = { source = ".config/ghostty" }
 "~/.config/herdr" = { source = ".config/herdr" }

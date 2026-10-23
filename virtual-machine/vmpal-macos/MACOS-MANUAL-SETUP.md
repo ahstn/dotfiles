@@ -2,7 +2,7 @@
 
 Distilled from the 11 October 2026 run: VMPal 0.69, macOS 26.6.2 (25G83), VMPal Tools 0.38. This is the Setup Assistant path for macOS 26, not the automatic macOS 27 setup. That path was not exercised in this run.
 
-Run host commands in **Bash**, from `virtual-machine/vmpal-macos/`. Example target: `macos-dev`, account `admin`, UK English, United Kingdom, Europe/London, 5 CPUs, 8 GB RAM, 100 GB disk. Locale, timezone and key paths below are template choices, not host metadata. Creation and Setup Assistant are one-time steps; provisioning can be repeated.
+Run host commands in **Bash**, from `virtual-machine/`. Example target: `macos-dev`, account `admin`, UK English, United Kingdom, Europe/London, 5 CPUs, 8 GB RAM, 100 GB disk. Locale, timezone and key paths below are template choices, not host metadata. Creation and Setup Assistant are one-time steps; provisioning can be repeated.
 
 ## 1. Create and isolate the VM
 
@@ -12,11 +12,11 @@ Check the downloaded macOS entry first: this flow applies when its `account` is 
 export VM_OS=macos VM_NAME=macos-dev VM_USER=admin
 export VM_CPU=5 VM_MEMORY_GB=8 VM_DISK_GB=100
 export VM_SHARE_DIR="$HOME/shared" VM_SHARE_NAME=shared
-export VM_NETWORK=shared VM_LOCAL_NETWORK=off   # ./vm.sh configure re-applies these in step 4
+export VM_NETWORK=shared VM_LOCAL_NETWORK=off   # vmpal:configure re-applies these in step 4
 export VM_SSH_PUBKEY="$HOME/.ssh/id_ed25519.pub"
 export VM_GITHUB_AUTH_KEY="$HOME/.ssh/github" VM_GITHUB_SIGNING_KEY=''
 
-./vm.sh prereqs
+mise run vmpal:prereqs
 vmpal systems --json
 vmpal list --json
 vmpal create download:macOS --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB"
@@ -127,23 +127,23 @@ vmpal set macos-dev --account-password-file "$pw_file"
 rm -f "$pw_file"; unset pw_file
 ```
 
-VMPal's recorded username may still be the host's. Do not edit VM metadata to fix SSH: the repository's `vm.sh` reads the actual guest user via `id -un`. Registering the password lets VMPal sign in after restarts.
+VMPal's recorded username may still be the host's. Do not edit VM metadata to fix SSH: the repository's `vmpal:*` tasks read the actual guest user via `id -un`. Registering the password lets VMPal sign in after restarts.
 
 ## 4. Provision the development environment
 
-Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` copies `../guest/macos.sh` and `guest/macos-engine.sh` with `vmpal cp` and runs it with `vmpal exec`, including the shared-folder environment.
+Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` applies `guest/mise.toml` with `mise bootstrap remote` over SSH, then the dotfiles pass (`guest/dotfiles.sh`), including the shared-folder link; see [Provisioning a macOS guest](../README.md#provisioning-a-macos-guest).
 
 ```bash
-./vm.sh configure
-./vm.sh keys          # passwordless sudo, host public key, key-only guest SSH
-./vm.sh provision     # configured GitHub key, Homebrew/apps, mise/dotfiles, host daemons
-./vm.sh check
+mise run vmpal:configure
+mise run vmpal:keys        # passwordless sudo, host public key, key-only guest SSH
+mise run vmpal:provision   # configured GitHub key, apps, mise/dotfiles, host daemons
+mise run vmpal:check
 ```
 
-Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the mise bootstrap on reruns unless `FORCE=1` is supplied. The guest clones the dotfiles from GitHub, so it gets the `.zsh-plugins` Unicode-path compilation fix once that is pushed. To use this checkout's copy before then:
+Leave Tailscale signed out by not setting `VM_TAILSCALE_AUTHKEY`. A provisioned guest skips the dotfiles pass on reruns unless `FORCE=1` is supplied. The guest clones the dotfiles from GitHub, so it gets the `.zsh-plugins` Unicode-path compilation fix once that is pushed. To use this checkout's copy before then:
 
 ```bash
-vmpal cp ../../.config/zsh/.zsh-plugins macos-dev:git/dotfiles/.config/zsh/.zsh-plugins
+vmpal cp ../.config/zsh/.zsh-plugins macos-dev:git/dotfiles/.config/zsh/.zsh-plugins
 ```
 
 ## 5. Confirm Helium and exercise the desktop
@@ -176,8 +176,8 @@ vmpal stop macos-dev
 vmpal snapshot macos-dev provisioned
 vmpal start macos-dev --wait
 vmpal snapshots macos-dev --json
-./vm.sh ssh 'id -un; sudo -n true; test -f ~/.provisioned'
-./vm.sh check
+mise run vmpal:ssh 'id -un; sudo -n true; test -f ~/.provisioned'
+mise run vmpal:check
 
 # HTTP and HTTPS must both resolve to Helium.
 vmpal exec macos-dev -- /usr/bin/osascript -l JavaScript -e '
@@ -189,7 +189,7 @@ ObjC.import("AppKit"); const w = $.NSWorkspace.sharedWorkspace;
 vmpal exec macos-dev -- /bin/bash -c '
 set -e
 launchctl print "gui/$(id -u)/com.monocode.host" | grep "state = running"
-launchctl print "gui/$(id -u)/sh.paseo.daemon" | grep "state = running"
+launchctl print "gui/$(id -u)/dev.mise.paseo-daemon" | grep "state = running"
 curl -fsS -o /dev/null -w "Paseo HTTP %{http_code}\n" http://127.0.0.1:6767/
 sudo -n /opt/homebrew/bin/tailscale status --json'
 ```

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Shut the VM down"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_stop

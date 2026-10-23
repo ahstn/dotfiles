@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Print acceptance-check results from the guest"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_check

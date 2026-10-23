@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Start the VM and wait until it runs commands"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_start

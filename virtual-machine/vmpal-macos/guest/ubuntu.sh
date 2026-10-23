@@ -1,6 +1,6 @@
 #!/bin/bash
-# Runs inside the Ubuntu guest as the signed-in user (copied in and run by vm.sh provision through VMPal Tools).
-# Needs passwordless sudo (vm.sh sudo). x86_64 apps run under Rosetta for Linux (VM_ROSETTA=1, the default).
+# Runs inside the Ubuntu guest as the signed-in user (copied in and run by vmpal:provision through VMPal Tools).
+# Needs passwordless sudo (vmpal:sudo). x86_64 apps run under Rosetta for Linux (VM_ROSETTA=1, the default).
 set -eux -o pipefail
 
 export DEBIAN_FRONTEND=noninteractive PATH="$HOME/.local/bin:$PATH"
@@ -62,7 +62,8 @@ apt_repo() {
   sudo apt-get update -qq
 }
 
-# Apps, before the provisioned check so `./vm.sh provision` adds them to existing VMs. Each step is a no-op once done.
+# Apps, before the provisioned check so rerunning the provision task adds them to existing VMs. Each step is a
+# no-op once done.
 apt_install ghostty
 # Ghostty needs OpenGL 4.3; VMPal's virgl GPU offers 4.1 (the macOS host's limit), so it renders with Mesa's
 # llvmpipe instead. GNOME starts it through D-Bus, so override the D-Bus service as well as the launcher.
@@ -94,8 +95,8 @@ apt_repo tailscale https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg
   2596A99EAAB33821893C0A79458CA832957F5868 \
   'Types: deb' 'URIs: https://pkgs.tailscale.com/stable/ubuntu' 'Suites: resolute' 'Components: main'
 apt_install tailscale
-# Log in only with an auth key vm.sh passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private file, so it is
-# on no command line. The trace is off while the key is expanded. --operator lets $USER run `tailscale` without sudo.
+# Log in only with an auth key vmpal:provision passed as VM_TAILSCALE_AUTHKEY; tailscaled reads it from a private
+# file, so it is on no command line. The trace is off while the key is expanded. --operator lets $USER run `tailscale` without sudo.
 { set +x; } 2>/dev/null
 key='' has_key=''
 if [ -n "${VM_TAILSCALE_AUTHKEY:-}" ]; then

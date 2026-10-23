@@ -1,0 +1,51 @@
+# The `builder` profile: a BuildKit host for the dev VMs (virtual-machine/), which have no hardware virtualization
+# of their own. Applied by `mise run builder:start` in virtual-machine/, which copies this file to
+# ~/.colima/builder/colima.yaml and starts it; edits here take effect on the next builder:start.
+#
+# vz with Rosetta: arm64 builds run natively and linux/amd64 through Rosetta, not QEMU.
+
+cpu: 4
+memory: 8
+disk: 100
+arch: aarch64
+runtime: docker
+hostname: colima-builder
+
+vmType: vz
+rosetta: true
+# QEMU binfmt for the architectures Rosetta does not cover (arm/v7, 386, ...).
+binfmt: true
+nestedVirtualization: false
+
+# Leave the host's docker context alone: the VMs reach this daemon's BuildKit, not its docker socket.
+autoActivate: false
+forwardAgent: false
+sshConfig: false
+
+# No host home directory in the VM. An empty list would mount ~ writable, and BuildKit runs privileged.
+mountType: virtiofs
+mountInotify: false
+mounts:
+  - location: ~/shared
+    writable: false
+
+network:
+  address: false
+  mode: shared
+  # Replicate the host's IP addresses in the VM, so BuildKit's port is published on the one address the dev VMs
+  # reach (the vmnet gateway, or the LAN address for a bridged VM) and not on every host interface.
+  # Only addresses present when the profile starts are replicated; builder:start restarts it when one is missing.
+  hostAddresses: true
+  dns: null
+  gatewayAddress: 192.168.5.2
+
+docker:
+  features:
+    buildkit: true
+
+kubernetes:
+  enabled: false
+
+provision: null
+env: {}
+rootDisk: 20

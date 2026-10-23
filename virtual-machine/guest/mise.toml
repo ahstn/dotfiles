@@ -1,0 +1,139 @@
+# :schema https://mise.en.dev/schema/mise.json
+# The base setup of every macOS VM, for both engines. tart:provision and vmpal:provision send this folder into
+# the guest with `mise bootstrap remote` and apply it there with the same mise version as the host, which stays
+# at ~/.local/bin/mise. The optional dotfiles pass (dotfiles.sh) follows on the first run. From then on the
+# guest's global mise config (~/.config/mise, from the dotfiles) loads too; where both set something, this file
+# wins.
+#
+# Overlays, in increasing precedence:
+# - ~/.config/mise/config.vm.toml in the guest (the `vm` config environment): additions from your dotfiles.
+# - mise.local.toml beside this file (git-ignored): any change, sent along with this folder.
+# - mise.vm.local.toml: written by the provision task (the share name); do not edit.
+min_version = { hard = "2026.10.12" }
+
+[vars]
+share_name = "shared"   # the host folder linked as ~/<name>; empty = no link
+
+# Take over apps that are already installed (by Homebrew, an earlier guest script or by hand) when they match the
+# download, instead of replacing them, which can drop their privacy permissions. Self-updating apps are taken as
+# they are.
+[bootstrap.brew]
+adopt = true
+
+[bootstrap.packages]
+# The casks' apps go to /Applications, except Claude, ChatGPT and bb, which the first VMs installed into
+# ~/Applications once the dotfiles set HOMEBREW_CASK_OPTS. The Dock below needs the same path on every VM.
+# chatgpt is Codex Desktop's replacement: Homebrew deprecated codex-app as discontinued upstream.
+"brew-cask:ghostty" = "latest"
+"brew-cask:helium-browser" = "latest"
+"brew-cask:paseo" = "latest"
+"brew-cask:claude" = { appdir = "~/Applications" }
+"brew-cask:chatgpt" = { appdir = "~/Applications" }
+"brew-cask:bb" = { appdir = "~/Applications" }
+"brew-cask:slack" = "latest"
+"brew-cask:vorssaint" = "latest"
+# The open-source tailscaled, run as a root daemon by the post-packages hook. The App Store and standalone apps
+# need their network extension approved in the GUI, so they cannot be set up unattended.
+"brew:tailscale" = "latest"
+# For the dotfiles pass: /usr/bin/git on a fresh macOS install is only the Command Line Tools installer stub.
+"brew:git" = "latest"
+
+# No casks. Pinned: bump version and sha256 together (tty7: the release's checksums.txt; MonoCode: the asset's
+# digest on GitHub). adopt takes over a bundle the old guest script installed, when it is the same build.
+[bootstrap.packages."macos-app:tty7"]
+version = "26.10.0"
+url = "https://github.com/l0ng-ai/tty7/releases/download/v{{version}}/tty7-{{version}}-macos-arm64.zip"
+sha256 = "83617ad33b42cbe9d1c2b6f92ad0289033f130ae4bf7ca5321dcf9d8c7ea7a08"
+artifact = "tty7.app"
+os = "macos/arm64"
+adopt = true
+
+[bootstrap.packages."macos-app:monocode"]
+version = "0.16.0"
+url = "https://github.com/hardbeat920/monocode/releases/download/v{{version}}/MonoCode_{{version}}_aarch64.dmg"
+sha256 = "914e671841889c92804e8fafa45c7717ab4b5889a66e525a4fcede9fbb877cf3"
+artifact = "MonoCode.app"
+os = "macos/arm64"
+adopt = true
+
+# Selects the `vm` config environment for every mise run in the guest, not just provisioning, so the dotfiles'
+# ~/.config/mise/config.vm.toml keeps loading.
+[bootstrap.files."~/.config/mise/miserc.toml"]
+content = "env = [\"vm\"]\n"
+
+# The global config's Dock settings are for the host Macs. A VM gets exactly these apps (Finder is always first),
+# on the right and always shown.
+[bootstrap.macos.dock]
+orientation = "right"
+autohide = false
+apps = [
+  "/Applications/Ghostty.app",
+  "/Applications/Helium.app",
+  "/Applications/tty7.app",
+  "/Applications/Paseo.app",
+  "/Applications/MonoCode.app",
+  "~/Applications/Claude.app",
+  "~/Applications/ChatGPT.app",
+  "~/Applications/bb.app",
+  "/Applications/Slack.app",
+  "/Applications/Vorssaint.app",
+  "/System/Applications/System Settings.app",
+]
+
+# Dark appearance, not Auto. mise has no named key for it, so it is the raw preference System Settings › Appearance
+# writes. Running apps pick it up when relaunched; the rest of the system at next login.
+[bootstrap.macos.defaults.NSGlobalDomain]
+AppleInterfaceStyle = "Dark"
+AppleInterfaceStyleSwitchesAutomatically = false
+
+# Reduce Motion and Reduce Transparency: less for the guest's GPU and Screen Sharing to draw. Applied at next login.
+[bootstrap.macos.defaults."com.apple.universalaccess"]
+reduceMotion = true
+reduceTransparency = true
+
+# Paseo's daemon with its bundled web UI on http://127.0.0.1:6767 (relay off), so it runs without the desktop
+# app open. The cask's `paseo` CLI runs on the app's own runtime, so it needs no Node. The host Mac's Paseo can
+# add the VM as a Remote SSH host.
+[bootstrap.macos.launchd.agents.paseo-daemon]
+program = "/opt/homebrew/bin/paseo"
+args = ["daemon", "run"]
+run_at_load = true
+keep_alive_on_failure = true
+working_directory = "~"
+environment = { PATH = "{{ env.HOME }}/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
+stdout_path = "~/Library/Logs/paseo-daemon.log"
+stderr_path = "~/Library/Logs/paseo-daemon.log"
+
+[bootstrap.hooks.post-packages]
+run = [
+  # Housekeeping, reapplied on every run. Spotlight indexing off: Cirrus Labs' images already have it off; a
+  # VMPal install indexes from the start. macOS updates are not downloaded or installed automatically, so a
+  # multi-GB update does not fill the guest disk; checking, security responses and XProtect data stay on.
+  # [bootstrap.macos.defaults] never uses sudo, so these system-wide settings are written here.
+  '''mdutil -s / | grep -q disabled || sudo mdutil -a -i off
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false''',
+  # tailscaled as a root launchd daemon. The provision task logs in when given VM_TAILSCALE_AUTHKEY.
+  '''sudo launchctl print system/com.tailscale.tailscaled >/dev/null 2>&1 \
+  || sudo /opt/homebrew/opt/tailscale/bin/tailscaled install-system-daemon''',
+  "/opt/homebrew/bin/paseo daemon config set features.webUi.enabled true >/dev/null",
+  "bash '{{ config_root }}/monocode-host.sh'",
+  # The host folder shared into the guest (Tart's --dir and VMPal's shares both mount there), linked as
+  # ~/<share_name>. Links into the share from earlier layouts (~/host-*) are removed; a real ~/<name> is kept.
+  '''for link in "$HOME"/host-*; do
+  [ -L "$link" ] && case "$(readlink "$link")" in "/Volumes/My Shared Files/"*) rm "$link" ;; esac
+done
+name='{{ vars.share_name }}'
+if [ -z "$name" ]; then :
+elif [ ! -e "$HOME/$name" ] || [ -L "$HOME/$name" ]; then ln -sfn "/Volumes/My Shared Files/$name" "$HOME/$name"
+else echo "$HOME/$name exists and is not a link; the share stays at /Volumes/My Shared Files/$name" >&2
+fi''',
+]
+
+# The guest script before these tasks ran the Paseo daemon as sh.paseo.daemon; this config's agent replaces it.
+[bootstrap.hooks.pre-defaults]
+run = '''p="$HOME/Library/LaunchAgents/sh.paseo.daemon.plist"
+[ ! -f "$p" ] || { launchctl bootout "gui/$(id -u)/sh.paseo.daemon" 2>/dev/null || true; rm -f "$p"; }'''
+
+[bootstrap.hooks.post-defaults]
+run = "killall Dock || true"
