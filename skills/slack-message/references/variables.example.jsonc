@@ -1,0 +1,22 @@
+{
+  // Copy to ../sensitive/variables.json and replace placeholders with verified IDs.
+  // Each entry has an id string and a notes string; use "" when no notes are given.
+  "users": {
+    "username": {
+      "id": "<user ID>",
+      "notes": "Recipient guidance."
+    }
+  },
+  "channels": {
+    "channel-name": {
+      "id": "<channel ID>",
+      "notes": "Channel purpose and access guidance."
+    }
+  },
+  "group_chats": {
+    "username.one,username.two": {
+      "id": "<conversation ID>",
+      "notes": "Private multi-user chat purpose."
+    }
+  }
+}
