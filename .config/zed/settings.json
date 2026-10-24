@@ -124,6 +124,31 @@
         "!pyright",
       ],
       "format_on_save": "on",
-    }
-  }
+    },
+    // TypeScript: use tsrs through the tsgo extension's typescript-ls server
+    // instead of vtsls. See the "lsp" section below.
+    "TypeScript": {
+      "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."],
+    },
+    "TSX": {
+      "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."],
+    },
+    "JavaScript": {
+      "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."],
+    },
+  },
+  "auto_install_extensions": {
+    "tsgo": true,
+  },
+  "lsp": {
+    // tsrs, the Rust port of TypeScript 7. mise installs it ("npm:tsrs" in
+    // ~/.config/mise/config.toml) and links the native binary here. Without
+    // arguments Zed starts the binary with none, so --lsp --stdio is required.
+    "typescript-ls": {
+      "binary": {
+        "path": "~/.local/share/tsrs-tsdk/tsgo",
+        "arguments": ["--lsp", "--stdio"],
+      },
+    },
+  },
 }
