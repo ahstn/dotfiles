@@ -6,6 +6,38 @@ providers:
     discovery:
       type: proxy
 
+  explabs:
+    baseUrl: https://api.experientiallabs.ai/v1
+    apiKey: EXPLABS_API_KEY
+    api: openai-completions
+    discovery:
+      type: openai-models-list
+    modelOverrides:
+      # /v1/models reports limits as context_window_tokens / maximum_output_tokens,
+      # which generic discovery does not read, so set them here.
+      deepseek-v4.1-flash-uncensored:
+        reasoning: true
+        thinking:
+          mode: effort
+          efforts: [low, high, max]
+        contextWindow: 256000
+        maxContextWindow: 1048576
+        maxTokens: 393216
+        # USD per 1M tokens, as billed by Experiential Labs (flat; no off-peak tier).
+        # Input/output match DeepSeek V4.1 Flash peak list price; cache read is the gateway's rate.
+        cost:
+          input: 0.30
+          output: 1.20
+          cacheRead: 0.03
+          cacheWrite: 0.30
+    models:
+      # Judge-only model (no chat). Served on the System One wire at {baseUrl}/v1/systemone.
+      - id: jev-latest
+        name: Jev (latest, Experiential Labs)
+        api: typesafe
+        baseUrl: https://api.experientiallabs.ai
+        contextWindow: 32000
+
   openrouter:
     modelOverrides:
       anthropic/claude-fable-5.1:
