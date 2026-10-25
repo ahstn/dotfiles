@@ -22,9 +22,7 @@ enter = "mise outdated oh-my-pi pi"
 "~/.config/tty7/config.json" = { source = ".config/tty7/config.json" }
 "~/.config/dcg" = { source = ".config/dcg" }
 "~/.config/starship.toml" = { source = ".config/starship.toml" }
-# fnox - config only; the age key it names stays local in ~/.config/fnox/.
 "~/.config/fnox/config.toml" = { source = ".config/fnox/config.toml" }
-# Zed - settings only; conversations, prompts and themes stay local.
 "~/.config/zed/settings.json" = { source = ".config/zed/settings.json" }
 "~/Library/Application Support/Tern/settings.json" = { source = ".config/tern/settings.json"}
 
