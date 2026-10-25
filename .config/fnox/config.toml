@@ -1,0 +1,26 @@
+#:schema https://fnox.jdx.dev/schema.json
+
+[providers.op]
+type = "1password"
+vault = "Development"
+
+# Personal encrypted cache.
+# `fnox sync --provider sync-age --local-file` writes it into a gitignored fnox.local.toml,
+[providers.sync-age]
+type = "age"
+recipients = ["age1jmxds0fvufpdmyjzlp8smw28slk7zjn526ep5f9z0pu8668mvdlsmgperc"]
+key_file = "~/.config/fnox/age.txt"
+
+# Keeps resolved values in memory, so new shells don't each ask 1Password.
+[daemon]
+enabled = true
+
+# `env = true` loads each into every shell. Project keys belong in that project's fnox.toml.
+# The `credential` field is the default for 1Password API Credential items.
+[secrets]
+OPENROUTER_API_KEY = { provider = "op", value = "op://Development/OpenRouter API Key/credential", env = true }
+RUN_INFRA_API_KEY = { provider = "op", value = "op://Development/RunInfra API Key/credential", env = true }
+EXPLABS_API_KEY = { provider = "op", value = "op://Development/Experiential AI/credential", env = true }
+EXA_API_KEY = { provider = "op", value = "op://Development/Exa API/credential", env = true }
+PERPLEXITY_API_KEY = { provider = "op", value = "op://Development/Perplexity API Key/credential", env = true }
+VENICE_API_KEY = { provider = "op", value = "op://Development/Venice AI/credential", env = true }

@@ -23,11 +23,14 @@ node = "26"
 uv = "latest"
 terraform = "latest"
 pitchfork = "latest"
-# The install script runs Python 3.10 or later, so python must finish installing first.
 gcloud = { version = "latest", depends = ["python"] }
 github-cli = "latest"
 kubie = "latest"
 git-lfs = { version = "latest", postinstall = "git-lfs install" }
+# tsrs, the Rust port of TypeScript 7, is the editor TypeScript server.
+# Every release is a prerelease, so "latest" resolves to a 0.0.0 placeholder and the version must be pinned.
+# The postinstall links the native binary to a fixed path named tsgo, which Zed and VS Code start.
+"npm:tsrs" = { version = "0.18.0-ts7.1.0-dev.20260929", postinstall = 'mkdir -p ~/.local/share/tsrs-tsdk && ln -sfn "$(find "$MISE_TOOL_INSTALL_PATH" -path "*/@tsrs/*/tsrs" -type f -print -quit)" ~/.local/share/tsrs-tsdk/tsgo' }
 
 # llm and ai
 codex = "latest"
@@ -49,6 +52,7 @@ eza = "0.23.5"
 fd = "latest"
 bat = "latest"
 difftastic = "latest"
+mole = "latest"
 
 # fuzzy finders and navigation
 zoxide = "latest"
@@ -59,6 +63,8 @@ fzf = "latest"
 "github:Dicklesworthstone/destructive_command_guard" = "latest"
 vale = "latest"
 1password = "latest"
+fnox = "latest"
+age = "latest"
 neovim = "latest"
 
 [hooks]

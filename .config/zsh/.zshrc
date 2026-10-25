@@ -6,16 +6,20 @@ ZSH_HOME="${HOME}/.config/zsh"
 # Aliases, Functions & Environment Variables
 [[ -r "${ZSH_HOME}/.zsh-interactive-env.sh" ]] && source "${ZSH_HOME}/.zsh-interactive-env.sh"
 
-# Private & Sensitive Values
-[[ -r "${ZSH_HOME}/.zsh-private" ]] && source "${ZSH_HOME}/.zsh-private"
+# Private & Sensitive Values: fnox resolves them from 1Password (~/.config/fnox/config.toml).
+# If missing, load from ~/.config/zsh/.zsh-private until we migrate all hosts
+if [[ $+commands[op] ]] && (( $+commands[fnox] )); then
+  eval "$(fnox activate zsh)" && _fnox_hook
+else
+  [[ -r "${ZSH_HOME}/.zsh-private" ]] && source "${ZSH_HOME}/.zsh-private"
+fi
 
 # Tool/runtime environment first (before completion init)
 [[ -x "$HOME/.local/bin/mise" ]] && eval "$("$HOME/.local/bin/mise" activate zsh)"
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv zsh)" && export PATH="/opt/homebrew/bin:$PATH"
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
-(( $+commands[fzf] )) && source <(fzf --zsh) 
-[[ -r ~/.cargo/env ]] && source ~/.cargo/env
+(( $+commands[fzf] )) && source <(fzf --zsh)
 
 # Completion search paths
 [[ -d /opt/homebrew/share/zsh/site-functions ]] && fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
@@ -82,3 +86,6 @@ setopt CORRECT                 # Prompt to correct mistyped commands
 
 # bun completions
 [ -s "/Users/ahstn/.bun/_bun" ] && source "/Users/ahstn/.bun/_bun"
+
+# opencode
+export PATH=/Users/ahstn/.opencode/bin:$PATH
