@@ -183,6 +183,12 @@
     "[jsonc]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
+    // TypeScript: run tsrs, the Rust port of TypeScript 7, as the TypeScript 7
+    // server. mise links its native binary as tsgo in this directory ("npm:tsrs"
+    // in ~/.config/mise/config.toml). The path must be absolute: the extension
+    // does not expand "~".
+    "js/ts.experimental.useTsgo": true,
+    "js/ts.tsdk.path": "/Users/ahstn/.local/share/tsrs-tsdk",
     "redhat.telemetry.enabled": false,
     "workbench.tree.indent": 16,
     "workbench.tree.renderIndentGuides": "always",

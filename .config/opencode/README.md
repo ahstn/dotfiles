@@ -1,9 +1,10 @@
 # OpenCode V2 configuration
 
-`opencode.jsonc` is the personal global configuration source. `mise.toml` maps
-only that file into `~/.config/opencode/`; credentials, databases, provider
-connections, and terminal settings remain machine-local. Warming stays disabled
-and the existing disabled Prettier preference is preserved.
+`opencode.jsonc` is the personal global configuration source. `cli.json` and
+`tui.json` preserve CLI and TUI preferences. `mise.toml` links each entry from
+this directory into `~/.config/opencode/`, excluding `node_modules` and `bun.lock`.
+Credentials, databases, and provider connections remain machine-local. Warming
+stays disabled and the existing disabled Prettier preference is preserved.
 
 Web search explicitly selects `exa`. Use the existing OpenCode connection, or
 connect Exa through `/connect` / `EXA_API_KEY` on each machine. No search credential

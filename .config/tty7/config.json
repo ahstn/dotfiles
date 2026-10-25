@@ -14,7 +14,7 @@
     "liga": 1
   },
   "font_thicken": true,
-  "font_size": 14.0,
+  "font_size": 11.0,
   "line_height": 1.4,
   "ui_font_size": 16.0,
   "ui_font_family": "Geist",
@@ -24,10 +24,11 @@
   "theme_preset_light": "light",
   "theme_preset_dark": "catppuccin_mocha",
   "theme_legible_palette": true,
-  "window_opacity": 0.65,
-  "window_blur": true,
+  "window_opacity": null,
+  "window_blur": false,
   "window_backdrop": "auto",
   "dim_inactive_panes": true,
+  "auto_hide_titlebar_buttons": false,
   "keybindings": {},
   "keybinding_preset": "default",
   "prefix": "ctrl-b",
@@ -60,10 +61,12 @@
   "check_for_updates": true,
   "update_channel": "stable",
   "auto_download_updates": true,
+  "mobile_access": false,
   "install_cli_on_path": true,
   "gui_language": "en",
   "notify_threshold_secs": 10,
   "restore_session": true,
+  "confirm_close": "when-busy",
   "show_tray_icon": true,
   "bell": "visual",
   "prompt_editor": true,
@@ -79,6 +82,7 @@
   "mouse_reporting": true,
   "mouse_zoom_modifier": "platform",
   "clipboard_trim_trailing_spaces": true,
+  "copy_join_wrapped": false,
   "copy_on_select": true,
   "http_proxy": null,
   "smart_select": true,
@@ -97,11 +101,16 @@
   "agent_commands": {},
   "agent_launch": {},
   "agent_frecency": {
+    "opencode": {
+      "count": 1,
+      "last_used": 1792013275
+    },
     "omp": {
-      "count": 13,
-      "last_used": 1791042706
+      "count": 48,
+      "last_used": 1792838288
     }
   },
+  "worktree_setup_trust": {},
   "hidden_agent_sessions": [],
   "restore_agent_sessions": true,
   "per_pane_history": false

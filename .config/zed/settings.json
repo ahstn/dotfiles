@@ -84,7 +84,9 @@
     "breadcrumbs": false,
     "quick_actions": false,
   },
-  // Fonts
+  // Fonts: JetBrainsMono Nerd Font for code and the terminal, Geist for the UI.
+  // Both come from the font-jetbrains-mono-nerd-font and font-geist casks in
+  // ~/.config/mise/config.toml, which setup.sh also installs.
   "buffer_font_family": "JetBrainsMono Nerd Font",
   "terminal": {
     "font_family": "JetBrainsMono Nerd Font",

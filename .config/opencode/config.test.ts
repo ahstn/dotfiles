@@ -93,12 +93,17 @@ describe("configuration structure", () => {
     expect(config.permissions.some((rule: Rule) => rule.action === "external-directory")).toBe(false)
   })
 
-  test("mise deploys only the config file, not the entire runtime directory", () => {
+  test("mise links OpenCode dotfiles individually, excluding dependencies and the Bun lockfile", () => {
     const mise = Bun.TOML.parse(readFileSync(new URL("../../mise.toml", import.meta.url), "utf8")) as {
-      dotfiles: Record<string, { source: string }>
+      dotfiles: Record<string, { source: string; mode?: string; exclude?: string[] }>
     }
-    expect(mise.dotfiles["~/.config/opencode/opencode.jsonc"].source).toBe(".config/opencode/opencode.jsonc")
-    expect(mise.dotfiles["~/.config/opencode"]).toBeUndefined()
+    expect(mise.dotfiles["~/.config/opencode"]).toEqual({
+      source: ".config/opencode",
+      mode: "symlink-each",
+      exclude: ["node_modules", "bun.lock"],
+    })
+    expect(mise.dotfiles["~/.config/opencode/opencode.jsonc"]).toBeUndefined()
+    expect(mise.dotfiles["~/.config/opencode/plugins"]).toBeUndefined()
   })
 })
 

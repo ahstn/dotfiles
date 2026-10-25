@@ -82,7 +82,9 @@ npx skills add ahstn/dotfiles --skill code-review-and-quality
 
 ### ZSH
 
-Rather than a single `~/.zshrc` file, `~/.config/zsh/` is used to organize configuration into multiple files and support a gitignored `~/.config/zsh/zsh-private` for sensitive and local configuration. 
+Rather than a single `~/.zshrc` file, `~/.config/zsh/` is used to organize configuration into multiple files.
+
+API keys come from 1Password through [fnox](https://fnox.jdx.dev), not a sourced file. [`.config/fnox/config.toml`](.config/fnox/config.toml) holds only 1Password references, and `.zshrc` loads the ones marked `env = true` into every shell. The fnox daemon keeps resolved values in memory, so new shells don't each prompt for 1Password. Project keys belong in that project's `fnox.toml`. The age key for fnox's local sync cache, `~/.config/fnox/age.txt`, stays untracked.
 
 With this [`~/.zshenv`] file is used to source the `~/.config/zsh/` directory via `ZDOTDIR`. See [Zsh Startup Files | Zsh](https://zsh.sourceforge.io/Doc/Release/Files.html) for more information.
 

@@ -19,9 +19,11 @@ enter = "mise outdated oh-my-pi pi"
 "~/.config/tmux" = { source = ".config/tmux" }
 "~/.config/tty7/config.json" = { source = ".config/tty7/config.json" }
 "~/.config/dcg" = { source = ".config/dcg" }
-"~/.config/opencode/opencode.jsonc" = { source = ".config/opencode/opencode.jsonc" }
-"~/.config/opencode/plugins" = { source = ".config/opencode/plugins" }
 "~/.config/starship.toml" = { source = ".config/starship.toml" }
+# fnox - config only; the age key it names stays local in ~/.config/fnox/.
+"~/.config/fnox/config.toml" = { source = ".config/fnox/config.toml" }
+# Zed - settings only; conversations, prompts and themes stay local.
+"~/.config/zed/settings.json" = { source = ".config/zed/settings.json" }
 "~/Library/Application Support/Tern/settings.json" = { source = ".config/tern/settings.json"}
 
 # ZSH - Separate handling for SSH & local sessions.
@@ -51,6 +53,11 @@ enter = "mise outdated oh-my-pi pi"
 # Ephemeral LAN-only sshd. Rendered (not linked) so the dir can also hold the host key & pid.
 # Inputs: SSHD_LISTEN, SSHD_USER, SSHD_ALLOW_FROM - see the template header.
 "~/.config/sshd/sshd_config" = { source = ".config/sshd/sshd_config.tera", mode = "template", permissions = "0600" }
+
+[dotfiles."~/.config/opencode"]
+source = ".config/opencode"
+mode = "symlink-each"
+exclude = ["node_modules", "bun.lock"]
 
 [dotfiles."~/.omp/agent"]
 source = ".omp/agent"
