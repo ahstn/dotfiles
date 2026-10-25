@@ -1,0 +1,16 @@
+.omp/agent/models.yml
+  h_2f452a9c375069 9-40
+.config/zed/settings.json
+  h_2f452a9c375069 127-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a16de2cc761afbc9e2ab9a2c6963034142228ac0",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
