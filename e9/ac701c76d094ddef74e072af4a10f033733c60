@@ -1,0 +1,20 @@
+virtual-machine/README.md
+  h_2f452a9c375069 71,138-139,150
+virtual-machine/guest/distrust-emudhra-roots.sh
+  h_2f452a9c375069 1-101
+virtual-machine/guest/mise.toml
+  h_2f452a9c375069 12-13,18-23,67-70
+virtual-machine/mise.toml
+  h_2f452a9c375069 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9ac701c76d094ddef74e072af4a10f033733c60",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
