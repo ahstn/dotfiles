@@ -1,0 +1,26 @@
+virtual-machine/README.md
+  s_8ab2d2b8526859::t_f4a301f6919b4d 156
+virtual-machine/vmpal-macos/MACOS-MANUAL-SETUP.md
+  s_8ab2d2b8526859::t_f4a301f6919b4d 174-175
+  s_8ab2d2b8526859::t_50c46044bdc243 136-139
+virtual-machine/lib/vmpal.sh
+  s_8ab2d2b8526859::t_8e7de65dd3bbcf 56-62,185-212,218,274,289-291
+virtual-machine/vmpal-macos/README.md
+  s_8ab2d2b8526859::t_2f9b7885566afc 65,77-82,132,146-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "378887ebac81302d5632de292b6710a8abc126e6",
+  "prompts": {},
+  "sessions": {
+    "s_8ab2d2b8526859": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a177ec-12fb-7435-82f6-f3ead5ebf3c2",
+        "model": "claude-opus-5.5"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
