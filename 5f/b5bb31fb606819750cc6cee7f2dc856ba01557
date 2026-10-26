@@ -1,0 +1,23 @@
+.config/zsh/.zshenv
+  s_e7bc9ad884f98b::t_f82a8a8764335c 31-33
+.config/zsh/.zshrc
+  s_e7bc9ad884f98b::t_bccc3266122357 14-18
+virtual-machine/lib/common.sh
+  s_e7bc9ad884f98b::t_dfcada82b8ac2c 61-62,64-65,69,77-78,81-83,85,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fb5bb31fb606819750cc6cee7f2dc856ba01557",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

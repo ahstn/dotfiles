@@ -1,0 +1,14 @@
+.config/opencode/opencode.jsonc
+  h_2f452a9c375069 4-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6e2db5a5d74681a366d939b269be176713b95f0",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

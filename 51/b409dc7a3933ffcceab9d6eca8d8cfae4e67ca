@@ -1,0 +1,18 @@
+.config/fnox/config.toml
+  h_2f452a9c375069 1-26
+.config/mise/config.toml
+  h_2f452a9c375069 30-33,55,66-67
+.config/zsh/.zshrc
+  h_2f452a9c375069 9-15,22,89-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51b409dc7a3933ffcceab9d6eca8d8cfae4e67ca",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

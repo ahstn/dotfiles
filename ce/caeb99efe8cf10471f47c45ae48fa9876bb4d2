@@ -1,0 +1,27 @@
+skills/code-review-and-quality/dimensions/architecture.md
+  s_bed1b98cb9a5d0::t_68a34a185837ef 97
+skills/code-review-and-quality/dimensions/correctness.md
+  s_bed1b98cb9a5d0::t_7112c2b8037fcb 118
+skills/code-review-and-quality/dimensions/maintainability.md
+  s_bed1b98cb9a5d0::t_8254691f46b5ad 97
+skills/code-review-and-quality/dimensions/simplification.md
+  s_bed1b98cb9a5d0::t_a61800e1efe72b 1,21,107
+skills/code-review-and-quality/references/github-review.md
+  s_bed1b98cb9a5d0::t_3003c9c95e78fc 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cecaeb99efe8cf10471f47c45ae48fa9876bb4d2",
+  "prompts": {},
+  "sessions": {
+    "s_bed1b98cb9a5d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "523cae2f-e509-4490-9a51-dd82b39b61b7",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

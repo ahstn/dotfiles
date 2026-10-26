@@ -1,0 +1,21 @@
+virtual-machine/README.md
+  s_e7bc9ad884f98b::t_e50ddbe2d781b2 140
+virtual-machine/guest/mise.toml
+  s_e7bc9ad884f98b::t_6aa7c29cb77ddc 83-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd34fb4ff94aaf4118cee283ac8a4aaa242e279e",
+  "prompts": {},
+  "sessions": {
+    "s_e7bc9ad884f98b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc943b01-c326-466e-bd83-55fc3efe5ea3",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

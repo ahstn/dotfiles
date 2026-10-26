@@ -1,0 +1,23 @@
+skills/_draft/kubes-mode-v2/scripts/bootstrap.test.ts
+  s_70f26d58e0c223::t_11ff21a8042295 1-11
+skills/_draft/kubes-mode-v2/scripts/bootstrap.ts
+  s_70f26d58e0c223::t_838a7ef3f19c95 37-38,41-42,45-49,51-53
+skills/_draft/kubes-mode-v2/scripts/package.json
+  s_70f26d58e0c223::t_5b2bf2b72b300d 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e01c733021657cbadfca00b60e56c3c62c565cd5",
+  "prompts": {},
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
