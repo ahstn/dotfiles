@@ -53,6 +53,13 @@ guest() {
 # The account password VMPal made and keeps in this Mac's keychain. macOS guests need it once for sudo.
 account_password() { vmpal info "$VM_NAME" --show-password --json | python3 -c 'import json, sys; print(json.load(sys.stdin)["account"]["password"])'; }
 
+# Keep the password off the command line; build/ is gitignored.
+set_account_password() {
+  local file="$BUILD/account-password"
+  (umask 077; touch "$file"; chmod 600 "$file"; printf '%s' "$1" > "$file")
+  vmpal set "$VM_NAME" --account-password-file "$file" >/dev/null
+}
+
 # The guest's address on its main network, as VMPal reports it: 192.168.64.x when shared, a LAN address when
 # bridged. VMPal learns it some seconds after the guest can run commands.
 guest_ip() {
@@ -175,11 +182,40 @@ cmd_sudo() {
   guest -- 'sudo -n true' || die "passwordless sudo did not take effect"
 }
 
+# Tahoe on shared networking can get a non-responsive NAT DNS proxy. Use public DNS before SSH needs it.
+configure_tahoe_dns() {
+  [ "$VM_OS" = macos ] || return 0
+  [ "$(network_in_use)" = shared ] || return 0
+  guest -- '
+    set -e
+    case "$(sw_vers -productVersion)" in 26.*) ;; *) exit 0 ;; esac
+    interface="$(route -n get default | sed -n "s/^[[:space:]]*interface: //p")"
+    [ -n "$interface" ] || { echo "no default network interface for Tahoe DNS setup" >&2; exit 1; }
+    candidate= service=
+    while IFS= read -r line; do
+      case "$line" in
+        \([0-9]*\)\ *) candidate="${line#*) }" ;;
+        *"Device: $interface)") service="$candidate"; break ;;
+      esac
+    done < <(networksetup -listnetworkserviceorder)
+    [ -n "$service" ] || { echo "no network service for $interface" >&2; exit 1; }
+    expected="$(printf "1.1.1.1\n1.0.0.1")"
+    if [ "$(networksetup -getdnsservers "$service")" = "$expected" ]; then
+      echo "Tahoe DNS already configured on $service"
+      exit 0
+    fi
+    echo "configuring Tahoe DNS on $service: 1.1.1.1, 1.0.0.1"
+    sudo -n networksetup -setdnsservers "$service" 1.1.1.1 1.0.0.1
+    sudo -n dscacheutil -flushcache
+    sudo -n killall -HUP mDNSResponder'
+}
+
 # SSH into the guest, for the host Mac's MonoCode/Paseo (Remote SSH hosts) and vmpal:ssh. Key-only, with
 # VM_SSH_PUBKEY authorised. The guest's NAT address (192.168.64.x) is reachable from this Mac only.
 cmd_keys() {
   need_pubkey
   cmd_sudo
+  configure_tahoe_dns
   log "authorising $VM_SSH_PUBKEY and making SSH key-only"
   VM_PUBKEY="$(cat "$VM_SSH_PUBKEY")" guest --env VM_PUBKEY -- '
     umask 077 && mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys
@@ -235,7 +271,7 @@ cmd_password() {
           sudo chmod 600 /etc/kcpassword
         fi' ;;
   esac
-  printf '%s' "$pw" | vmpal set "$VM_NAME" --account-password-file - >/dev/null
+  set_account_password "$pw"
   log "password changed for $(guest_user), and VMPal keeps the new one"
 }
 
@@ -249,6 +285,9 @@ cmd_provision() {
     [ "$VM_OS" = macos ] || die "--dry-run is for macOS guests only"
     guest_base "$(guest_user)@$(guest_ip)" "$BUILD/known_hosts" --dry-run
     return
+  fi
+  if [ "$VM_OS" = macos ] && [ -n "${VM_PASSWORD:-}" ]; then
+    set_account_password "$VM_PASSWORD"
   fi
   cmd_sudo
   if [ "$VM_OS" = ubuntu ]; then

@@ -62,7 +62,7 @@ finds the app through it.
 
 ## The guest account
 
-VMPal creates an account named `VM_USER` (macOS: `admin`; Ubuntu: your Mac user; it applies only at `create`),
+VMPal creates an account named `VM_USER` (macOS: `admin`; Ubuntu: your Mac user),
 with a generated password that it keeps in this Mac's keychain (`vmpal info <name> --show-password`). `all` then
 sets the password to `VM_PASSWORD` (macOS: `admin`; Ubuntu: empty, so the generated one stays). The guest signs
 in automatically. For macOS before 27, create the account and password in Setup Assistant instead, then register
@@ -74,6 +74,12 @@ with `id -un`, because VMPal's recorded username can remain the host's after Set
   `sudo -S` with VMPal's password, passed as an environment variable.
 - `keys` authorises `VM_SSH_PUBKEY` and makes SSH key-only. Ubuntu gets `openssh-server`; macOS turns on
   Remote Login.
+- macOS `provision` registers the non-empty `VM_PASSWORD` with VMPal before sudo setup.
+  It must match the existing guest password; registration does not change it. For a manually created account,
+  connect VMPal Tools first so VMPal discovers the username (see [manual setup](MACOS-MANUAL-SETUP.md#3-connect-guest-tools-and-register-the-password)).
+  The password is written to `build/vmpal/account-password` with mode `600` and passed through
+  `--account-password-file`. The existing `build/` gitignore rule excludes this file. `password` uses the same
+  file when updating VMPal after changing the guest password. `provision --dry-run` skips registration.
 - `password` sets the password to `VM_PASSWORD` (empty: it asks) in the guest and in VMPal's keychain entry, so
   VMPal can still sign in. Passwords travel as environment variables, never on a host command line.
   - macOS: `dscl . -passwd` with the old password (root cannot change a secure-token account's password
@@ -123,7 +129,7 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 
 For macOS before 27, follow the [manual setup runbook](MACOS-MANUAL-SETUP.md): creation, each Setup
 Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
-Those images reject `--user`, so `vmpal:create` and `all` do not apply.
+Those images reject `--user` during creation, so create them manually first. `all` can then reuse the existing VM.
 
 `provision` applies the shared [`../guest/mise.toml`](../guest/mise.toml) (apps, daemons, Dock; see
 [the overview](../README.md#what-every-macos-vm-gets)) and the dotfiles pass over SSH, so it runs `keys` first.
@@ -136,6 +142,15 @@ VMPal's UI control (`vmpal ui ... click`), only while another browser is still t
 `VM_NETWORK` picks the guest's main network. `mise run vmpal:configure` applies it, with a restart when the
 mode changes. If a bridged VM comes up on shared instead (VMPal says why in `vmpal info`), `configure` stops and starts
 it once more, then warns.
+
+Before authorising SSH keys, `keys` configures Tahoe (macOS 26) guests on shared/NAT networking to use
+`1.1.1.1` and `1.0.0.1` on the default route's network service. This avoids hangs resolving GitHub through
+the NAT DNS proxy (`192.168.64.1`). The change persists in the guest only, replaces any existing DNS override
+on that service, and may prevent private/VPN-only names from resolving. Matching settings are left alone;
+otherwise the DNS cache is flushed after the change. `all` and macOS `provision` both run `keys`, so they get
+the fix before either SSH-key step. Ubuntu, newer macOS, bridged and host-only guests are unchanged, as is
+`provision --dry-run`. To restore DHCP DNS on the default Ethernet service, run
+`vmpal exec <VM> -- sudo networksetup -setdnsservers Ethernet Empty`; the next `keys` run reapplies the override.
 
 | `VM_NETWORK` | Guest address | Who can reach it |
 |---|---|---|

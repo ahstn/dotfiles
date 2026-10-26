@@ -96,11 +96,6 @@ apps = [
 AppleInterfaceStyle = "Dark"
 AppleInterfaceStyleSwitchesAutomatically = false
 
-# Reduce Motion and Reduce Transparency: less for the guest's GPU and Screen Sharing to draw. Applied at next login.
-[bootstrap.macos.defaults."com.apple.universalaccess"]
-reduceMotion = true
-reduceTransparency = true
-
 # Paseo's daemon with its bundled web UI on http://127.0.0.1:6767 (relay off), so it runs without the desktop
 # app open. The cask's `paseo` CLI runs on the app's own runtime, so it needs no Node. The host Mac's Paseo can
 # add the VM as a Remote SSH host.

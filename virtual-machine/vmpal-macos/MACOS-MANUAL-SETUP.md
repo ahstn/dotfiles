@@ -133,6 +133,10 @@ VMPal's recorded username may still be the host's. Do not edit VM metadata to fi
 
 Reuse the repository's sudo, SSH and private-key handling rather than duplicating it. `provision` applies `guest/mise.toml` with `mise bootstrap remote` over SSH, then the dotfiles pass (`guest/dotfiles.sh`), including the shared-folder link; see [Provisioning a macOS guest](../README.md#provisioning-a-macos-guest).
 
+`vmpal:keys` applies the [Tahoe shared-network DNS fix](README.md#networking) before authorising the host SSH
+key, so neither key setup nor GitHub authentication depends on the NAT DNS proxy. VMPal Tools must already
+be connected.
+
 ```bash
 mise run vmpal:configure
 mise run vmpal:keys        # passwordless sudo, host public key, key-only guest SSH
@@ -166,6 +170,8 @@ vmpal ui macos-dev click --text Open --observe text
 # Once Ghostty's shell prompt is visible:
 vmpal ui macos-dev type $'printf "VM shell: %s\\n" "$USER"; node --version; omp --version\n' --observe text
 ```
+
+Provisioning cannot set Reduce Motion or Reduce Transparency: macOS rejects writes to `com.apple.universalaccess` from SSH, VMPal Tools and root. In the guest, open System Settings › Accessibility › Display and turn on both. They lower the drawing load for the guest's GPU and Screen Sharing.
 
 ## 6. Snapshot, restart and verify
 
