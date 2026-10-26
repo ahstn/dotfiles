@@ -28,6 +28,14 @@ mise run vmpal:all                           # or tart:all
 > ([openai/tart#567](https://github.com/openai/tart/issues/567)), and one user's `fio` run measured it at about a
 > tenth of the guest disk's throughput ([openai/tart#762](https://github.com/openai/tart/issues/762)).
 
+> [!CAUTION]
+> FIDO USB security keys (YubiKeys and the like) don't work in Tart VMs. macOS 27 added USB passthrough to
+> Apple's Virtualization framework (`VZUSBPassthroughDevice`), but Tart has not adopted it: the request,
+> [openai/tart#139](https://github.com/openai/tart/issues/139), is still open, waiting on Apple's USB entitlement
+> for Tart's maintainers. VMPal passes USB devices through on macOS 27 hosts, from the menu bar's Virtual Machine
+> Accessories menu ([USB Devices](https://vmpal.com/docs/usb-devices)); FIDO keys there are untested, so check
+> with `ykman info` or `fido2-token -L` in the guest.
+
 ## Choosing an engine
 
 | | VMPal | Tart |
