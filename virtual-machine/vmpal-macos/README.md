@@ -20,7 +20,8 @@ VM_OS=ubuntu mise run vmpal:all              # Ubuntu
 > **macOS before 27 needs manual setup on VMPal.** VMPal sets up only macOS 27 and later unattended, and a
 > Mac can't run a newer macOS in a VM than its own. On a macOS 26 or earlier host, `vmpal systems` lists every
 > macOS as `set up in the VM`: Setup Assistant (language, account, Apple Account, Siri, location and so on) is
-> done by hand, and `vmpal:create` and `vmpal:all` don't apply. Follow
+> done by hand. `vmpal:create` (and so `vmpal:all` on a new VM) stops for such a `VM_SYSTEM` before it creates
+> anything, since VMPal rejects `--user` for it. Follow
 > [MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md) instead; it then reuses the `vmpal:*` tasks for keys,
 > provisioning and checks.
 > Or use [Tart](../tart-macos/README.md), whose prebuilt macOS 26 image needs no Setup Assistant.
@@ -123,7 +124,7 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 
 For macOS before 27, follow the [manual setup runbook](MACOS-MANUAL-SETUP.md): creation, each Setup
 Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
-Those images reject `--user`, so `vmpal:create` and `all` do not apply.
+Those systems reject `--user`, so `vmpal:create` stops for them and points here.
 
 `provision` applies the shared [`../guest/mise.toml`](../guest/mise.toml) (apps, daemons, Dock; see
 [the overview](../README.md#what-every-macos-vm-gets)) and the dotfiles pass over SSH, so it runs `keys` first.

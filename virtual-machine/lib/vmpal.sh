@@ -93,6 +93,12 @@ cmd_create() {
     *"$VM_OS"*) ;;
     *) die "VM_SYSTEM '$VM_SYSTEM' is not a $VM_OS system (VM_OS=$VM_OS); see: vmpal systems" ;;
   esac
+  # Only a system whose account VMPal makes installs unattended. On a macOS 26 or earlier host, every macOS
+  # (download:macOS too) sets its account up in Setup Assistant instead, and VMPal rejects --user for it.
+  local account
+  account="$(vmpal systems --json | VM_SYSTEM="$VM_SYSTEM" python3 -c 'import json, os, sys
+print(next((s.get("account", "") for s in json.load(sys.stdin)["systems"] if s["id"] == os.environ["VM_SYSTEM"]), ""))')"
+  [ "$account" != setUpInVM ] || die "$VM_SYSTEM sets its account up in Setup Assistant on this Mac, so it can't be created unattended; create '$VM_NAME' by hand (vmpal-macos/MACOS-MANUAL-SETUP.md) and then run vmpal:all, which reuses it, or use tart:all"
   log "creating '$VM_NAME' from $VM_SYSTEM as $VM_USER: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk (installs unattended)"
   vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
     --user "$VM_USER" --wait --timeout 2h -q >/dev/null
