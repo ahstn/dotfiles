@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Print the guest's IP"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_ip

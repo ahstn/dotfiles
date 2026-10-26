@@ -98,9 +98,6 @@ pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT
 "brew-cask:font-jetbrains-mono-nerd-font" = "latest"
 "brew-cask:font-geist" = "latest"
 
-# VMs only: env = ["vm"] in the host's ~/.config/mise/miserc.toml (written by the virtual-machine/ guest scripts)
-"brew:tailscale" = { version = "latest", os = "macos", env = "vm" }
-
 # linux servers
 "apt:curl" = "latest"
 "apt:cron" = "latest"

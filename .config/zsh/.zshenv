@@ -28,6 +28,9 @@ if [[ -x /opt/homebrew/bin/brew ]]; then
     export HOMEBREW_CASK_OPTS="--appdir=${HOME}/Applications"
     export PATH="/opt/homebrew/bin:$PATH"
     eval "$(/opt/homebrew/bin/brew shellenv zsh)" 
+elif [[ -d /opt/homebrew/bin ]]; then
+    # Formulae that mise bootstrap installed without Homebrew itself (e.g. VM guests), which get no mise shims.
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 fi
 for mise_bin in "$HOME/.local/bin/mise" /opt/homebrew/bin/mise; do
     if [[ -x "$mise_bin" ]]; then

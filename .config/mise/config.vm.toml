@@ -1,0 +1,13 @@
+# :schema https://mise.en.dev/schema/mise.json
+# Personal additions for VM guests: mise loads this beside config.toml only with the `vm` config environment,
+# which virtual-machine/guest/mise.toml selects in every guest (~/.config/mise/miserc.toml). Host Macs never load it.
+#
+# Each provision's base pass (virtual-machine/guest/mise.toml) applies it too. This file can add packages, tools,
+# defaults, agents and hooks, but where both set the same thing the base wins; change base values in
+# virtual-machine/guest/mise.local.toml instead.
+
+# [tools]
+# example = "latest"
+
+# [bootstrap.packages]
+# "brew-cask:example" = "latest"

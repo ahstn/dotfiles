@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Stop the VM and clone it to VM_NAME-<tag>"
+#MISE extends="tart"
+#USAGE arg "[tag]" default="provisioned" help="Snapshot suffix"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+# shellcheck disable=SC2154 # usage_* come from the #USAGE spec
+cmd_snapshot "$usage_tag"

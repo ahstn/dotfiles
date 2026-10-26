@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Make the host's builder (builder:start) the guest's buildx builder"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_builder

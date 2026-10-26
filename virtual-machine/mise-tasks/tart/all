@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="prereqs, create, start, keys, [password], provision, snapshot, then start"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_all

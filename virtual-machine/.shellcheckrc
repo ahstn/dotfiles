@@ -1,0 +1,2 @@
+# The engine libs pass guest scripts in single quotes, to expand in the guest.
+disable=SC2016

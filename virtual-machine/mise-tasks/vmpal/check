@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Print acceptance-check results from the guest"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_check

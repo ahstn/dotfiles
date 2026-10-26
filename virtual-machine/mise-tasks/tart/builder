@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Make the host's builder (builder:start) the guest's buildx builder"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_builder

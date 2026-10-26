@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Re-apply CPU, memory, disk and display (VM stopped)"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_configure

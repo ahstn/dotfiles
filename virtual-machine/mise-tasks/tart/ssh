@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="SSH into the guest, or run a command there"
+#MISE extends="tart"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+cmd_ssh "$@"

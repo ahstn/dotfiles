@@ -1,0 +1,43 @@
+# Copy to mise.local.toml (git-ignored) and edit. mise sets these in the environment of every tart:* and
+# vmpal:* task. The `default` form keeps a value already exported in your shell, so `VM_CPU=4 mise run ...`
+# still wins for one run; a plain string would override it.
+# Never put VM_TAILSCALE_AUTHKEY or a real VM_PASSWORD here; export them for the one run instead.
+
+[env]
+# Both engines
+# VM_NAME = { default = "macos-dev" }
+# VM_CPU = { default = "6" }                 # default: half the host's cores, at most its performance cores
+# VM_MEMORY_GB = { default = "8" }
+# VM_DISK_GB = { default = "100" }           # grow only
+# VM_SHARE_DIR = { default = "{{ env.HOME }}/shared" }   # empty = no share. Not for repositories
+# VM_SHARE_NAME = { default = "shared" }
+# VM_NETWORK = { default = "shared" }        # shared (NAT, this Mac only) | bridged (own LAN address)
+# VM_BRIDGE = { default = "auto" }           # bridged only: en0, en1, ... or auto
+# VM_SSH_PUBKEY = { default = "{{ env.HOME }}/.ssh/id_ed25519.pub" }
+# VM_SSHD_PORT = { default = "48222" }
+# VM_SSHD_ALLOW_FROM = { default = "192.168.1.168" }     # LAN client IPs/CIDRs, comma-separated
+# VM_SSHD_AUTHORIZED_KEYS = { default = "{{ env.HOME }}/.ssh/id_ed25519.pub" }
+# VM_GITHUB_AUTH_KEY = { default = "{{ env.HOME }}/.ssh/github" }                 # empty = skip
+# VM_GITHUB_SIGNING_KEY = { default = "{{ env.HOME }}/.ssh/github-signing-key" }  # empty = skip
+
+# Container builder (builder:*), on the Mac that hosts the VMs
+# VM_BUILDER_ADDRESS = { default = "" }     # default: the vmnet gateway, or the bridged interface's LAN address
+# VM_BUILDER_PORT = { default = "1234" }
+
+# Tart
+# VM_IMAGE = { default = "ghcr.io/cirruslabs/macos-tahoe-base:latest" }
+# VM_USER = { default = "admin" }            # the base image's account
+# VM_IMAGE_PASSWORD = { default = "admin" }  # its published password; only used to install the SSH key
+# VM_DISPLAY = { default = "1920x1200" }
+# VM_HEADLESS = { default = "0" }            # 1 = no window
+# VM_ROOT_DISK_OPTS = { default = "caching=cached" }     # tart run --root-disk-opts; empty = Tart's default
+# VM_ADDRESS = { default = "" }           # SSH to this host name/IP instead of asking Tart, e.g. a Tailscale name
+
+# VMPal
+# VM_OS = { default = "macos" }              # macos | ubuntu
+# VM_SYSTEM = { default = "download:macOS" } # a `vmpal systems` ID for VM_OS
+# VM_USER = { default = "admin" }            # at create only; Ubuntu defaults to this Mac's user
+# VM_ROSETTA = { default = "1" }             # Ubuntu only: run x86_64 Linux apps
+# VM_NETWORK may also be host-only on VMPal.
+# VM_LOCAL_NETWORK = { default = "default" } # on | off | default (VMPal Settings)
+# VMPAL = { default = "{{ env.HOME }}/.local/bin/vmpal" }  # override the CLI path

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#MISE description="Ephemeral key-only LAN sshd in the guest (needs VM_NETWORK=bridged)"
+#MISE extends="tart"
+#USAGE arg "[action]" default="start" { choices "start" "stop" "status" }
+#USAGE flag "-m --minutes <minutes>" default="180" help="Stop it after this many minutes"
+# shellcheck source=lib/tart.sh
+. "$MISE_CONFIG_ROOT/lib/tart.sh"
+# shellcheck disable=SC2154 # usage_* come from the #USAGE spec
+cmd_sshd "$usage_action" "$usage_minutes"

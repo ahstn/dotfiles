@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="As tart:provision for macOS (guest/mise.toml over SSH); Ubuntu runs vmpal-macos/guest/ubuntu.sh"
+#USAGE flag "-n --dry-run" help="Show what the base pass would change, and change nothing"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+# shellcheck disable=SC2154 # usage_* come from the #USAGE spec
+cmd_provision ${usage_dry_run:+--dry-run}
