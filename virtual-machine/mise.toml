@@ -2,7 +2,8 @@
 # Host side of the VM setup: `mise run tart:<task>` or `mise run vmpal:<task>` from this folder (or
 # `mise -C virtual-machine run ...` from the repo root). The tasks are in mise-tasks/, their bash in lib/.
 # Personal settings go in mise.local.toml (git-ignored); see mise.local.toml.example.
-min_version = { hard = "2026.10.12" }
+# 2026.10.17 stops trusting the compromised eMudhra intermediates in mise's own downloads.
+min_version = { hard = "2026.10.17" }
 
 # Tart is installed for the tart:* tasks only, so VMPal users do not download it.
 [task_templates.tart]

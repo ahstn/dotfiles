@@ -9,10 +9,17 @@
 # - ~/.config/mise/config.vm.toml in the guest (the `vm` config environment): additions from your dotfiles.
 # - mise.local.toml beside this file (git-ignored): any change, sent along with this folder.
 # - mise.vm.local.toml: written by the provision task (the share name); do not edit.
-min_version = { hard = "2026.10.12" }
+# 2026.10.17 stops trusting the compromised eMudhra intermediates in mise's own downloads.
+min_version = { hard = "2026.10.17" }
 
 [vars]
 share_name = "shared"   # the host folder linked as ~/<name>; empty = no link
+
+# Before any package download: remove the roots behind the compromised eMudhra intermediates from
+# /etc/ssl/cert.pem, which macOS's curl and git trust without Apple's block, and keep them out with a root
+# launchd daemon that reapplies it at boot and whenever a macOS update restores the file.
+[bootstrap.hooks.pre-packages]
+run = "sudo bash '{{ config_root }}/distrust-emudhra-roots.sh' install"
 
 # Take over apps that are already installed (by Homebrew, an earlier guest script or by hand) when they match the
 # download, instead of replacing them, which can drop their privacy permissions. Self-updating apps are taken as
@@ -57,7 +64,10 @@ os = "macos/arm64"
 adopt = true
 
 # Selects the `vm` config environment for every mise run in the guest, not just provisioning, so the dotfiles'
-# ~/.config/mise/config.vm.toml keeps loading.
+# ~/.config/mise/config.vm.toml keeps loading. mise does not create a file's parent, and a fresh VMPal guest has
+# no ~/.config; the dotfiles link single files inside it, so a real directory is fine.
+[bootstrap.directories."~/.config/mise"]
+
 [bootstrap.files."~/.config/mise/miserc.toml"]
 content = "env = [\"vm\"]\n"
 
