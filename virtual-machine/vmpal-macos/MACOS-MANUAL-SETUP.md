@@ -4,6 +4,11 @@ Distilled from the 11 October 2026 run: VMPal 0.69, macOS 26.6.2 (25G83), VMPal 
 
 Run host commands in **Bash**, from `virtual-machine/`. Example target: `macos-dev`, account `admin`, UK English, United Kingdom, Europe/London, 5 CPUs, 8 GB RAM, 100 GB disk. Locale, timezone and key paths below are template choices, not host metadata. Creation and Setup Assistant are one-time steps; provisioning can be repeated.
 
+`mise run vmpal:all` now detects `setUpInVM` and offers [resumable Setup Assistant assistance](README.md#macos).
+This historical runbook remains the fallback for consent, unsupported screens, checkbox review and tools
+installation. After a handoff, continue in the VM window and rerun `all` or `vmpal:setup`;
+do not rerun a direct create command for an existing VM.
+
 ## 1. Create and isolate the VM
 
 Check the downloaded macOS entry first: this flow applies when its `account` is `setUpInVM`. `download:macOS` follows Apple's available release, so check the version rather than assuming it remains macOS 26. Do not recreate or delete an existing VM.

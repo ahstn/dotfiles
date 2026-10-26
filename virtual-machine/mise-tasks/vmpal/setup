@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Resume macOS Setup Assistant from its current screen (no provisioning)"
+# shellcheck source=lib/vmpal.sh
+. "$MISE_CONFIG_ROOT/lib/vmpal.sh"
+cmd_setup

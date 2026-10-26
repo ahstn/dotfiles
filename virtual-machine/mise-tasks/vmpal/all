@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="prereqs, create (or reuse and configure an existing VM), keys, [password], provision, snapshot, then start"
+#MISE description="prereqs, create or resume setup, configure, keys, [password], provision, snapshot, then start"
 # shellcheck source=lib/vmpal.sh
 . "$MISE_CONFIG_ROOT/lib/vmpal.sh"
 cmd_all

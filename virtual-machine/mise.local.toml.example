@@ -41,8 +41,16 @@
 # VMPal
 # VM_OS = { default = "macos" }              # macos | ubuntu
 # VM_SYSTEM = { default = "download:macOS" } # a `vmpal systems` ID for VM_OS
-# VM_USER = { default = "admin" }            # at create only; Ubuntu defaults to this Mac's user
+# VM_USER = { default = "admin" }            # at creation/assisted setup; Ubuntu defaults to this Mac's user
 # VM_ROSETTA = { default = "1" }             # Ubuntu only: run x86_64 Linux apps
 # VM_NETWORK may also be host-only on VMPal.
 # VM_LOCAL_NETWORK = { default = "default" } # on | off | default (VMPal Settings)
 # VMPAL = { default = "{{ env.HOME }}/.local/bin/vmpal" }  # override the CLI path
+# Assisted setup: empty locale/age values require manual choices. Known English panes only.
+# VM_SETUP_LANGUAGE = { default = "" }       # visible label, e.g. English (UK)
+# VM_SETUP_COUNTRY = { default = "" }        # visible label, e.g. United Kingdom
+# VM_SETUP_AGE = { default = "" }            # visible label, e.g. Adult
+# VM_SETUP_TIMEZONE = { default = "" }       # Closest City, e.g. London; not an IANA time zone
+# VM_SETUP_ACCEPT_LICENSE = { default = "0" } # 1 explicitly permits license acceptance
+# VM_SETUP_SKIP_OPTIONAL = { default = "1" } # decline only where a readable button exists
+# VM_SETUP_TIMEOUT = { default = "600" }    # overall deadline, seconds; never triggers a reset

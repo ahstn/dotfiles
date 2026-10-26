@@ -15,7 +15,7 @@ case "$VM_OS" in
               "${VM_USER:=$(id -un)}" "${VM_PASSWORD=}" ;;
   *) die "VM_OS must be macos or ubuntu" ;;
 esac
-# VM_USER: the guest account, set at create only. VM_PASSWORD: set by `all`; empty = keep VMPal's generated one.
+# VM_USER: the guest account at creation/setup. VM_PASSWORD: also used by assisted setup; empty = manual entry.
 # VM_NETWORK may also be host-only here.
 : "${VM_BRIDGE:=auto}"                     # bridged only: a Mac interface such as en0, or auto for the main one
 : "${VM_LOCAL_NETWORK:=default}"           # on | off | default: a 2nd NIC on 192.168.128.x with this Mac and its VMs
@@ -72,6 +72,54 @@ network_in_use() { vm_field 'v["sessionHardware"]["networkMode"] if v["state"] =
 # Setup Assistant can create a different account from the name VMPal records.
 guest_user() { guest -- 'id -un'; }
 
+# A running VM may still be in Setup Assistant or at the desktop without VMPal Tools.
+vm_exec_ready() {
+  local status
+  status="$(vmpal status "$VM_NAME" --json)" || return 1
+  printf '%s' "$status" | python3 -c 'import json, sys; sys.exit(0 if json.load(sys.stdin).get("executionAvailable") is True else 1)' \
+    || return 1
+  vmpal exec "$VM_NAME" --timeout 10s -- /usr/bin/id -un >/dev/null
+}
+
+# Resume from the screen actually displayed; the helper never replays a recorded click sequence.
+cmd_setup() {
+  [ "$VM_OS" = macos ] || die "vmpal:setup is for macOS Setup Assistant"
+  need_running
+  local cli=() path
+  if [ -n "${VMPAL:-}" ]; then cli=("$VMPAL")
+  elif path="$(type -P vmpal)"; then cli=("$path")
+  else cli=("$VMPAL_BIN" --cli); fi
+  VM_SETUP_PASSWORD="${VM_PASSWORD:-}" python3 "$VM_ROOT/lib/vmpal_setup.py" \
+    --vm "$VM_NAME" --user "$VM_USER" --output-dir "$BUILD/setup" -- "${cli[@]}"
+}
+
+cmd_ensure_ready() {
+  local guest
+  guest="$(vm_field 'v.get("guest", "").lower()')"
+  case "$VM_OS:$guest" in
+    macos:macos|ubuntu:linux) ;;
+    *) die "'$VM_NAME' is a $guest guest, not VM_OS=$VM_OS; select the correct VM before provisioning" ;;
+  esac
+  if ! running; then
+    log "starting '$VM_NAME' without waiting for sign-in or guest tools"
+    vmpal start "$VM_NAME" --no-sign-in >/dev/null
+  fi
+  vmpal wait "$VM_NAME" --until installed --no-sign-in --timeout 2h
+  if vm_exec_ready; then return; fi
+  # Connected tools can be waiting at the sign-in screen of an already configured guest.
+  if [ "$VM_OS" = macos ] && [ "$(vm_field 'v.get("tools", {}).get("connected", False)')" = True ]; then
+    if vmpal wait "$VM_NAME" --until ready --timeout 1m; then vm_exec_ready && return; fi
+    warn "guest commands are not ready; inspecting Setup Assistant/sign-in before proceeding"
+  fi
+  if [ "$VM_OS" = macos ]; then
+    cmd_setup
+    vm_exec_ready || die "'$VM_NAME' reached the desktop but cannot run guest commands. Install VMPal Tools in the VM (vmpal reinstall-tools '$VM_NAME'), register the existing account/password if needed, then rerun mise run vmpal:all. See vmpal-macos/MACOS-MANUAL-SETUP.md section 3."
+  else
+    vmpal wait "$VM_NAME" --until ready --timeout 10m
+    vm_exec_ready || die "'$VM_NAME' cannot run guest commands; sign in and check VMPal Tools, then rerun mise run vmpal:all"
+  fi
+}
+
 # --- tasks -------------------------------------------------------------
 
 cmd_prereqs() {
@@ -88,16 +136,34 @@ cmd_prereqs() {
 
 cmd_create() {
   [ "$(vm_state)" = missing ] || die "VM '$VM_NAME' already exists (delete with: vmpal delete '$VM_NAME' --force)"
-  # The guest script provisions only its own OS; catch a mismatch before the unattended install, not after.
-  case "$(printf '%s' "$VM_SYSTEM" | tr '[:upper:]' '[:lower:]')" in
-    *"$VM_OS"*) ;;
-    *) die "VM_SYSTEM '$VM_SYSTEM' is not a $VM_OS system (VM_OS=$VM_OS); see: vmpal systems" ;;
-  esac
-  log "creating '$VM_NAME' from $VM_SYSTEM as $VM_USER: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk (installs unattended)"
-  vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
-    --user "$VM_USER" --wait --timeout 2h -q >/dev/null
+  local system account
+  system="$(vmpal systems --json)"
+  account="$(printf '%s' "$system" | VM_SYSTEM="$VM_SYSTEM" VM_OS="$VM_OS" python3 -c '
+import json, os, sys
+systems = [s for s in json.load(sys.stdin)["systems"] if s["id"] == os.environ["VM_SYSTEM"]]
+if len(systems) != 1:
+    sys.exit("VM_SYSTEM is not an available system ID; see vmpal systems")
+s = systems[0]
+os_name = os.environ["VM_OS"]
+if (os_name == "macos" and s["guest"].lower() != "macos") or (os_name == "ubuntu" and (s["guest"].lower() != "linux" or "ubuntu" not in (s["id"] + " " + s["name"]).lower())):
+    sys.exit("VM_SYSTEM does not match VM_OS; see vmpal systems")
+account = s.get("account")
+if account not in ("made", "setUpInVM"):
+    sys.exit("Unsupported system account capability: " + str(account))
+print(account)
+')" || die "cannot create '$VM_NAME' from VM_SYSTEM=$VM_SYSTEM"
+  log "creating '$VM_NAME' from $VM_SYSTEM: $VM_CPU CPUs, $VM_MEMORY_GB GB, $VM_DISK_GB GB disk"
+  if [ "$account" = setUpInVM ]; then
+    log "this system requires Setup Assistant; installing without an unattended account"
+    vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
+      --no-sign-in -q >/dev/null
+  else
+    vmpal create "$VM_SYSTEM" --name "$VM_NAME" --cpus "$VM_CPU" --memory "$VM_MEMORY_GB" --disk "$VM_DISK_GB" \
+      --user "$VM_USER" --wait --timeout 2h -q >/dev/null
+  fi
   rm -f "$BUILD/known_hosts"   # a VM recreated with the same name can get a cached address with a new host key
-  log "'$VM_NAME' installed as $(guest_user); VMPal keeps its password (vmpal info '$VM_NAME' --show-password)"
+  cmd_ensure_ready
+  log "'$VM_NAME' can run commands as $(guest_user)"
   cmd_configure
 }
 
@@ -454,8 +520,8 @@ cmd_all() {
   if [ "$(vm_state)" = missing ]; then cmd_create
   else
     log "reusing the existing '$VM_NAME' (to start over: vmpal delete '$VM_NAME' --force)"
+    cmd_ensure_ready
     cmd_configure
-    running || cmd_start
   fi
   cmd_keys
   if [ -n "${VM_PASSWORD:-}" ]; then cmd_password

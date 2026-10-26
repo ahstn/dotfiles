@@ -12,23 +12,25 @@ For how this compares with Tart, and what every macOS VM gets, see [the overview
 ```bash
 cd virtual-machine
 cp mise.local.toml.example mise.local.toml   # optional
-mise run vmpal:all                           # macOS (macOS 27 hosts)
+mise run vmpal:all                           # unattended where supported; assisted Setup Assistant otherwise
 VM_OS=ubuntu mise run vmpal:all              # Ubuntu
 ```
 
 > [!WARNING]
-> **macOS before 27 needs manual setup on VMPal.** VMPal sets up only macOS 27 and later unattended, and a
-> Mac can't run a newer macOS in a VM than its own. On a macOS 26 or earlier host, `vmpal systems` lists every
-> macOS as `set up in the VM`: Setup Assistant (language, account, Apple Account, Siri, location and so on) is
-> done by hand, and `vmpal:create` and `vmpal:all` don't apply. Follow
-> [MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md) instead; it then reuses the `vmpal:*` tasks for keys,
-> provisioning and checks.
+> **macOS before 27 still uses Setup Assistant.** The tasks inspect the selected system's `account`
+> capability from `vmpal systems --json`, rather than assuming support from the host version or system ID.
+> `setUpInVM` guests are installed without `--user`; `create`/`all` then assist recognized English setup
+> screens. Choices needing consent, unreadable controls and unfamiliar layouts stop with instructions.
+> Complete that step in the VM window and rerun `all`; it resumes without recreating the VM.
+> [The manual runbook](MACOS-MANUAL-SETUP.md) remains the fallback, including guest-tools setup.
 > Or use [Tart](../tart-macos/README.md), whose prebuilt macOS 26 image needs no Setup Assistant.
 
-`vmpal:all` runs `prereqs`, `create`, `keys`, `password` (unless `VM_PASSWORD` is empty), `provision`,
-`snapshot`, then `start`. If `VM_NAME` already exists, `all` reuses it instead of `create`: it applies the
-settings with `configure`, starts the VM if it is stopped, and continues. Settings come from `mise.local.toml` and the environment, then defaults
-([Settings](../README.md#settings)).
+`vmpal:all` runs `prereqs`, creates `VM_NAME` if missing or resumes the existing VM, verifies guest-command
+readiness, applies `configure`, then runs `keys`, `password` (unless `VM_PASSWORD` is empty), `provision`,
+`snapshot`, and `start`. A running VM is not assumed to have finished Setup Assistant. No configuration
+restart or provisioning occurs before readiness is verified. `vmpal:create` remains create-only; rerun
+`all` or `setup` after a manual handoff. Settings come from `mise.local.toml` and the environment, then
+defaults ([Settings](../README.md#settings)).
 
 macOS is the default: its VMs run more smoothly than Ubuntu's, and most developer tools ship Mac builds before
 arm64 Linux ones.
@@ -62,12 +64,18 @@ finds the app through it.
 
 ## The guest account
 
-VMPal creates an account named `VM_USER` (macOS: `admin`; Ubuntu: your Mac user; it applies only at `create`),
-with a generated password that it keeps in this Mac's keychain (`vmpal info <name> --show-password`). `all` then
-sets the password to `VM_PASSWORD` (macOS: `admin`; Ubuntu: empty, so the generated one stays). The guest signs
-in automatically. For macOS before 27, create the account and password in Setup Assistant instead, then register
-the password with VMPal ([MACOS-MANUAL-SETUP.md](MACOS-MANUAL-SETUP.md)). The tasks read the guest account
-with `id -un`, because VMPal's recorded username can remain the host's after Setup Assistant creates a different one.
+For systems with `account: made`, VMPal creates `VM_USER` (macOS: `admin`; Ubuntu: your Mac user), with a
+generated password kept in this Mac's keychain (`vmpal info <name> --show-password`). `all` then sets
+`VM_PASSWORD` (macOS: `admin`; Ubuntu: empty, keeping the generated one).
+
+For `setUpInVM` systems, assisted setup can fill a recognized empty account form using `VM_USER` and
+`VM_PASSWORD`. It never overwrites a partly filled form on resume. Checkbox settings that OCR cannot read
+are left for manual review; the helper may fill credentials and stop before submission. A fully automated
+account submission is registered with VMPal only after the next setup screen is verified.
+For an account created or submitted manually, register its actual username/password using
+`vmpal set <name> --user <user> --account-password-file <private-file>`; this changes VMPal's record, not
+the guest's password. See [runbook section 3](MACOS-MANUAL-SETUP.md#3-connect-guest-tools-and-register-the-password).
+Tasks read the actual guest user with `id -un`.
 
 - `sudo` gives the account passwordless sudo (`/etc/sudoers.d/90-vm-nopasswd`), which provisioning and
   `mise bootstrap` need unattended. On Ubuntu this goes through `vmpal exec --admin` (root); on macOS through
@@ -121,9 +129,33 @@ llvmpipe. The screen lock is off, since the guest signs in automatically and onl
 
 ## macOS
 
-For macOS before 27, follow the [manual setup runbook](MACOS-MANUAL-SETUP.md): creation, each Setup
-Assistant screen, guest-tools recovery, provisioning, browser confirmation, snapshot and verification.
-Those images reject `--user`, so `vmpal:create` and `all` do not apply.
+`mise run vmpal:setup` assists Setup Assistant on an already running macOS VM without provisioning it.
+`all` invokes the same helper when guest commands are unavailable. It observes each screen afresh, uses
+visible text/validated field-label geometry rather than recorded coordinates, and verifies transitions
+before continuing. It never resets, deletes or edits the VM's disks.
+
+Configure choices explicitly in `mise.local.toml` or the environment:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `VM_SETUP_LANGUAGE` | empty | Visible label, e.g. `English (UK)`; empty requires a manual choice |
+| `VM_SETUP_COUNTRY` | empty | Visible label, e.g. `United Kingdom`; empty requires a manual choice |
+| `VM_SETUP_AGE` | empty | Visible label, e.g. `Adult`; empty requires a manual choice |
+| `VM_SETUP_TIMEZONE` | empty | Closest City label, e.g. `London`, not `Europe/London`; verifies the selected city before advancing |
+| `VM_SETUP_ACCEPT_LICENSE` | `0` | License acceptance stays manual; `1` explicitly permits clicking Agree |
+| `VM_SETUP_SKIP_OPTIONAL` | `1` | Skip optional setup where a readable decline button exists; `0` leaves choices manual |
+| `VM_SETUP_TIMEOUT` | `600` | Overall observation deadline in seconds |
+
+Non-English panes, missing/ambiguous labels, unknown checkbox states and unverifiable time-zone fields
+hand off instead of guessing. Each action gets at most one attempt, then a bounded wait (normally 45
+seconds; up to 90 for account creation). Menu clocks and animations do not count as progress. Private
+diagnostic metadata is saved under `build/vmpal/setup/`; credential-screen text and screenshots are withheld.
+Password input uses temporary private files, removed on exit.
+
+After reaching the desktop, install/connect VMPal Tools and register any manually created account using
+[runbook section 3](MACOS-MANUAL-SETUP.md#3-connect-guest-tools-and-register-the-password). The helper does not
+install tools. `all` stops with instructions if commands still cannot execute; rerun after those prerequisites.
+`setup` alone succeeds once the Finder desktop or guest-command availability is detected.
 
 `provision` applies the shared [`../guest/mise.toml`](../guest/mise.toml) (apps, daemons, Dock; see
 [the overview](../README.md#what-every-macos-vm-gets)) and the dotfiles pass over SSH, so it runs `keys` first.
@@ -230,3 +262,9 @@ reused it and finished with the base pass, the dotfiles pass, the `provisioned` 
 with `vmpal:check` (apps, Paseo HTTP 200, GitHub SSH, signed-out Tailscale), both eMudhra roots absent from
 `/etc/ssl/cert.pem`, `/usr/bin/curl` rejecting the incident's test hosts, and the root-removal daemon's boot run
 exiting 0.
+
+Capability-aware/assisted onboarding: `mise run test` exercises unattended/manual macOS capabilities,
+Ubuntu, existing-VM readiness, interrupted setup, consent, private credentials and unchanged-screen handoffs
+with a stateful simulated CLI. On VMPal 0.100/macOS 26.6.2, the setup task was also run against an already
+configured live guest and skipped UI input because guest commands were available; the desktop was visually
+checked. A fresh install's field-entry path has not been validated live.

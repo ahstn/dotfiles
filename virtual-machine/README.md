@@ -114,7 +114,9 @@ wins: the dotfiles' Dock settings are for the host Macs. To add to or change the
 and key, and hooks from every file all run.
 
 Engine-specific steps (creating the VM, the account, its password, sudo, SSH keys, networking) stay in each
-engine's `lib/<engine>.sh`. Each task file sources it and calls one function.
+engine's `lib/<engine>.sh`. VMPal's `lib/vmpal_setup.py` assists/resumes Setup Assistant when the selected
+system cannot create an account unattended; see [assisted macOS setup](vmpal-macos/README.md#macos).
+Each task file sources its engine's shell library and calls one function.
 
 ### Settings
 
@@ -126,7 +128,7 @@ Secrets (`VM_TAILSCALE_AUTHKEY`, a real `VM_PASSWORD`) are exported for the one 
 The `.miserc.toml` here leaves out the repo's root `mise.toml` and `.config/mise/`, so a task doesn't first
 install every tool the dotfiles declare. Tart comes from the mise registry (`aqua:openai/tart`), pinned in
 `mise.toml` and installed for the `tart:*` tasks only. `mise run lint` runs shellcheck over the tasks, the libs
-and the guest scripts.
+and the guest scripts. `mise run test` runs isolated onboarding regressions without touching a VM.
 
 Moving from `vm.sh`: copy the settings from an old `config.env` into `mise.local.toml`. Tart's `VM_NET`
 (`nat`/`bridged`), `VM_BRIDGE_IF` and `VM_MEMORY_MIB` are now `VM_NETWORK` (`shared`/`bridged`), `VM_BRIDGE`

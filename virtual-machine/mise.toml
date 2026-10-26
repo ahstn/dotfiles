@@ -17,3 +17,7 @@ tools = { colima = "0.10.3", lima = "2.2.1", docker-cli = "29.9.1" }
 description = "shellcheck the VM tasks, their libs and the guest scripts"
 tools = { shellcheck = "0.11.0" }
 run = "shellcheck -x lib/*.sh mise-tasks/*/* guest/*.sh */guest/*.sh"
+
+[tasks.test]
+description = "Test VM onboarding lifecycle and setup safety without changing a VM"
+run = "python3 -B -m unittest discover -s tests -v"
