@@ -448,7 +448,15 @@ cmd_exec() { need_running; vmpal exec "$VM_NAME" -- "$@"; }
 
 cmd_all() {
   need_pubkey
-  cmd_prereqs; cmd_create; cmd_keys
+  cmd_prereqs
+  # An existing VM is reused: its settings are brought up to date and the remaining steps run on it as they are.
+  if [ "$(vm_state)" = missing ]; then cmd_create
+  else
+    log "reusing the existing '$VM_NAME' (to start over: vmpal delete '$VM_NAME' --force)"
+    cmd_configure
+    running || cmd_start
+  fi
+  cmd_keys
   if [ -n "${VM_PASSWORD:-}" ]; then cmd_password
   else log "keeping the password VMPal made (vmpal info '$VM_NAME' --show-password)"
   fi

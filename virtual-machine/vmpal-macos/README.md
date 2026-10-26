@@ -26,7 +26,8 @@ VM_OS=ubuntu mise run vmpal:all              # Ubuntu
 > Or use [Tart](../tart-macos/README.md), whose prebuilt macOS 26 image needs no Setup Assistant.
 
 `vmpal:all` runs `prereqs`, `create`, `keys`, `password` (unless `VM_PASSWORD` is empty), `provision`,
-`snapshot`, then `start`. Settings come from `mise.local.toml` and the environment, then defaults
+`snapshot`, then `start`. If `VM_NAME` already exists, `all` reuses it instead of `create`: it applies the
+settings with `configure`, starts the VM if it is stopped, and continues. Settings come from `mise.local.toml` and the environment, then defaults
 ([Settings](../README.md#settings)).
 
 macOS is the default: its VMs run more smoothly than Ubuntu's, and most developer tools ship Mac builds before
@@ -223,3 +224,9 @@ hidden widgets, the right-hand Dock, and an interactive Ghostty shell running No
 plugin-cache fix was also exercised against a fresh plugin clone.
 A `provisioned` snapshot was taken with the VM stopped; after starting again, admin SSH, both host daemons,
 Paseo HTTP 200, signed-out Tailscale and Helium's HTTP/HTTPS defaults were verified again.
+
+On VMPal 0.90 with macOS 27.0.1 (`download:macOS`): `vmpal:all` created the VM unattended, then, run again on it,
+reused it and finished with the base pass, the dotfiles pass, the `provisioned` snapshot and a start. Verified
+with `vmpal:check` (apps, Paseo HTTP 200, GitHub SSH, signed-out Tailscale), both eMudhra roots absent from
+`/etc/ssl/cert.pem`, `/usr/bin/curl` rejecting the incident's test hosts, and the root-removal daemon's boot run
+exiting 0.
