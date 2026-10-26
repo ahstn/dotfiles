@@ -1,0 +1,16 @@
+virtual-machine/lib/vmpal.sh
+  h_2f452a9c375069 96-101
+virtual-machine/vmpal-macos/README.md
+  h_2f452a9c375069 23-24,127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abb980981af4cad1b556f4ba39304dea9134e23b",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
