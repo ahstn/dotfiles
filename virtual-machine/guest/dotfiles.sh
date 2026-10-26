@@ -1,15 +1,24 @@
 #!/bin/bash
 # The personal pass: clones DOTFILES_REPO into ~/DOTFILES_DIR and applies its mise config, which links
 # ~/.config/mise and installs its packages and tools. The provision task runs it in the guest as the signed-in
-# user after the base pass (mise.toml), which installed mise and git, on the first provision or with FORCE=1.
+# user after the base pass (mise.toml), which installed mise and git, on the first provision or with FORCE=1, and
+# not at all when VM_DOTFILES_REPO is empty. Any repository whose mise.toml declares [dotfiles] works.
 # Env: DOTFILES_REPO, DOTFILES_DIR (relative to home).
 set -eux -o pipefail
 
-export MISE_YES=1 MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 DOTFILES_DIR="$HOME/$DOTFILES_DIR"
+export MISE_YES=1 MISE_TRUSTED_CONFIG_PATHS="$DOTFILES_DIR:$HOME/.config/mise"
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 
-[ -d "$DOTFILES_DIR" ] || git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+# A clone of another repository (VM_DOTFILES_REPO changed since) is not applied in its place.
+if [ -d "$DOTFILES_DIR" ]; then
+  origin="$(git -C "$DOTFILES_DIR" remote get-url origin 2>/dev/null || true)"
+  [ "$origin" = "$DOTFILES_REPO" ] || { set +x
+    echo "$DOTFILES_DIR is a clone of ${origin:-no known remote}, not $DOTFILES_REPO; move it aside or set VM_DOTFILES_DIR" >&2
+    exit 1; }
+else
+  git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+fi
 cd "$DOTFILES_DIR"
 # A ~/.gitconfig that is not the dotfiles' symlink, such as the CI one in Cirrus Labs' images
 # (git-credential-manager, LFS), blocks bootstrap; keep it aside.

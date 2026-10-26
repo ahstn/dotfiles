@@ -68,6 +68,7 @@ virtual-machine/
 │   ├── mise.toml           # the base: apps, Dock, defaults, agents and hooks, as mise bootstrap config
 │   ├── mise.local.toml     # optional, git-ignored: your changes to the base
 │   ├── monocode-host.sh    # run by the base's hooks
+│   ├── distrust-emudhra-roots.sh  # run by the base's hooks
 │   └── dotfiles.sh         # the dotfiles pass
 ├── tart-macos/README.md
 └── vmpal-macos/
@@ -88,6 +89,13 @@ Each engine's `provision` task does the same, over SSH:
    clones `VM_DOTFILES_REPO` into `~/VM_DOTFILES_DIR` (`~/git/dotfiles`) and applies its mise config:
    `mise bootstrap --only dotfiles`, then `mise bootstrap --skip files,repos,macos-defaults`. A second base pass,
    `--only macos-defaults`, then applies the dotfiles' macOS defaults with the base's on top.
+   - `VM_DOTFILES_REPO` can be any Git URL or path the guest can clone, such as your own fork or alternative,
+     as long as its `mise.toml` declares `[dotfiles]`. A public HTTPS URL needs nothing else. The GitHub keys are
+     copied in before this pass, so a `git@github.com:` URL can use `VM_GITHUB_AUTH_KEY`.
+   - Set `VM_DOTFILES_REPO` empty to provision only the base. `tart:sshd` and `vmpal:sshd` need the dotfiles'
+     `sshd` task and template, so they need a repository that has them.
+   - An existing `~/VM_DOTFILES_DIR` that is a clone of another repository stops the pass, rather than
+     applying the old one. Move it aside or choose another `VM_DOTFILES_DIR`.
 4. Logs in to Tailscale when `VM_TAILSCALE_AUTHKEY` is set.
 
 `mise run tart:provision --dry-run` (or `vmpal:provision --dry-run`) runs the base pass with `--dry-run`: it
@@ -134,8 +142,8 @@ the first SSH connection records the guest's host key again.
 4. Apple's licence allows two macOS VMs running at once per Mac, across both engines.
 5. Optionally, a Tailscale auth key, exported as `VM_TAILSCALE_AUTHKEY` for one `provision` run. Never put it
    in `mise.local.toml`.
-6. [mise](https://mise.jdx.dev/getting-started.html) 2026.10.12 or later, which runs the tasks and installs
-   Tart.
+6. [mise](https://mise.jdx.dev/getting-started.html) 2026.10.17 or later, which runs the tasks and installs
+   Tart. Earlier versions still trust the compromised eMudhra intermediate CAs.
 
 ## What every macOS VM gets
 
@@ -146,7 +154,8 @@ the first SSH connection records the guest's host key again.
 | GitHub | the GitHub keys in the guest's `~/.ssh`, github.com host keys pinned from `api.github.com/meta`, and a managed `Host github.com` block |
 | Shared folder | the host's `~/shared`, created if missing, shared live into the guest at `/Volumes/My Shared Files/shared` and linked as `~/shared` (`VM_SHARE_DIR`, `VM_SHARE_NAME`). For passing files only; see the warning above |
 | Housekeeping | Spotlight indexing off; macOS updates not downloaded or installed automatically (checking, security responses and XProtect data stay on); Reduce Motion and Reduce Transparency on, and the Dark appearance, from the next login. Reapplied on every provision |
-| Dotfiles | the dotfiles pass (above): `VM_DOTFILES_REPO` (`https://github.com/ahstn/dotfiles.git`) cloned over HTTPS into `~/git/dotfiles` and applied once |
+| CA roots | `emSign ECC Root CA - G3` and `AAA Certificate Services` removed from `/etc/ssl/cert.pem`, before any package download. These roots sign the [compromised eMudhra intermediates](https://support.apple.com/en-us/149555), which macOS's `curl`, `git` and `python3` still accept. Apple's version stays at `/etc/ssl/cert.pem.orig`. The `local.vm.distrust-emudhra-roots` launchd daemon removes them again at boot and whenever a macOS update restores the file. Sites that chain only to `AAA Certificate Services` fail in those tools |
+| Dotfiles | the dotfiles pass (above): `VM_DOTFILES_REPO` (default `https://github.com/ahstn/dotfiles.git`; empty = none) cloned into `~/VM_DOTFILES_DIR` (`~/git/dotfiles`) and applied once |
 | mise | the host's version at `~/.local/bin/mise`. `~/.config/mise/miserc.toml` selects the `vm` config environment for every mise run in the guest, which loads the dotfiles' `config.vm.toml` |
 | Dock | exactly Ghostty, Helium, tty7, Paseo, MonoCode, Claude, ChatGPT, bb, Slack, Vorssaint and System Settings (after Finder), on the right and always shown |
 | Checks | the `check` task prints the macOS version, mise tools, shell, disk, shared folder, apps, Tailscale, the Paseo agent and GitHub SSH auth |

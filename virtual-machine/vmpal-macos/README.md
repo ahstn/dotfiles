@@ -26,7 +26,8 @@ VM_OS=ubuntu mise run vmpal:all              # Ubuntu
 > Or use [Tart](../tart-macos/README.md), whose prebuilt macOS 26 image needs no Setup Assistant.
 
 `vmpal:all` runs `prereqs`, `create`, `keys`, `password` (unless `VM_PASSWORD` is empty), `provision`,
-`snapshot`, then `start`. Settings come from `mise.local.toml` and the environment, then defaults
+`snapshot`, then `start`. If `VM_NAME` already exists, `all` reuses it instead of `create`: it applies the
+settings with `configure`, starts the VM if it is stopped, and continues. Settings come from `mise.local.toml` and the environment, then defaults
 ([Settings](../README.md#settings)).
 
 macOS is the default: its VMs run more smoothly than Ubuntu's, and most developer tools ship Mac builds before
@@ -89,7 +90,7 @@ with `id -un`, because VMPal's recorded username can remain the host's after Set
 | Hardware | `vmpal set --cpus --memory --disk --rosetta --network-mode --bridge --local-network --share`; `vmpal restart --apply-settings` when a setting needs it |
 | Shared folder | `vmpal set --share ~/shared:shared`, live via virtiofs at `/media/VMPal/shared` (Ubuntu) or `/Volumes/My Shared Files/shared` (macOS), linked as `~/shared`. `configure` removes the earlier default `git` share |
 | GitHub keys | `VM_GITHUB_AUTH_KEY` / `VM_GITHUB_SIGNING_KEY` passed with `vmpal exec --env` into the guest's `~/.ssh`. github.com host keys are pinned from `api.github.com/meta`, and a managed `Host github.com` block is written. Setting either variable empty removes that key (and the auth key's Host block) from the guest |
-| Provision | macOS: `keys`, the GitHub keys, then over SSH `guest/mise.toml` with `mise bootstrap remote` and, on the first run or with `FORCE=1`, `guest/dotfiles.sh` ([Provisioning a macOS guest](../README.md#provisioning-a-macos-guest)). Ubuntu: `guest/ubuntu.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, daemons, then (first run or `FORCE=1`) dotfiles clone, `mise bootstrap --only dotfiles` and `mise bootstrap --skip files,repos` |
+| Provision | macOS: `keys`, the GitHub keys, then over SSH `guest/mise.toml` with `mise bootstrap remote` and, on the first run or with `FORCE=1`, `guest/dotfiles.sh` ([Provisioning a macOS guest](../README.md#provisioning-a-macos-guest)). Ubuntu: `guest/ubuntu.sh` copied with `vmpal cp` and run with `vmpal exec`: apps, daemons, then (first run or `FORCE=1`, unless `VM_DOTFILES_REPO` is empty) a clone of `VM_DOTFILES_REPO` into `~/VM_DOTFILES_DIR`, `mise bootstrap --only dotfiles` and `mise bootstrap --skip files,repos` |
 | Snapshot | `vmpal stop`, then `vmpal snapshot <name> provisioned`. Restore with `vmpal revert <name> provisioned`. A Linux VM with GPU acceleration snapshots only when shut down |
 
 Re-running `mise run vmpal:provision` is idempotent. The dotfiles pass runs again only with `FORCE=1`.
@@ -223,3 +224,9 @@ hidden widgets, the right-hand Dock, and an interactive Ghostty shell running No
 plugin-cache fix was also exercised against a fresh plugin clone.
 A `provisioned` snapshot was taken with the VM stopped; after starting again, admin SSH, both host daemons,
 Paseo HTTP 200, signed-out Tailscale and Helium's HTTP/HTTPS defaults were verified again.
+
+On VMPal 0.90 with macOS 27.0.1 (`download:macOS`): `vmpal:all` created the VM unattended, then, run again on it,
+reused it and finished with the base pass, the dotfiles pass, the `provisioned` snapshot and a start. Verified
+with `vmpal:check` (apps, Paseo HTTP 200, GitHub SSH, signed-out Tailscale), both eMudhra roots absent from
+`/etc/ssl/cert.pem`, `/usr/bin/curl` rejecting the incident's test hosts, and the root-removal daemon's boot run
+exiting 0.

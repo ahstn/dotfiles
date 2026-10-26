@@ -19,6 +19,11 @@
 # VM_SSHD_AUTHORIZED_KEYS = { default = "{{ env.HOME }}/.ssh/id_ed25519.pub" }
 # VM_GITHUB_AUTH_KEY = { default = "{{ env.HOME }}/.ssh/github" }                 # empty = skip
 # VM_GITHUB_SIGNING_KEY = { default = "{{ env.HOME }}/.ssh/github-signing-key" }  # empty = skip
+# Your dotfiles: any Git repository the guest can clone whose mise.toml declares [dotfiles]. Applied once (FORCE=1
+# to apply again). Empty = provision only the base, no dotfiles. tart:sshd and vmpal:sshd use the default repo's
+# `sshd` task, so they need a repository that has one.
+# VM_DOTFILES_REPO = { default = "https://github.com/ahstn/dotfiles.git" }
+# VM_DOTFILES_DIR = { default = "git/dotfiles" }   # where it is cloned, relative to the guest's home
 
 # Container builder (builder:*), on the Mac that hosts the VMs
 # VM_BUILDER_ADDRESS = { default = "" }     # default: the vmnet gateway, or the bridged interface's LAN address

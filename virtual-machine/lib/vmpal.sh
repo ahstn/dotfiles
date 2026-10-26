@@ -259,7 +259,8 @@ cmd_provision() {
     guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
     vmpal cp "$VM_ROOT/vmpal-macos/guest/ubuntu.sh" "$VM_NAME:.cache/vm/provision.sh"
     # The Tailscale auth key, when set, goes as an environment variable and lands in no file on this side.
-    local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}")
+    local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}"
+      --env "DOTFILES_REPO=$VM_DOTFILES_REPO" --env "DOTFILES_DIR=$VM_DOTFILES_DIR")
     [ -z "${VM_TAILSCALE_AUTHKEY:-}" ] || env+=(--env VM_TAILSCALE_AUTHKEY)
     guest "${env[@]}" -- 'bash ~/.cache/vm/provision.sh'
     return
@@ -448,7 +449,15 @@ cmd_exec() { need_running; vmpal exec "$VM_NAME" -- "$@"; }
 
 cmd_all() {
   need_pubkey
-  cmd_prereqs; cmd_create; cmd_keys
+  cmd_prereqs
+  # An existing VM is reused: its settings are brought up to date and the remaining steps run on it as they are.
+  if [ "$(vm_state)" = missing ]; then cmd_create
+  else
+    log "reusing the existing '$VM_NAME' (to start over: vmpal delete '$VM_NAME' --force)"
+    cmd_configure
+    running || cmd_start
+  fi
+  cmd_keys
   if [ -n "${VM_PASSWORD:-}" ]; then cmd_password
   else log "keeping the password VMPal made (vmpal info '$VM_NAME' --show-password)"
   fi
