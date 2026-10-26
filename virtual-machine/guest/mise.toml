@@ -44,6 +44,10 @@ adopt = true
 "brew:tailscale" = "latest"
 # For the dotfiles pass: /usr/bin/git on a fresh macOS install is only the Command Line Tools installer stub.
 "brew:git" = "latest"
+# The client side of the host's container builder (builder:start, then tart:builder or vmpal:builder). No
+# daemon: a macOS guest can only emulate one. The post-packages hook links the buildx plugin for docker to find.
+"brew:docker" = "latest"
+"brew:docker-buildx" = "latest"
 
 # No casks. Pinned: bump version and sha256 together (tty7: the release's checksums.txt; MonoCode: the asset's
 # digest on GitHub). adopt takes over a bundle the old guest script installed, when it is the same build.
@@ -123,6 +127,11 @@ sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyI
   || sudo /opt/homebrew/opt/tailscale/bin/tailscaled install-system-daemon''',
   "/opt/homebrew/bin/paseo daemon config set features.webUi.enabled true >/dev/null",
   "bash '{{ config_root }}/monocode-host.sh'",
+  # buildx as a docker CLI plugin. A link in ~/.docker/cli-plugins, not cliPluginsExtraDirs, so the guest's
+  # ~/.docker/config.json (docker login's credentials) stays unmanaged. It works for the dotfiles' mise
+  # docker-cli as well as Homebrew's.
+  '''mkdir -p ~/.docker/cli-plugins
+ln -sfn /opt/homebrew/opt/docker-buildx/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx''',
   # The host folder shared into the guest (Tart's --dir and VMPal's shares both mount there), linked as
   # ~/<share_name>. Links into the share from earlier layouts (~/host-*) are removed; a real ~/<name> is kept.
   '''for link in "$HOME"/host-*; do

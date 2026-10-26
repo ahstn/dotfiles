@@ -480,7 +480,7 @@ cmd_builder() {
     vmpal cp "$VM_ROOT/build/builder/certs/client/$f" "$VM_NAME:.docker/certs/vm-builder/$f"
   done
   guest --env "BUILDER_ENDPOINT=$ep" -- "$BUILDER_CONNECT"
-  log "builds in the guest now go to tcp://$ep; add --load to get an image into the guest's docker"
+  log "builds in the guest now go to tcp://$ep; use --push, or -o type=docker,dest=<file>.tar, for the image"
 }
 
 cmd_ip()   { need_running; guest_ip; }

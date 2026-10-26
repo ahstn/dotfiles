@@ -20,7 +20,9 @@ bdocker() { docker --context "colima-$BUILDER_PROFILE" "$@"; }
 builder_running() { colima status "$BUILDER_PROFILE" >/dev/null 2>&1; }
 
 # The host address the VMs reach: the LAN address of the bridged interface for VM_NETWORK=bridged, else vmnet's
-# NAT gateway (bridge100), which exists only while a NAT VM runs. Never 0.0.0.0: BuildKit is root in its VM.
+# NAT gateway: the first bridge interface with an IPv4 address, which exists only while a NAT VM runs. It is not
+# always bridge100: a bridged VM's bridge (no address) can take that name first. Never 0.0.0.0: BuildKit is root
+# in its VM.
 builder_address() {
   local ip="$VM_BUILDER_ADDRESS" ifc
   if [ -z "$ip" ] && [ "$VM_NETWORK" = bridged ]; then
@@ -29,8 +31,11 @@ builder_address() {
     ip="$(ipconfig getifaddr "$ifc" 2>/dev/null || true)"
     [ -n "$ip" ] || die "no IPv4 address on $ifc for a bridged VM to reach; set VM_BUILDER_ADDRESS"
   elif [ -z "$ip" ]; then
-    ip="$(ifconfig bridge100 2>/dev/null | awk '/inet / {print $2; exit}')"
-    [ -n "$ip" ] || die "no vmnet gateway (bridge100): start the VM first, or set VM_BUILDER_ADDRESS"
+    for ifc in $(ifconfig -l); do
+      case "$ifc" in bridge*) ip="$(ifconfig "$ifc" | awk '/inet / {print $2; exit}')" ;; esac
+      [ -z "$ip" ] || break
+    done
+    [ -n "$ip" ] || die "no vmnet gateway (a bridge interface with an address): start the VM first, or set VM_BUILDER_ADDRESS"
   fi
   echo "$ip"
 }
@@ -69,7 +74,7 @@ cmd_start() {
   /usr/bin/pgrep -q oahd || warn "Rosetta does not look installed (softwareupdate --install-rosetta); amd64 builds will use QEMU"
   [ -f "$BUILDER_CONFIG" ] || die "no Colima profile at $BUILDER_CONFIG"
   local ip; ip="$(builder_address)"
-  mkdir -p "$BUILDER_DIR" "$HOME/shared"
+  mkdir -p "$BUILDER_DIR"
 
   # The profile is restarted when its config changed since the last start, or when it started without <ip>
   # (Colima replicates only the host addresses present at start).
@@ -90,11 +95,17 @@ cmd_start() {
   fi
 
   builder_certs "$ip"
-  # The certificates are copied into the container: the VM mounts nothing from the host but ~/shared.
+  # The certificates are copied into the container: the VM mounts nothing from the host.
+  # amd64 through Rosetta, not QEMU: BuildKit's platform check runs its probe in a chroot without /proc, where
+  # Rosetta fails, so it would run amd64 steps under the image's own buildkit-qemu-x86_64. That emulator is
+  # removed in the container, which leaves amd64 to the VM's Rosetta binfmt, and amd64 is declared by hand.
   log "starting BuildKit ($BUILDER_IMAGE) on $ip:$VM_BUILDER_PORT, mutual TLS"
   bdocker rm -f "$BUILDER_CONTAINER" >/dev/null 2>&1 || true
   bdocker create --name "$BUILDER_CONTAINER" --restart unless-stopped --privileged \
-    -p "$ip:$VM_BUILDER_PORT:1234" -v vm-buildkit-state:/var/lib/buildkit "$BUILDER_IMAGE" \
+    -p "$ip:$VM_BUILDER_PORT:1234" -v vm-buildkit-state:/var/lib/buildkit \
+    --entrypoint /bin/sh "$BUILDER_IMAGE" \
+    -c 'rm -f /usr/bin/buildkit-qemu-x86_64 && exec /usr/bin/buildkitd-entrypoint "$@"' buildkitd \
+    --oci-worker-platform linux/arm64 --oci-worker-platform linux/amd64 \
     --addr tcp://0.0.0.0:1234 --addr unix:///run/buildkit/buildkitd.sock \
     --tlscacert /etc/buildkit-certs/ca.pem --tlscert /etc/buildkit-certs/cert.pem --tlskey /etc/buildkit-certs/key.pem \
     >/dev/null

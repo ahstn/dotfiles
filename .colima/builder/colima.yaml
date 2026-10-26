@@ -2,19 +2,21 @@
 # of their own. Applied by `mise run builder:start` in virtual-machine/, which copies this file to
 # ~/.colima/builder/colima.yaml and starts it; edits here take effect on the next builder:start.
 #
-# vz with Rosetta: arm64 builds run natively and linux/amd64 through Rosetta, not QEMU.
+# vz with Rosetta: arm64 builds run natively and linux/amd64 through Rosetta, not QEMU. arm/v7 and arm/v6 use
+# the qemu-arm registered below; 386, riscv64, ppc64le and s390x the QEMU emulators in the moby/buildkit image.
 
 cpu: 4
 memory: 8
-disk: 100
+disk: 60
 arch: aarch64
 runtime: docker
 hostname: colima-builder
 
 vmType: vz
 rosetta: true
-# QEMU binfmt for the architectures Rosetta does not cover (arm/v7, 386, ...).
-binfmt: true
+# Colima's binfmt (QEMU 7.0) has only 386 and amd64, and turns amd64 off again for Rosetta. The ready step below
+# registers arm instead.
+binfmt: false
 nestedVirtualization: false
 
 # Leave the host's docker context alone: the VMs reach this daemon's BuildKit, not its docker socket.
@@ -22,12 +24,11 @@ autoActivate: false
 forwardAgent: false
 sshConfig: false
 
-# No host home directory in the VM. An empty list would mount ~ writable, and BuildKit runs privileged.
+# No host directories in the VM: BuildKit runs privileged, and buildx streams each build's context from the
+# client. null means no mounts; an empty list would mount ~ writable.
 mountType: virtiofs
 mountInotify: false
-mounts:
-  - location: ~/shared
-    writable: false
+mounts: null
 
 network:
   address: false
@@ -39,13 +40,22 @@ network:
   dns: null
   gatewayAddress: 192.168.5.2
 
-docker:
-  features:
-    buildkit: true
-
 kubernetes:
   enabled: false
 
-provision: null
+# Colima adds each replicated address to lo as <ip>/24, which makes the VM treat the whole /24 as local: builds
+# could not reach the LAN, a VPN subnet or the dev VMs. This narrows them to /32 after boot, before docker starts.
+# Once docker runs: qemu-arm in the kernel's binfmt_misc (flag F, so containers need no copy), as BuildKit does
+# not apply its bundled arm emulator on this host. Pinned; bump the tag from hub.docker.com/r/tonistiigi/binfmt.
+provision:
+  - mode: after-boot
+    script: |
+      for a in $(ip -4 -o addr show dev lo | awk '$4 ~ /\/24$/ && $4 !~ /^127\./ {print $4}'); do
+        sudo ip addr add "${a%/24}/32" dev lo && sudo ip addr del "$a" dev lo
+      done
+  - mode: ready
+    script: |
+      [ -e /proc/sys/fs/binfmt_misc/qemu-arm ] \
+        || sudo docker run --rm --privileged tonistiigi/binfmt:qemu-v10.2.3 --install arm >/dev/null
 env: {}
 rootDisk: 20

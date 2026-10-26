@@ -230,24 +230,40 @@ host instead: the `builder` [Colima profile](../.colima/builder/colima.yaml) run
 framework with Rosetta, so arm64 builds run natively and amd64 ones through Rosetta. A guest's buildx talks to
 its BuildKit over TCP with mutual TLS; nothing in the guest gets SSH or a docker socket on the host.
 
-On the Mac that hosts the VM, with the VM running:
+The guest needs only the docker CLI and its buildx plugin, which the base pass installs (`brew:docker`,
+`brew:docker-buildx`, linked as `~/.docker/cli-plugins/docker-buildx`). On the Mac that hosts the VM, with the
+VM running and provisioned:
 
 ```bash
 mise run builder:start    # copies the profile to ~/.colima/builder, starts it, then BuildKit; prints its platforms
-mise run tart:builder     # or vmpal:builder: makes it the guest's current buildx builder
+mise run tart:builder     # or vmpal:builder: makes it the guest's buildx builder, in every docker context
 ```
 
-Then in the guest, `docker build --platform linux/amd64 --load -t app .` builds on the host and loads the image
-into the guest's docker. `--push` sends it to a registry instead.
+Then in the guest, `docker build --platform linux/amd64 -t registry.example/app --push .` builds on the host and
+pushes from it; run `docker login` in the guest first, as buildx passes its credentials to BuildKit for each
+build. The guest has no Docker daemon, so `--load` has nothing to load into: use `--push`, or
+`-o type=docker,dest=app.tar` (or `type=oci`) for a file. Pulls and pushes go out from the host's builder VM.
 
-- BuildKit listens on one host address, the one the VM reaches: the vmnet gateway (`bridge100`, which exists only
-  while a NAT VM runs) or, with `VM_NETWORK=bridged`, the bridged interface's LAN address, where other LAN devices
-  can connect too but need the client certificate. `VM_BUILDER_ADDRESS` overrides it.
+- BuildKit listens on one host address, the one the VM reaches: the vmnet gateway (the `bridge1xx` interface with
+  an address, usually `192.168.64.1`, which exists only while a NAT VM runs) or, with `VM_NETWORK=bridged`, the
+  bridged interface's LAN address, where other LAN devices can connect too but need the client certificate.
+  `VM_BUILDER_ADDRESS` overrides it.
+- Colima replicates the host's addresses on the builder VM's loopback as `/24`s, which would make whole subnets
+  (the LAN, a VPN's, the dev VMs') unreachable from builds. The profile narrows them to `/32` after boot.
 - `build/builder/certs` holds a private CA, the server certificate for that address and the client certificate.
   The CA and client certificate are kept, so rerunning `builder:start` (after a reboot, or when the address
   changes) leaves the guest's builder working; delete the folder to start over, then rerun `tart:builder`.
-- The profile mounts only `~/shared`, read-only: Colima would otherwise mount your home directory writable, and
-  BuildKit runs privileged. Its build cache is the `vm-buildkit-state` volume in the profile.
+- The profile mounts nothing from the host (`mounts: null`): Colima would otherwise mount your home directory
+  writable, and BuildKit runs privileged. buildx streams each build's context from the guest. The build cache is
+  the `vm-buildkit-state` volume in the profile.
+- Platforms: arm64 natively, amd64 through Rosetta, arm/v7 and arm/v6 through a `qemu-arm` the profile registers
+  at boot (`tonistiigi/binfmt`, pinned), and 386, riscv64, ppc64le and s390x through the QEMU emulators in the
+  `moby/buildkit` image. BuildKit's own check cannot see Rosetta (it probes in a chroot without `/proc`) and
+  would run amd64 under its bundled QEMU, so `builder:start` removes that emulator and declares
+  `linux/arm64,linux/amd64`; the others still build.
+- Plain `docker build` ignores the current buildx builder and asks for the docker context's own, which needs a
+  daemon. The dotfiles' `config.vm.toml` sets `BUILDX_BUILDER=vm-builder` in every guest for that; elsewhere use
+  `docker buildx build` or `--builder vm-builder`.
 - `builder:status` shows the profile and BuildKit's platforms; `builder:stop` stops the profile. If macOS asks
   whether `limactl` or `ssh` may accept incoming connections, allow it, or the VM cannot connect.
 

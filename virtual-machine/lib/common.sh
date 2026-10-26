@@ -88,15 +88,19 @@ TS_LOGIN_FN='ts_login() {
 }'
 
 # Guest side of the builder (lib/builder.sh): registers the BuildKit at BUILDER_ENDPOINT as the guest's current
-# buildx builder, with the client certificates the engine task copied to ~/.docker/certs/vm-builder.
+# buildx builder in every docker context (--global), with the client certificates the engine task copied to
+# ~/.docker/certs/vm-builder. buildx comes from the base pass (guest/mise.toml).
 # shellcheck disable=SC2034 # used by the engine libs
 BUILDER_CONNECT='set -eu
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+docker buildx version >/dev/null 2>&1 \
+  || { echo "no docker buildx in the guest: run the provision task first (mise run tart:provision or vmpal:provision)" >&2; exit 1; }
 d="$HOME/.docker/certs/vm-builder"
 chmod 700 "$d" && chmod 600 "$d/key.pem"
 docker buildx rm vm-builder >/dev/null 2>&1 || true
-docker buildx create --name vm-builder --driver remote --use --bootstrap \
+docker buildx create --name vm-builder --driver remote --bootstrap \
   --driver-opt "cacert=$d/ca.pem,cert=$d/cert.pem,key=$d/key.pem" "tcp://$BUILDER_ENDPOINT"
+docker buildx use --global vm-builder
 docker buildx inspect vm-builder | grep -i platforms'
 
 # builder_endpoint: host:port that builder:start wrote, or exit telling you to run it.

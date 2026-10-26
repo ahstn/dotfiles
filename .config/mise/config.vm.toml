@@ -9,5 +9,11 @@
 # [tools]
 # example = "latest"
 
+# `docker build` in a guest goes to the host's builder (virtual-machine: builder:start, then tart:builder or
+# vmpal:builder). Without it, the docker CLI pins plain `docker build` to the current context's builder, which
+# needs a Docker daemon the guest does not have. Unset it (or pass --builder) to use another builder.
+[env]
+BUILDX_BUILDER = "vm-builder"
+
 # [bootstrap.packages]
 # "brew-cask:example" = "latest"
