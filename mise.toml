@@ -21,6 +21,7 @@ enter = "mise outdated oh-my-pi pi"
 "~/.config/tmux" = { source = ".config/tmux" }
 "~/.config/tty7/config.json" = { source = ".config/tty7/config.json" }
 "~/.config/dcg" = { source = ".config/dcg" }
+
 "~/.config/starship.toml" = { source = ".config/starship.toml" }
 "~/.config/fnox/config.toml" = { source = ".config/fnox/config.toml" }
 "~/.config/zed/settings.json" = { source = ".config/zed/settings.json" }

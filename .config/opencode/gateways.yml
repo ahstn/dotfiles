@@ -1,0 +1,16 @@
+# Discovery gateways for plugins/litellm.ts, in OMP models.yml shape.
+# Only `discovery: { type: litellm }` providers are read; other OMP keys are ignored.
+# Static providers and context-window overrides belong in opencode.jsonc `providers`.
+#
+# apiKey names environment variable(s), in precedence order; never put a key here.
+# A saved OpenCode credential (`opencode auth` or /connect) takes precedence.
+#
+# Machine-local ~/.config/opencode/gateways.local.yml replaces this file when present.
+providers:
+  oceans:
+    name: Oceans
+    baseUrl: https://hogwarts.tail58b1f6.ts.net
+    apiKey: OCEANS_LLM_API_KEY
+    api: openai-completions # fallback when discovery has no routing evidence
+    discovery:
+      type: litellm

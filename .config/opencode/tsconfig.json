@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2023",
     "module": "Preserve",
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["config.test.ts", "*.d.ts"]
+  "include": ["config.test.ts", "litellm.test.ts", "*.d.ts", "plugins/litellm.ts"]
 }

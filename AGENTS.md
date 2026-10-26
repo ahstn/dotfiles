@@ -14,6 +14,8 @@ Their machine-local work copies are:
 - `.pi/agent/settings.work.json`
 - `.omp/agent/models.work.yml`
 
+`.config/opencode/gateways.yml` is personal too. Its work counterpart is `~/.config/opencode/gateways.local.yml`, which lives outside the repository and replaces the tracked file when present. Never copy work gateways into the tracked file.
+
 Rules:
 
 - Never delete, overwrite, stage, or commit the work copies.

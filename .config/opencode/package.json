@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "oxlint --config ../oxlint/.oxlint.jsonc --no-ignore --deny-warnings config.test.ts jsonc.d.ts plugins/skill-urls/index.ts plugins/skill-urls/references.ts plugins/skill-urls/skill-urls.test.ts plugins/skill-urls/test plugins/agent-urls/index.ts plugins/agent-urls/coordinator.ts plugins/agent-urls/state.ts plugins/agent-urls/agent-urls.test.ts plugins/agent-urls/test",
+    "lint": "oxlint --config ../oxlint/.oxlint.jsonc --no-ignore --deny-warnings config.test.ts jsonc.d.ts litellm.test.ts plugins/litellm.ts plugins/skill-urls/index.ts plugins/skill-urls/references.ts plugins/skill-urls/skill-urls.test.ts plugins/skill-urls/test plugins/agent-urls/index.ts plugins/agent-urls/coordinator.ts plugins/agent-urls/state.ts plugins/agent-urls/agent-urls.test.ts plugins/agent-urls/test",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@opencode/plugin": "2.0.26",
     "@types/bun": "1.4.3",
+    "effect": "4.0.0-rc.112",
     "oxlint": "1.88.0",
     "oxlint-tsgolint": "7.0.2004",
     "typescript": "7.0.2"

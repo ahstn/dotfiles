@@ -3,8 +3,9 @@
 `opencode.jsonc` is the personal global configuration source. `cli.json` and
 `tui.json` preserve CLI and TUI preferences. `mise.toml` links each entry from
 this directory into `~/.config/opencode/`, excluding `node_modules` and `bun.lock`.
-Credentials, databases, and provider connections remain machine-local. Warming
-stays disabled and the existing disabled Prettier preference is preserved.
+Credentials, databases, provider connections, and machine-local gateways remain
+machine-local. Warming stays disabled and the existing disabled Prettier
+preference is preserved.
 
 Web search explicitly selects `exa`. Use the existing OpenCode connection, or
 connect Exa through `/connect` / `EXA_API_KEY` on each machine. No search credential
@@ -93,6 +94,73 @@ Lint uses the unmodified `../oxlint/.oxlint.jsonc` against the config tests and
 both plugins, including smoke fixtures. Each TS project includes its own files;
 no type-aware rules are dropped. The config test imports JSONC through Bun's
 older-supported module loader rather than requiring `Bun.JSONC.parse`.
+
+## LiteLLM and Oceans discovery
+
+`plugins/litellm.ts` is a single, self-contained Effect plugin for LiteLLM-compatible gateways. Copy and paste its contents into `~/.config/opencode/plugins/litellm.ts`; no local helper files, package manifest, or separate Oceans plugin are needed, because OpenCode supplies `effect` and `@opencode/plugin` to plugins at runtime. It uses the same rich metadata contract as [OMP's LiteLLM discovery](https://github.com/can1357/oh-my-pi/blob/main/packages/catalog/src/provider-models/openai-compat.ts), not the old Oceans proxy hints. Refresh fibres belong to the plugin scope, so unloading the plugin stops them.
+
+### Gateway configuration
+
+The plugin reads gateways from `$XDG_CONFIG_HOME/opencode` (default `~/.config/opencode`). It uses the first file that exists:
+
+1. `gateways.local.yml`: machine-local, outside this repository. It replaces the tracked file entirely, so work and personal gateways never merge.
+2. `gateways.yml`: the tracked personal file, mapped by `mise.toml`. It does not list `litellm`.
+
+With neither file, the plugin registers nothing. The files use the `providers:` shape of OMP's `models.yml`, so an OMP gateway block can be pasted as it is. Only entries with `discovery: { type: litellm }` are gateways; other entries are skipped. Static providers and context-window overrides for catalog providers belong in the native `providers` object of `opencode.jsonc` ([provider config](https://opencode.ai/v2/docs/providers/#custom)). An entry that fails validation is skipped with a warning, and the other gateways still load. Restart OpenCode or its service after editing a gateway file.
+
+```yaml
+providers:
+  oceans:
+    name: Oceans                  # display name; defaults to the ID
+    baseUrl: https://oceans.example.com/v1
+    apiKey: OCEANS_LLM_API_KEY    # environment variable name, or a list in precedence order
+    api: openai-completions       # fallback when metadata has no routing evidence
+    discovery:
+      type: litellm
+    modelOverrides:
+      claude-opus-5.5:
+        api: anthropic-messages
+        thinking: { mode: anthropic-adaptive, efforts: [low, medium, high, xhigh, max] }
+      gpt-6.1-sol:
+        api: openai-responses
+        thinking: { mode: effort, efforts: [low, medium, high, xhigh, max], defaultLevel: medium }
+```
+
+`api` is one of `openai-completions`, `openai-responses`, or `anthropic-messages`. In `thinking`, `efforts` replaces the variant list, `defaultLevel` sets the default effort, and `mode: anthropic-adaptive` without `defaultLevel` turns on adaptive thinking. The plugin ignores other OMP keys such as `supportsDisplay`, `requiresEffort`, and `contextWindow`. `baseUrl` may end in `/v1` or not: inference uses `<root>/v1`, while metadata lives at the gateway root.
+
+### Discovery
+
+Discovery tries `/model_group/info`, `/v2/model/info`, `/model/info`, and `/v1/model/info` in that order. Later endpoints fill missing fields. A complete vision and price record stops further probes. If no rich endpoint yields models, the plugin uses `/v1/models`. A 404 or other client error means the gateway does not offer that endpoint. Authentication failures, 408, 429, 5xx, timeouts, transport errors, invalid JSON, and an empty result fail the whole refresh instead. Refreshes run every minute; a failed refresh keeps the last successful inventory, so one slow endpoint cannot shrink the model list.
+
+The mapper reads top-level or nested `model_info` limits, tool and vision flags, reasoning support, supported OpenAI parameters, and per-token prices. It converts prices to OpenCode's per-million units and uses catalog defaults for missing metadata. Catalog defaults come from first-party vendor catalogs (`anthropic`, `openai`, `google`, and so on) before resellers such as GitHub Copilot, and never from another configured gateway. An explicit `providers: ["openai"]` selects Responses; mixed or other provider lists keep Chat Completions. A GPT-like name without other evidence selects Responses; otherwise the gateway's `api` applies. Anthropic Messages requires an explicit override, as it does in OMP. LiteLLM metadata does not report an effort ladder; the plugin takes effort names from catalog variants unless the gateway denies reasoning. An explicit override's efforts always win.
+
+Each gateway registers an OpenCode integration with the same ID as its provider, and the provider points at it through `integrationID`. The integration offers an environment method with the `apiKey` names, in order, and a manual key method, so `opencode auth` or `/connect` can also store a key. A saved credential takes precedence over the environment. Discovery and model requests both resolve the active connection; the key never appears in provider settings, which the server API returns as they are. Keep credentials in the environment or the OpenCode credential store, never in a gateway file.
+
+This works with OpenCode **2.0.26**. That version represents reasoning controls as `Model.Info.variants`; the newer V2 docs' `capabilities.reasoning` field is not part of its schema. See [V2 plugins](https://opencode.ai/v2/docs/build/plugins/) and [runtime packages](https://opencode.ai/v2/docs/providers/#packages).
+
+For a dotfiles checkout, leave existing global plugins in place and link only this file and the tracked gateway file. Check that each destination is absent before running these commands:
+
+```sh
+ln -s "$HOME/git/dotfiles/.config/opencode/plugins/litellm.ts" "$HOME/.config/opencode/plugins/litellm.ts"
+ln -s "$HOME/git/dotfiles/.config/opencode/gateways.yml" "$HOME/.config/opencode/gateways.yml"
+```
+
+A work machine keeps its gateways in an unlinked `~/.config/opencode/gateways.local.yml`. Never copy work gateways into the tracked `gateways.yml`.
+
+When upgrading from the split version, remove the old `plugins/oceans.ts` entry and the old discovery-only `lib` link so the provider is registered only once. Do not delete other files in a shared `lib` directory.
+
+Do not replace the whole plugin directory to enable this plugin on 2.0.26: the agent coordination plugin below needs 2.0.29. Use `--standalone` for a test that inherits the current shell's credentials; a background service needs the same environment. A standalone live test is:
+
+```sh
+opencode run --standalone --model 'oceans/claude-opus-5.5#low' 'Reply with exactly OPENCODE_CLAUDE_OK.'
+opencode run --standalone --model 'oceans/gpt-6.1-sol#low' 'Reply with exactly OPENCODE_GPT_OK.'
+```
+
+Both passed on 2.0.26 against a live Oceans gateway. The single-file revision also passed both live tests with only a copied `litellm.ts` in an isolated config directory, without local helper files or a package manifest. A temporary HTTP hook on the earlier split version verified `/v1/messages` with adaptive thinking and `output_config.effort: low`, and `/v1/responses` with `reasoning.effort: low`. The Effect and integration revision was checked on 2.0.26 against a local fake gateway: provider settings held only `baseURL`, both integrations used their environment connection, discovery sent the bearer key, and `/v1/messages`, `/v1/responses`, and `/v1/chat/completions` received the integration key with the expected effort settings. The gateway-file revision was checked on 2.0.26 against live LiteLLM and Oceans gateways listed in a `gateways.local.yml`: both providers registered with their configured base URLs, the model overrides resolved to the same packages, settings, and variants as the earlier hard-coded ones, and live runs passed on the Messages, Responses, and Chat Completions routes.
+
+LiteLLM metadata can report Claude models as plain chat models of their upstream provider, such as `vertex_ai`, so the plugin sends them through Chat Completions. If a gateway's Chat Completions route fails for Claude but its `/v1/messages` route works, add a `modelOverrides` entry with `api: anthropic-messages` and `thinking.mode: anthropic-adaptive` for each affected model ID.
+
+Regression tests in `litellm.test.ts` cover routing precedence, explicit overrides, OMP thinking mapping, the gateway fallback API, gateway file validation and local-file precedence, metadata precedence, price conversion, effort support, enrichment, inventory fallback, vendor-first catalog fallbacks, and transient endpoint failures.
 
 ## Skill URL plugin
 
