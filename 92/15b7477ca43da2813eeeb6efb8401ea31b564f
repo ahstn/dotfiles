@@ -1,0 +1,24 @@
+virtual-machine/README.md
+  h_2f452a9c375069 92-98,158
+virtual-machine/guest/dotfiles.sh
+  h_2f452a9c375069 4-5,10-11,13-21
+virtual-machine/lib/vmpal.sh
+  h_2f452a9c375069 262-263
+virtual-machine/mise.local.toml.example
+  h_2f452a9c375069 22-26
+virtual-machine/vmpal-macos/README.md
+  h_2f452a9c375069 93
+virtual-machine/vmpal-macos/guest/ubuntu.sh
+  h_2f452a9c375069 236-238,240-244,247-255,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9215b7477ca43da2813eeeb6efb8401ea31b564f",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
