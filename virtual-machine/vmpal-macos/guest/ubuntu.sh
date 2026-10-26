@@ -233,21 +233,33 @@ set_dock org.gnome.Nautilus.desktop com.mitchellh.ghostty.desktop helium.desktop
   MonoCode.desktop org.gnome.Settings.desktop net.nokyan.Resources.desktop
 
 export MISE_YES=1
-export MISE_TRUSTED_CONFIG_PATHS="$HOME/git:$HOME/.config/mise"
+dotfiles="$HOME/${DOTFILES_DIR:-git/dotfiles}"
+export MISE_TRUSTED_CONFIG_PATHS="$dotfiles:$HOME/.config/mise"
+command -v mise >/dev/null || curl -fsSL https://mise.run | sh
 
-# mise bootstrap runs once (FORCE=1 to rerun); what follows it runs every time.
-if [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
+# The dotfiles (DOTFILES_REPO, from VM_DOTFILES_REPO; empty = none) are applied once (FORCE=1 to rerun); what
+# follows runs every time.
+if [ -z "${DOTFILES_REPO:-}" ]; then
+  echo "VM_DOTFILES_REPO is empty: skipping the dotfiles"
+elif [ -f "$HOME/.provisioned" ] && [ "${FORCE:-0}" != 1 ]; then
   echo "already provisioned: skipping mise bootstrap (FORCE=1 to rerun)"
 else
-  command -v mise >/dev/null || curl -fsSL https://mise.run | sh
-  [ -d "$HOME/git/dotfiles" ] || git clone https://github.com/ahstn/dotfiles.git "$HOME/git/dotfiles"
+  # A clone of another repository (VM_DOTFILES_REPO changed since) is not applied in its place.
+  if [ -d "$dotfiles" ]; then
+    origin="$(git -C "$dotfiles" remote get-url origin 2>/dev/null || true)"
+    [ "$origin" = "$DOTFILES_REPO" ] || { set +x
+      echo "$dotfiles is a clone of ${origin:-no known remote}, not $DOTFILES_REPO; move it aside or set VM_DOTFILES_DIR" >&2
+      exit 1; }
+  else
+    git clone "$DOTFILES_REPO" "$dotfiles"
+  fi
 
   # Bootstrap's login_shell step runs plain chsh, which asks for the password through PAM. Set zsh first with sudo,
   # so bootstrap finds it done. Takes effect on the next login.
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq zsh >/dev/null
   [ "$(getent passwd "$USER" | cut -d: -f7)" = /bin/zsh ] || sudo chsh -s /bin/zsh "$USER"
 
-  cd "$HOME/git/dotfiles"
+  cd "$dotfiles"
   # pi's postinstall hook runs npm, but bootstrap installs tools in parallel, so Node may not be there yet. Install
   # it first and put it on PATH, which this non-interactive shell does not get from mise activation.
   mise install node@lts

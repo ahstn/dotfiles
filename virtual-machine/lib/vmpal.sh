@@ -259,7 +259,8 @@ cmd_provision() {
     guest -- 'rm -rf ~/.cache/vm && mkdir -p ~/.cache/vm'
     vmpal cp "$VM_ROOT/vmpal-macos/guest/ubuntu.sh" "$VM_NAME:.cache/vm/provision.sh"
     # The Tailscale auth key, when set, goes as an environment variable and lands in no file on this side.
-    local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}")
+    local env=(--env "FORCE=${FORCE:-0}" --env "SHARE_PATH=$share" --env "SHARE_NAME=${share:+$VM_SHARE_NAME}"
+      --env "DOTFILES_REPO=$VM_DOTFILES_REPO" --env "DOTFILES_DIR=$VM_DOTFILES_DIR")
     [ -z "${VM_TAILSCALE_AUTHKEY:-}" ] || env+=(--env VM_TAILSCALE_AUTHKEY)
     guest "${env[@]}" -- 'bash ~/.cache/vm/provision.sh'
     return
