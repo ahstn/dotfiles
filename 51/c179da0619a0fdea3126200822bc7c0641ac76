@@ -1,0 +1,14 @@
+.config/zsh/.zsh-plugins
+  h_2f452a9c375069 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51c179da0619a0fdea3126200822bc7c0641ac76",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}

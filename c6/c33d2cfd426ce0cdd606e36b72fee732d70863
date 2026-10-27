@@ -1,0 +1,34 @@
+virtual-machine/README.md
+  h_2f452a9c375069 117-119,131
+virtual-machine/lib/vmpal.sh
+  h_2f452a9c375069 18,75-122,139-163,165-166,523
+virtual-machine/lib/vmpal_setup.py
+  h_2f452a9c375069 1-422
+virtual-machine/mise-tasks/vmpal/all
+  h_2f452a9c375069 2
+virtual-machine/mise-tasks/vmpal/create
+  h_2f452a9c375069 2
+virtual-machine/mise-tasks/vmpal/setup
+  h_2f452a9c375069 1-5
+virtual-machine/mise.local.toml.example
+  h_2f452a9c375069 44,49-56
+virtual-machine/mise.toml
+  h_2f452a9c375069 20-23
+virtual-machine/tests/test_vmpal_onboarding.py
+  h_2f452a9c375069 1-349
+virtual-machine/vmpal-macos/MACOS-MANUAL-SETUP.md
+  h_2f452a9c375069 7-11
+virtual-machine/vmpal-macos/README.md
+  h_2f452a9c375069 15,20-25,28-33,67-78,132-158,265-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6c33d2cfd426ce0cdd606e36b72fee732d70863",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
