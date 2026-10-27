@@ -3,7 +3,6 @@ import path from "node:path"
 import { Integration, Model, Plugin, Provider } from "@opencode/plugin/effect"
 import type { ProviderRecord } from "@opencode/plugin/effect/provider"
 import { Effect, Schedule, Schema } from "effect"
-import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
 
 // Keep this projection aligned with OMP's mapLiteLLMRichEntry. Oceans implements
 // this metadata contract so both harnesses can consume the same discovery API.
@@ -20,6 +19,8 @@ type API = typeof API.Type
 // The OMP models.yml subset that applies to discovery gateways. Unknown OMP keys are ignored.
 const Override = Schema.Struct({
   api: Schema.optionalKey(API),
+  /** Authoritative input modalities, e.g. `[text, image]` when discovery omits `supports_vision`. */
+  input: Schema.optionalKey(Schema.Array(Schema.Literals(["text", "image"]))),
   thinking: Schema.optionalKey(Schema.Struct({
     /** `anthropic-adaptive` enables adaptive thinking by default. */
     mode: Schema.optionalKey(Schema.String),
@@ -124,11 +125,12 @@ function supportsTools(entry: Entry, reference?: Model.Info): boolean {
   return reference?.capabilities.tools ?? true
 }
 
-function capabilities(entry: Entry, reference?: Model.Info): Model.Info["capabilities"] {
+function capabilities(entry: Entry, reference?: Model.Info, override?: Override): Model.Info["capabilities"] {
   const vision = metadata(entry, "supports_vision")
   return {
     tools: supportsTools(entry, reference),
-    input: typeof vision === "boolean" ? (vision ? ["text", "image"] : ["text"]) : reference?.capabilities.input ?? ["text"],
+    input: override?.input
+      ?? (typeof vision === "boolean" ? (vision ? ["text", "image"] : ["text"]) : reference?.capabilities.input ?? ["text"]),
     output: reference?.capabilities.output ?? ["text"],
   }
 }
@@ -167,7 +169,7 @@ export function toModel(
     name: reference?.name ?? id,
     family: reference?.family,
     package: packages[api],
-    capabilities: capabilities(entry, reference),
+    capabilities: capabilities(entry, reference, override),
     limit: { context, input: context, output: tokens(metadata(entry, "max_output_tokens")) ?? reference?.limit.output ?? Math.min(context, 32_768) },
     cost: costs(entry, reference),
     settings: defaultSettings(api, override?.thinking),
@@ -208,16 +210,17 @@ export class DiscoveryError extends Schema.TaggedError<DiscoveryError>()("LiteLL
 
 // Undefined means the gateway does not offer this endpoint. Authentication,
 // throttling, server, transport, timeout, and JSON failures are DiscoveryErrors.
-const fetchEntries = (client: HttpClient.HttpClient, url: string, key: string | undefined) =>
+const fetchEntries = (url: string, key: string | undefined) =>
   Effect.gen(function* () {
-    const request = HttpClientRequest.get(url).pipe(HttpClientRequest.acceptJson)
-    const response = yield* client.execute(key ? HttpClientRequest.bearerToken(request, key) : request)
+    const headers: Record<string, string> = { accept: "application/json" }
+    if (key) headers.authorization = `Bearer ${key}`
+    const response = yield* Effect.tryPromise((signal) => fetch(url, { headers, signal }))
     const status = response.status
     if (status === 401 || status === 403 || status === 408 || status === 429 || status >= 500) {
       return yield* new DiscoveryError({ url, reason: `HTTP ${status}` })
     }
     if (status >= 400) return undefined
-    return entries(yield* response.json)
+    return entries(yield* Effect.tryPromise(() => response.json()))
   }).pipe(
     Effect.timeout(requestTimeout),
     Effect.catchIf(
@@ -228,10 +231,9 @@ const fetchEntries = (client: HttpClient.HttpClient, url: string, key: string | 
 
 // First endpoint wins; later endpoints fill missing metadata, not overwrite it.
 export const discover = Effect.fn("LiteLLM.discover")(function* (root: string, key: string | undefined) {
-  const client = yield* HttpClient.HttpClient
   const found = new Map<string, Entry>()
   for (const path of richPaths) {
-    for (const entry of (yield* fetchEntries(client, `${root}${path}`, key)) ?? []) {
+    for (const entry of (yield* fetchEntries(`${root}${path}`, key)) ?? []) {
       const id = identity(entry)
       if (!id) continue
       const previous = found.get(id)
@@ -240,7 +242,7 @@ export const discover = Effect.fn("LiteLLM.discover")(function* (root: string, k
     if (found.size && [...found.values()].every(complete)) break
   }
   if (!found.size) {
-    for (const entry of (yield* fetchEntries(client, `${root}/v1/models`, key)) ?? []) {
+    for (const entry of (yield* fetchEntries(`${root}/v1/models`, key)) ?? []) {
       const id = identity(entry)
       if (id && !found.has(id)) found.set(id, entry)
     }
@@ -370,5 +372,5 @@ export default Plugin.define({
       )
       const gatewayIDs = new Set(gateways.map((gateway) => gateway.id))
       yield* Effect.forEach(gateways, (gateway) => register(ctx, gateway, gatewayIDs), { concurrency: "unbounded", discard: true })
-    }).pipe(Effect.provide(FetchHttpClient.layer)),
+    }),
 })
