@@ -1,0 +1,19 @@
+.config/zsh/.zshrc
+  s_bf4a7f5fd1969d::t_59f0144013fe3f 18-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d20b041299f3c559efddbad27ab13ed49ec42c70",
+  "prompts": {},
+  "sessions": {
+    "s_bf4a7f5fd1969d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "148186aa-5491-45b0-b5bb-9abb4be00b9e",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
