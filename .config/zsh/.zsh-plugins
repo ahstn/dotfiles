@@ -7,7 +7,7 @@ function zcompile-many() {
   for f; do (cd "${f:h}" && zcompile -R -- "${f:t}.zwc" "${f:t}"); done
 }
 
-PLUGIN_DIR="$HOME/.config/zsh/plugins"
+PLUGIN_DIR="${ZDOTDIR}/plugins"
 
 if [[ ! -e ${PLUGIN_DIR}/fysh ]]; then
   git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting.git ${PLUGIN_DIR}/fysh
