@@ -1,3 +1,6 @@
+# Fallback for when .zshrc is sourced without .zshenv having run; also used by .zsh-plugins.
+: ${ZDOTDIR:=$HOME/.config/zsh}
+
 # Select emacs keymap before anything binds keys: EDITOR=nvim (from .zshenv) makes zsh start in viins.
 bindkey -e
 
@@ -68,6 +71,7 @@ setopt hist_no_store           # Do not store the `history` command itself
 setopt hist_ignore_space       # Do not record commands prefixed with a space
 setopt hist_reduce_blanks      # Trim superfluous blanks from each history entry
 setopt hist_verify             # Show history-expanded command before execution
+setopt hist_find_no_dups       # Skip duplicates while searching history (share_history can import them)
 
 # Navigation
 setopt auto_cd                 # Change to a directory by typing its path directly

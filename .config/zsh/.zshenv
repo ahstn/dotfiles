@@ -24,8 +24,9 @@ typeset -U path fpath
     fi
 }
 
-export EDITOR="nvim"
-export VISUAL="$EDITOR"
+# Respect an editor set by the caller (e.g. `code --wait`).
+export EDITOR="${EDITOR:-nvim}"
+export VISUAL="${VISUAL:-$EDITOR}"
 
 # Shared Cargo build caches
 export CARGO_TARGET_DIR="$HOME/.cache/cargo/target/"
@@ -39,9 +40,11 @@ elif [[ -d /opt/homebrew/bin ]]; then
     export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 fi
 
-# Global `bun add -g` binaries. Added before mise so mise's shims take precedence for bun itself.
+# Added before mise so mise's shims take precedence for bun and opencode themselves.
+# - ~/.bun/bin: global `bun add -g` binaries.
+# - ~/.opencode/bin: Ghostex CLI wrappers (gx, ghostex). Having it on PATH also stops opencode's installer appending it to .zshrc.
 export BUN_INSTALL="$HOME/.bun"
-[[ -d "$BUN_INSTALL/bin" ]] && export PATH="$BUN_INSTALL/bin:$PATH"
+path=({"$BUN_INSTALL","$HOME/.opencode"}/bin(N-/) $path)
 
 for mise_bin in "$HOME/.local/bin/mise" /opt/homebrew/bin/mise; do
     if [[ -x "$mise_bin" ]]; then
@@ -52,3 +55,5 @@ done
 unset mise_bin
 
 path=($path)
+# Snapshot for .zprofile to restore after macOS path_helper reorders PATH in login shells.
+_zshenv_path=($path)
