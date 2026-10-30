@@ -28,10 +28,6 @@ typeset -U path fpath
 export EDITOR="${EDITOR:-nvim}"
 export VISUAL="${VISUAL:-$EDITOR}"
 
-# Shared Cargo build caches
-export CARGO_TARGET_DIR="$HOME/.cache/cargo/target/"
-export CARGO_BUILD_BUILD_DIR="$HOME/.cache/cargo/build/"
-
 if [[ -x /opt/homebrew/bin/brew ]]; then
     export HOMEBREW_CASK_OPTS="--appdir=${HOME}/Applications"
     eval "$(/opt/homebrew/bin/brew shellenv zsh)"
