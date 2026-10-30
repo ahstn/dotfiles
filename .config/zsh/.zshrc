@@ -15,6 +15,9 @@ else
   [[ -r "${ZDOTDIR}/.zsh-private" ]] && source "${ZDOTDIR}/.zsh-private"
 fi
 
+# Full mise activation (enter hooks, [env], shell aliases); .zshenv only adds shims for non-interactive shells.
+(( $+commands[mise] )) && eval "$(mise activate zsh)"
+
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[fzf] )) && source <(fzf --zsh)
