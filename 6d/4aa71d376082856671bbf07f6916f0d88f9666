@@ -1,0 +1,25 @@
+.config/zsh/.zprofile
+  s_bf4a7f5fd1969d::t_b74477553c7ef4 1-5
+.config/zsh/.zsh-plugins
+  s_bf4a7f5fd1969d::t_01afcb0b0f1227 10
+.config/zsh/.zshenv
+  s_bf4a7f5fd1969d::t_213db814b13a7d 1,8-11,27-29,36,41-45,53-54
+.config/zsh/.zshrc
+  s_bf4a7f5fd1969d::t_88d3fee8f139ee 1-2,5,8,12,15,22,27-29,35-37,48-49,55,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d4aa71d376082856671bbf07f6916f0d88f9666",
+  "prompts": {},
+  "sessions": {
+    "s_bf4a7f5fd1969d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "148186aa-5491-45b0-b5bb-9abb4be00b9e",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
