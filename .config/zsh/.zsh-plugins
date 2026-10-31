@@ -4,7 +4,8 @@
 function zcompile-many() {
   local f
   # zcompile fails on Unicode directory paths; compile basenames without changing the caller's directory.
-  for f; do (cd "${f:h}" && zcompile -R -- "${f:t}.zwc" "${f:t}"); done
+  # NB: `cd -q` skips chpwd hooks, which would otherwise run mise's hook-env for every file.
+  for f; do (builtin cd -q "${f:h}" && zcompile -R -- "${f:t}.zwc" "${f:t}"); done
 }
 
 PLUGIN_DIR="${ZDOTDIR}/plugins"

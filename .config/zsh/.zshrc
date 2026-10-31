@@ -18,6 +18,22 @@ else
   [[ -r "${ZDOTDIR}/.zsh-private" ]] && source "${ZDOTDIR}/.zsh-private"
 fi
 
+# Completion search paths (Homebrew's site-functions is added by `brew shellenv` in .zshenv)
+[[ -d /usr/local/share/zsh/site-functions ]] && fpath=(/usr/local/share/zsh/site-functions $fpath)
+[[ -d "$HOME/.local/share/zsh/site-functions" ]] && fpath=("$HOME/.local/share/zsh/site-functions" $fpath)
+_zsh_completions="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/completions"
+fpath=("$_zsh_completions" $fpath)
+
+# Enable the completion system before mise: its hook-env runs a second `compinit -i` (with the default dump) if compdef is missing.
+# NB: one dump per zsh version: /bin/zsh and Homebrew's zsh otherwise rebuild each other's dump on every switch.
+_zcompdump="${ZDOTDIR}/.zcompdump-${ZSH_VERSION}"
+autoload -Uz compinit && compinit -d "$_zcompdump"
+if (( $+functions[zcompile-many] )) && [[ ! "$_zcompdump.zwc" -nt "$_zcompdump" ]]; then
+  zcompile-many "$_zcompdump"
+fi
+(( $+functions[zcompile-many] )) && unfunction zcompile-many
+unset _zcompdump
+
 # Full mise activation (enter hooks, [env], shell aliases); .zshenv only adds shims for non-interactive shells.
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
 
@@ -25,29 +41,39 @@ fi
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 (( $+commands[fzf] )) && source <(fzf --zsh)
 
-# Completion search paths (Homebrew's site-functions is added by `brew shellenv` in .zshenv)
-[[ -d /usr/local/share/zsh/site-functions ]] && fpath=(/usr/local/share/zsh/site-functions $fpath)
-[[ -d "$HOME/.local/share/zsh/site-functions" ]] && fpath=("$HOME/.local/share/zsh/site-functions" $fpath)
-
-# Enable the completion system after PATH/fpath setup
-autoload -Uz compinit && compinit -d "${ZDOTDIR}/.zcompdump"
-if (( $+functions[zcompile-many] )) && [[ ! "${ZDOTDIR}/.zcompdump.zwc" -nt "${ZDOTDIR}/.zcompdump" ]]; then
-  zcompile-many "${ZDOTDIR}/.zcompdump"
-fi
-(( $+functions[zcompile-many] )) && unfunction zcompile-many
+# Generated completions, cached in $_zsh_completions and regenerated when the tool's binary changes (e.g. an upgrade).
+# Runs after mise activation so binaries resolve to their install paths rather than mise's shims.
+# NB: a regenerated file is read on first completion; a new one is only in the next shell's dump, so compdef it now.
+() {
+  local name bin file
+  local -A gens=(
+    kubectl 'kubectl completion zsh'
+    docker  'docker completion zsh'
+    gh      'gh completion -s zsh'
+    mise    'mise completion zsh'
+    uv      'uv generate-shell-completion zsh'
+  )
+  [[ -d $_zsh_completions ]] || mkdir -p "$_zsh_completions"
+  for name in ${(k)gens}; do
+    bin=${commands[$name]:A}
+    file="$_zsh_completions/_$name"
+    [[ -n $bin ]] || continue
+    [[ -s $file && "$(<$file.src)" == $bin ]] 2>/dev/null && continue
+    if eval "${gens[$name]}" >| $file.tmp 2>/dev/null && [[ -s $file.tmp ]]; then
+      mv -f $file.tmp $file && print -r -- $bin >| $file.src
+      (( $+_comps[$name] )) || { autoload -Uz _$name && compdef _$name $name; }
+    else
+      rm -f $file.tmp
+    fi
+  done
+}
+unset _zsh_completions
 
 # Bun registers its completion with compinit; source it after compinit so it
 # does not initialize the completion system a second time.
 # NB: keep the literal `$HOME/.bun/_bun` here: `bun completions` (also run by `bun upgrade`)
 # skips appending its own copy to this file only when it finds `/.bun/_bun`.
 [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
-
-# Tool-specific completions
-(( $+commands[kubectl] )) && source <(kubectl completion zsh 2>/dev/null)
-(( $+commands[docker] )) && source <(docker completion zsh 2>/dev/null)
-(( $+commands[gh] )) && source <(gh completion -s zsh 2>/dev/null)
-(( $+commands[mise] )) && source <(mise completion zsh 2>/dev/null)
-(( $+commands[uv] )) && source <(uv generate-shell-completion zsh 2>/dev/null)
 
 # Bind ^[[A/^[[B manually so up/down works both before and after zle-line-init
 # NB: run `cat` then press keys to see shortcodes :)
