@@ -1,0 +1,21 @@
+.config/zsh/.zsh-plugins
+  s_bf4a7f5fd1969d::t_20b8fef03afb21 7-8
+.config/zsh/.zshrc
+  s_bf4a7f5fd1969d::t_4da43b445b3856 21-36,44-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fbad3ce28cd332fd9804c4982aace1c59640dde",
+  "prompts": {},
+  "sessions": {
+    "s_bf4a7f5fd1969d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "148186aa-5491-45b0-b5bb-9abb4be00b9e",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
