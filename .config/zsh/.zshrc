@@ -42,10 +42,12 @@ unset _zcompdump
 (( $+commands[fzf] )) && source <(fzf --zsh)
 
 # Generated completions, cached in $_zsh_completions and regenerated when the tool's binary changes (e.g. an upgrade).
+# The cache key is the resolved path plus mtime, so in-place upgrades (standalone uv, system kubectl) also refresh.
 # Runs after mise activation so binaries resolve to their install paths rather than mise's shims.
 # NB: a regenerated file is read on first completion; a new one is only in the next shell's dump, so compdef it now.
 () {
-  local name bin file
+  local name bin key file
+  zmodload -F zsh/stat b:zstat  # zstat only: the module's `stat` builtin would shadow /usr/bin/stat
   local -A gens=(
     kubectl 'kubectl completion zsh'
     docker  'docker completion zsh'
@@ -57,10 +59,10 @@ unset _zcompdump
   for name in ${(k)gens}; do
     bin=${commands[$name]:A}
     file="$_zsh_completions/_$name"
-    [[ -n $bin ]] || continue
-    [[ -s $file && "$(<$file.src)" == $bin ]] 2>/dev/null && continue
+    [[ -n $bin ]] && key="$bin $(zstat +mtime -- $bin 2>/dev/null)" || continue
+    [[ -s $file && "$(<$file.src)" == $key ]] 2>/dev/null && continue
     if eval "${gens[$name]}" >| $file.tmp 2>/dev/null && [[ -s $file.tmp ]]; then
-      mv -f $file.tmp $file && print -r -- $bin >| $file.src
+      mv -f $file.tmp $file && print -r -- $key >| $file.src
       (( $+_comps[$name] )) || { autoload -Uz _$name && compdef _$name $name; }
     else
       rm -f $file.tmp
