@@ -1,0 +1,14 @@
+.config/git-ai/config.json
+  h_2f452a9c375069 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1dbf25f1af02b00dc0943135a83f57cb11edc44d",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
