@@ -1,0 +1,14 @@
+.config/opencode/plugins/litellm.ts
+  h_fcbc8b77b5eaf4 22-23,128,132-133,172,213,215-217,223,236,245,375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27f8ef72e1741517c9cb8e80c35c23b67d328095",
+  "prompts": {},
+  "humans": {
+    "h_fcbc8b77b5eaf4": {
+      "author": "Adam Houston <adam.houston@bazaarvoice.com>"
+    }
+  }
+}
