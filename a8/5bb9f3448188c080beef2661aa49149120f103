@@ -1,0 +1,22 @@
+skills/_draft/kubes-mode-v2/SKILL.md
+  h_2f452a9c375069 11,24,31,37-38,49-50,57-61,63-70,74-79,81-82,128-130
+skills/_draft/kubes-mode-v2/playbooks/bug-fix.md
+  h_2f452a9c375069 8
+skills/_draft/kubes-mode-v2/playbooks/feature.md
+  h_2f452a9c375069 7-8,10
+skills/_draft/kubes-mode-v2/playbooks/hillclimb.md
+  h_2f452a9c375069 11
+skills/_draft/kubes-mode-v2/playbooks/investigation.md
+  h_2f452a9c375069 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a85bb9f3448188c080beef2661aa49149120f103",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
