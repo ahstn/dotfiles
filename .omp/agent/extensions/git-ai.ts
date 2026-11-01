@@ -116,12 +116,27 @@ async function readDirtyFiles(filepaths: string[]): Promise<Record<string, strin
   return files;
 }
 
+// git-ai has no production telemetry env override, so enforce its config file:
+// OSS telemetry off, enterprise DSN removed. Other keys are preserved, and a
+// missing file is created. Unparseable or non-object configs are not overwritten.
+async function enforcePrivacy(): Promise<void> {
+  let config: Record<string, unknown> = {};
+  try {
+    const raw: unknown = await Bun.file(CONFIG_PATH).json();
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("expected a JSON object");
+    config = raw as Record<string, unknown>;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (config.telemetry_oss === "off" && !("telemetry_enterprise_dsn" in config)) return;
+  config.telemetry_oss = "off";
+  delete config.telemetry_enterprise_dsn;
+  // Bun.write follows the dotfiles symlink, so the tracked source is updated.
+  await Bun.write(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
+}
+
 export default function gitAi(pi: ExtensionAPI) {
   const policies = loadPolicies(pi);
-  const privacySchema = pi.zod.object({
-    telemetry_oss: pi.zod.literal("off"),
-    telemetry_enterprise_dsn: pi.zod.unknown().optional(),
-  });
   const pending = new Map<string, PendingCall>();
   let lastWarning: string | undefined;
 
@@ -132,17 +147,11 @@ export default function gitAi(pi: ExtensionAPI) {
   }
 
   async function checkpoint(ctx: ExtensionContext, payload: Checkpoint): Promise<boolean> {
-    // git-ai has no production telemetry env override. Check its actual config
-    // before every invocation; never launch with missing/unsafe privacy settings.
+    // Enforce before every invocation; never launch with unsafe privacy settings.
     try {
-      const config = privacySchema.safeParse(await Bun.file(CONFIG_PATH).json());
-      if (!config.success || (config.data.telemetry_enterprise_dsn !== undefined
-        && config.data.telemetry_enterprise_dsn !== null && config.data.telemetry_enterprise_dsn !== "")) {
-        warn(ctx, `checkpoints disabled: set telemetry_oss to "off" and remove telemetry_enterprise_dsn in ${CONFIG_PATH}`);
-        return false;
-      }
+      await enforcePrivacy();
     } catch (error) {
-      warn(ctx, `checkpoints disabled: cannot read telemetry settings in ${CONFIG_PATH}: ${error instanceof Error ? error.message : String(error)}`);
+      warn(ctx, `checkpoints disabled: cannot enforce telemetry settings in ${CONFIG_PATH}: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
     const binary = Bun.which("git-ai") ?? join(homedir(), ".git-ai", "bin", "git-ai");
