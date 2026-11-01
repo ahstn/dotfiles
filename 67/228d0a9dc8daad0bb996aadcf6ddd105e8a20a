@@ -4,6 +4,8 @@ virtual-machine/config.env.example
   s_e7bc9ad884f98b::t_6bb6c34dd137e0 2,4-8,11,14-21
 virtual-machine/vm.sh
   s_e7bc9ad884f98b::t_c8299040452462 2,16-18,20-24,30-33,35-37,75-76,78-84,87-90,122,124-125,148-152,216,219,238-247,249-253,385-427,435,446,452,457-458,462,468
+skills/_draft/kubes-mode/scripts/watch-pr/github.test.ts
+  s_70f26d58e0c223::t_4989cc51aefc6b 284-285
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -11,6 +13,14 @@ virtual-machine/vm.sh
   "base_commit_sha": "67228d0a9dc8daad0bb996aadcf6ddd105e8a20a",
   "prompts": {},
   "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
     "s_e7bc9ad884f98b": {
       "agent_id": {
         "tool": "claude",

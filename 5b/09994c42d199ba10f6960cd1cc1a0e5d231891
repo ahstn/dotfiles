@@ -22,6 +22,8 @@ virtual-machine/lib/common.sh
   s_145247dfa487c9::t_10cc612f9c82b7 12-17
 virtual-machine/lib/tart.sh
   s_145247dfa487c9::t_e5017c70f6fa27 299
+skills/_draft/kubes-mode/scripts/watch-pr/cli.ts
+  s_70f26d58e0c223::t_cfed3fe2b30fc6 207-209
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -34,6 +36,14 @@ virtual-machine/lib/tart.sh
         "tool": "pi",
         "id": "01a1789e-3b77-7312-857f-247f79494bda",
         "model": "claude-opus-5.5"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
       },
       "human_author": "Adam Houston <phazyy9@gmail.com>"
     }

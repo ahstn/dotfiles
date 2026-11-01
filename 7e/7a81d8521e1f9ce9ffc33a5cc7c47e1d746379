@@ -22,6 +22,22 @@ skills/code-review-and-quality/references/state-and-effects.md
   "base_commit_sha": "7e7a81d8521e1f9ce9ffc33a5cc7c47e1d746379",
   "prompts": {},
   "sessions": {
+    "s_01674f4e1b5bdc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12b47-bf04-76f3-8675-5d67766468fd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
     "s_a54d91cfb15fa9": {
       "agent_id": {
         "tool": "codex",

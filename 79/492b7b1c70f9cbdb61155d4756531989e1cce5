@@ -13,6 +13,14 @@ mise.toml
   "base_commit_sha": "79492b7b1c70f9cbdb61155d4756531989e1cce5",
   "prompts": {},
   "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
     "s_c1dcef61d5dc95": {
       "agent_id": {
         "tool": "codex",

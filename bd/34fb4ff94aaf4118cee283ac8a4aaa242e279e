@@ -9,6 +9,14 @@ virtual-machine/guest/mise.toml
   "base_commit_sha": "bd34fb4ff94aaf4118cee283ac8a4aaa242e279e",
   "prompts": {},
   "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    },
     "s_e7bc9ad884f98b": {
       "agent_id": {
         "tool": "claude",

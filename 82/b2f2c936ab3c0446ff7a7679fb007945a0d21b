@@ -14,5 +14,15 @@
     "h_2f452a9c375069": {
       "author": "Adam Houston <phazyy9@gmail.com>"
     }
+  },
+  "sessions": {
+    "s_70f26d58e0c223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f38e0fe-445f-497c-9898-09cb1486800a",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
   }
 }
