@@ -227,9 +227,14 @@ async function ciMoved(
       .checks;
     if (checks.some((check) => check.kind === "pending" || check.kind === "failed"))
       return true;
+    // A clean read beside a pending rollup rested on the ignored gate (see
+    // readCi); once the gate has gone, the rollup waits on something else.
+    const rollup = row.ci.github.headRollupState;
+    if (isRollupPending(rollup) && !rollupHeldByGate(rollup, checks))
+      return true;
     // A clean list beside a rollup that has since failed is a GitHub refusal,
     // and BLOCKED can stay BLOCKED through it.
-    if ((await headRollup(reader, row.facts)) !== row.ci.github.headRollupState)
+    if ((await headRollup(reader, row.facts)) !== rollup)
       return true;
     return (
       row.ci.github.basis === "merge-queue" &&
@@ -311,6 +316,20 @@ async function headRollup(
 /** A stand-in for CI that wasn't read (see unreadCi), not a real check. */
 const isUnreadCi = (check: T.PendingCheck): boolean =>
   check.name.startsWith(UNREAD_CI);
+const isRollupPending = (rollup: T.RollupState | null): boolean =>
+  rollup === "PENDING" || rollup === "EXPECTED";
+/**
+ * The owner-approval gate is left out of pending on purpose, but the commit
+ * rollup still counts it as PENDING. A pending rollup is explained by it only
+ * while the gate is still pending and nothing else is pending or failing.
+ */
+const rollupHeldByGate = (
+  rollup: T.RollupState | null,
+  checks: readonly T.Check[]
+): boolean =>
+  isRollupPending(rollup) &&
+  checks.some((check) => check.kind === "code-review-gate") &&
+  checks.every((check) => check.kind !== "pending" && check.kind !== "failed");
 /** Parked threads that don't block READY themselves (see readCi). */
 const quietlyParked = (row: Extract<T.PrSnapshot, { kind: "open" }>): boolean =>
   row.parkedThreads.some((thread) => thread.disposition !== "unverifiable");
@@ -659,37 +678,30 @@ async function readCi(
       hadPreviousPassingCi: merge.hadPreviousPassingCi,
     };
     const rollup = merge.github.headRollupState;
-    // The owner-approval gate is left out of pending on purpose, but the
-    // commit rollup still counts it as PENDING. Only discount that when a
-    // fresh read, taken after the rollup, shows the gate is the sole thing
-    // outstanding: a workflow that started between the reads must still count.
-    const rollupPending = rollup === "PENDING" || rollup === "EXPECTED";
-    const gatePresent = checks.checks.some(
-      (check) => check.kind === "code-review-gate"
-    );
     // A second check read, taken after the rollup, whenever the first one is
     // about to be reported as failing or discounted for the gate: checks can
     // recover or start failing between reads, and the verdict must name
     // failures that still exist.
     const fresh =
-      failed !== null || (rollupPending && gatePresent)
+      failed !== null ||
+      (isRollupPending(rollup) &&
+        checks.checks.some((check) => check.kind === "code-review-gate"))
         ? (await resolveChecks(args.reader, args.context, args.allowNoChecks))
             .checks
         : null;
-    // The fresh read must still show the gate pending: if it has passed or
-    // gone, the PENDING rollup is something else (a workflow registering).
-    const gateHoldsRollup =
-      rollupPending &&
-      gatePresent &&
-      fresh !== null &&
-      fresh.some((check) => check.kind === "code-review-gate") &&
-      fresh.every((check) => check.kind !== "pending" && check.kind !== "failed");
-    // A failing first read always gets a fresh read, taken after the rollup,
-    // so it is the newest evidence: it alone decides whether a failure
-    // remains. The rollup in between may predate a check that failed since.
-    const failureGone =
-      fresh !== null && !fresh.some((check) => check.kind === "failed");
-    if (failed !== null && failureGone) {
+    // Only the fresh read, taken after the rollup, may discount the gate: a
+    // workflow that started between the reads must still count.
+    const gateHoldsRollup = fresh !== null && rollupHeldByGate(rollup, fresh);
+    // When taken, the fresh read is the newest evidence: it alone decides
+    // which failures exist, whether the first read saw them or not. The
+    // rollup in between may predate a check that failed since.
+    const currentFailed =
+      fresh === null
+        ? failed
+        : nonEmpty(
+            fresh.filter((check): check is T.FailedCheck => check.kind === "failed")
+          );
+    if (failed !== null && currentFailed === null) {
       // The failure the first read saw is gone (rerun running, or green).
       // Poll again rather than send the agent after a failure that no longer
       // exists.
@@ -708,21 +720,12 @@ async function readCi(
         failed: [],
         pending: [disagreement],
       };
-    } else if (failed !== null) {
-      // When the fresh read was taken it is the current truth: report its
-      // failures, not the first read's, which may have recovered meanwhile.
-      const current =
-        fresh === null
-          ? failed
-          : (nonEmpty(
-              fresh.filter(
-                (check): check is T.FailedCheck => check.kind === "failed"
-              )
-            ) ?? failed);
+    } else if (currentFailed !== null) {
       ci = {
-        ...(fresh === null ? base : { ...base, all: nonEmpty(fresh) ?? base.all }),
+        ...base,
+        all: fresh ?? base.all,
         kind: "ci-failing",
-        failed: current,
+        failed: currentFailed,
         pending: pending ?? [],
         github: merge.github,
       };

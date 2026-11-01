@@ -1,8 +1,12 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   AUTOFIX_FIXED_MARKER,
   AUTOFIX_REPLY_MARKER,
   ChecksUnavailable,
+  GhGitHubReader,
   WatcherQueryError,
   discoverStack,
   setIgnoredPendingChecks,
@@ -29,6 +33,38 @@ const context = {
   repo: "repo",
   number: parsePrNumber(42),
 };
+
+describe("gh failures", () => {
+  // A real `gh` that has lost its credentials: exit 4 and a login hint.
+  let bin = "";
+  const path = process.env.PATH;
+  beforeAll(() => {
+    bin = mkdtempSync(join(tmpdir(), "watch-pr-gh-"));
+    writeFileSync(
+      join(bin, "gh"),
+      "#!/bin/sh\necho 'To get started with GitHub CLI, please run:  gh auth login' >&2\nexit 4\n"
+    );
+    chmodSync(join(bin, "gh"), 0o755);
+    process.env.PATH = `${bin}:${path}`;
+  });
+  afterAll(() => {
+    process.env.PATH = path;
+    rmSync(bin, { recursive: true, force: true });
+  });
+  const permanent = async (read: Promise<unknown>) => {
+    const error: unknown = await read.catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(WatcherQueryError);
+    expect(error instanceof WatcherQueryError && error.failure.retryable).toBe(false);
+  };
+
+  it("does not retry lost credentials in the branch rules lookup", async () => {
+    await permanent(new GhGitHubReader().upToDateRequired(context, "main"));
+  });
+
+  it("does not retry lost credentials in the permission lookup", async () => {
+    await permanent(new GhGitHubReader().permission(context, "someone"));
+  });
+});
 
 describe("checks fallback chain", () => {
   it("uses a non-empty fast-path result without a rollup query", async () => {
@@ -210,6 +246,45 @@ describe("checks fallback chain", () => {
       context
     );
     expect(read.checks.map((check) => check.kind)).toEqual(["passed"]);
+  });
+
+  it("checks fast-path failures against the rollup's queued rerun", async () => {
+    // `gh pr checks` orders attempts by start time, so a queued rerun loses
+    // to the failed run it replaces (cli/cli#14371).
+    const run = (conclusion: string | null, startedAt: string | null) =>
+      mapRollupNode({
+        __typename: "CheckRun",
+        name: "lint",
+        status: conclusion === null ? "QUEUED" : "COMPLETED",
+        conclusion,
+        startedAt,
+        checkSuite: { databaseId: 77, app: { databaseId: 5 }, workflowRun: null },
+      });
+    const read = await resolveChecks(
+      fakeReader({
+        fastPath: { kind: "checks", checks: [failedCheck("lint")] },
+        rollupPages: [
+          {
+            checks: [run("FAILURE", "2026-01-01T00:00:00Z"), run(null, null)].filter(
+              (check) => check !== null
+            ),
+            endCursor: null,
+          },
+        ],
+      }),
+      context
+    );
+    expect(read.source).toBe("graphql-rollup");
+    expect(read.checks.map((check) => check.kind)).toEqual(["pending"]);
+  });
+
+  it("keeps fast-path failures when the rollup is empty", async () => {
+    const reader = fakeReader({
+      fastPath: { kind: "checks", checks: [failedCheck("fast")] },
+    });
+    const read = await resolveChecks(reader, context);
+    expect(read.source).toBe("gh-pr-checks");
+    expect(read.checks.map((check) => check.kind)).toEqual(["failed"]);
   });
 
   it("falls back when valid fast-path JSON represented an empty list", async () => {

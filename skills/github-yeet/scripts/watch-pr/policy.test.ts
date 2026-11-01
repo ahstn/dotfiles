@@ -934,6 +934,68 @@ it("waits when a failure next to the review gate has since gone green", async ()
   expect(classifyPr(snapshot).kind).toBe("waiting");
 });
 
+it("still waits when the review gate goes before the clean read is confirmed", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Code Review Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      // Both readCi reads see the gate; it passes before the confirming
+      // read, leaving the PENDING rollup unexplained.
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks: reads <= 2 ? [passingCheck(), gate] : [passingCheck()],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  expect(reads).toBeGreaterThan(2);
+  expect(classifyPr(snapshot).kind).toBe("waiting");
+});
+
+it("reports a check that fails next to the review gate on the fresh read", async () => {
+  const gate: Check = {
+    kind: "code-review-gate",
+    name: "Code Review Gate",
+    reportedState: "PENDING",
+    description: "",
+    link: "",
+    workflow: "",
+  };
+  const base = fakeReader({ commitRollups: [{ oid: "head", state: "PENDING" }] });
+  let reads = 0;
+  const snapshot = await readSnapshot({
+    reader: {
+      ...base,
+      async checksFastPath() {
+        reads += 1;
+        return {
+          kind: "checks",
+          checks: reads === 1 ? [passingCheck(), gate] : [failedCheck(), gate],
+        };
+      },
+    },
+    context: context(9),
+    pendingHistory: "include",
+    allowDraft: false,
+  });
+  const decision = classifyPr(snapshot);
+  expect(decision.kind === "blocker" && decision.blocker.kind).toBe("failing-checks");
+});
+
 it("re-reads the snapshot when the base branch moves mid-read", async () => {
   const base = fakeReader();
   let facts = 0;

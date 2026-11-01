@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "bun test watch-pr bootstrap.test.ts",
-    "typecheck": "tsc --project watch-pr/tsconfig.json --noEmit --strict"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "commander": "14.0.0"

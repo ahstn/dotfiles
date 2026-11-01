@@ -85,7 +85,6 @@ export function fakeReader(
     mergedAt: null,
     isDraft: false,
   };
-  let page = 0;
   return {
     calls,
     async checkoutRepository() {
@@ -144,7 +143,14 @@ export function fakeReader(
     },
     async checkRollupPage(_requested, after) {
       calls.push(`checkRollupPage:${after ?? "null"}`);
-      return options.rollupPages?.[page++] ?? { checks: [], endCursor: null };
+      // Follow the cursor, as GitHub does, so a later traversal replays it.
+      const pages = options.rollupPages ?? [];
+      const index =
+        after === null ? 0 : pages.findIndex((page) => page.endCursor === after) + 1;
+      return (index > 0 || after === null ? pages[index] : undefined) ?? {
+        checks: [],
+        endCursor: null,
+      };
     },
     async reviewThreads() {
       calls.push("reviewThreads");

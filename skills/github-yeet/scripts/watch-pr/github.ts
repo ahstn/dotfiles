@@ -217,17 +217,18 @@ function isPermanent(result: CommandResult): boolean {
     result.stderr
   );
 }
+/** A failed gh call, retryable unless isPermanent says otherwise. */
+function commandFailure(result: CommandResult, what: string): WatcherQueryError {
+  const detail = firstLine(result.stderr) || `${what} exited ${result.code}`;
+  return new WatcherQueryError(
+    isPermanent(result)
+      ? { kind: "command-rejected", retryable: false, code: result.code, detail }
+      : { kind: "command-exit", retryable: true, code: result.code, detail }
+  );
+}
 async function runJson(argv: readonly [string, ...string[]]): Promise<unknown> {
   const result = await run(argv);
-  if (result.code !== 0) {
-    const detail =
-      firstLine(result.stderr) || `${argv.join(" ")} exited ${result.code}`;
-    throw new WatcherQueryError(
-      isPermanent(result)
-        ? { kind: "command-rejected", retryable: false, code: result.code, detail }
-        : { kind: "command-exit", retryable: true, code: result.code, detail }
-    );
-  }
+  if (result.code !== 0) throw commandFailure(result, argv.join(" "));
   return parseJson(result.stdout, argv.join(" "));
 }
 function raw(value: unknown): string {
@@ -864,19 +865,13 @@ export class GhGitHubReader implements T.GitHubReader {
       ".[] | [.type, (.parameters.strict_required_status_checks_policy // false), ((.parameters.required_status_checks // []) | length)] | @tsv",
     ]);
     // Only a definite "can't see this" (403/404) may become null, which ends
-    // the watch at a human gate. Anything else (5xx, 429, rate limits, a
-    // network blip) retries like any other failed read.
+    // the watch at a human gate. Anything else fails like any other read:
+    // lost credentials end the watch, and 5xx, 429, rate limits or a network
+    // blip retry.
     const settledNo = (result: CommandResult) =>
       /HTTP 40[34]\b/.test(result.stderr) && !/rate limit/i.test(result.stderr);
-    const retry = (result: CommandResult, what: string): never => {
-      throw new WatcherQueryError({
-        kind: "command-exit",
-        retryable: true,
-        code: result.code,
-        detail: firstLine(result.stderr) || `${what} exited ${result.code}`,
-      });
-    };
-    if (rules.code !== 0 && !settledNo(rules)) retry(rules, "branch rules lookup");
+    if (rules.code !== 0 && !settledNo(rules))
+      throw commandFailure(rules, "branch rules lookup");
     if (rules.code === 0) {
       rulesKnown = true;
       for (const line of rules.stdout.split("\n")) {
@@ -908,7 +903,8 @@ export class GhGitHubReader implements T.GitHubReader {
     }
     if (/Branch not protected|not enabled/i.test(classic.stderr))
       return rulesKnown ? false : null;
-    if (!settledNo(classic)) retry(classic, "branch protection lookup");
+    if (!settledNo(classic))
+      throw commandFailure(classic, "branch protection lookup");
     return null;
   }
   async recheck(context: T.PrContext): Promise<T.RecheckFacts> {
@@ -1159,14 +1155,7 @@ export class GhGitHubReader implements T.GitHubReader {
     // 404: the author is no longer a collaborator (or the account is gone).
     // That's a definite "no write access", not a failed read to retry.
     if (/HTTP 404/.test(result.stderr)) return false;
-    throw new WatcherQueryError({
-      kind: "command-exit",
-      retryable: true,
-      code: result.code,
-      detail:
-        firstLine(result.stderr) ||
-        `permission lookup for ${login} exited ${result.code}`,
-    });
+    throw commandFailure(result, `permission lookup for ${login}`);
   }
   async latestAttemptJobs(
     context: T.PrContext,
@@ -1352,11 +1341,11 @@ export async function requireWriteAccess(
 export const NO_CHECKS_CONFIGURED = "(no checks configured)";
 /**
  * The rollup lists every attempt of a check on the commit, so a cancelled run
- * sits beside the rerun that passed. Keep each check's newest suite, as
- * `gh pr checks` keeps the newest attempt. A queued attempt (not started)
- * counts as newest, and ties are all kept. Same-name runs left in the newest
- * Actions suite are distinct jobs (resolveChecks has already dropped earlier
- * attempts' jobs), so they are all kept and no failure is hidden by a guess.
+ * sits beside the rerun that passed. Keep each check's newest suite. A queued
+ * attempt (not started) counts as newest, and ties are all kept. Same-name
+ * runs left in the newest Actions suite are distinct jobs (resolveChecks has
+ * already dropped earlier attempts' jobs), so they are all kept and no
+ * failure is hidden by a guess.
  * In another App's suite the newest run of a name wins.
  */
 function latestAttempts(checks: readonly T.Check[]): T.Check[] {
@@ -1424,7 +1413,11 @@ export async function resolveChecks(
 ): Promise<T.CheckRead> {
   const fast = await reader.checksFastPath(context);
   const direct = fast.kind === "checks" ? nonEmpty(fast.checks) : null;
-  if (direct !== null) return { source: "gh-pr-checks", checks: direct };
+  // `gh pr checks` orders attempts by start time, so a queued rerun loses to
+  // the failed run it replaces (cli/cli#14371). Trust its failures only when
+  // the rollup, which counts a queued attempt as newest, has nothing to say.
+  if (direct !== null && !direct.some((check) => check.kind === "failed"))
+    return { source: "gh-pr-checks", checks: direct };
   const checks: T.Check[] = [];
   let after: string | null = null;
   do {
@@ -1436,6 +1429,7 @@ export async function resolveChecks(
     latestAttempts(await latestRunJobs(reader, context, checks))
   );
   if (fallback !== null) return { source: "graphql-rollup", checks: fallback };
+  if (direct !== null) return { source: "gh-pr-checks", checks: direct };
   // A repo without CI reports no checks forever, which is otherwise
   // indistinguishable from checks that have not registered yet. The caller
   // opts in, and a synthetic skipped check keeps CheckRead non-empty.
