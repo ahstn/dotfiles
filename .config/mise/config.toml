@@ -1,16 +1,16 @@
 [settings]
+minimum_release_age = "2d"
 auto_update = true
 auto_update_check_duration = "4d"
 experimental = true
 color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
-minimum_release_age = "2d"
 trusted_config_paths = [
   '~/git/',
   '~/.codex/worktrees/',
   '~/.herdr/worktrees/',
+  '~/.claude/worktrees/',
   '~/.bb/worktrees/',
-  '~/.luvus/worktrees/',
 ]
 
 [tools]
@@ -33,12 +33,12 @@ git-lfs = { version = "latest", postinstall = "git-lfs install" }
 "npm:tsrs" = { version = "0.18.0-ts7.1.0-dev.20260929", postinstall = 'mkdir -p ~/.local/share/tsrs-tsdk && ln -sfn "$(find "$MISE_TOOL_INSTALL_PATH" -path "*/@tsrs/*/tsrs" -type f -print -quit)" ~/.local/share/tsrs-tsdk/tsgo' }
 
 # llm and ai
+# check for updates every 6 hours, while respecting minimum_release_age (which is overridden for omp)
 codex = "latest"
-# The postinstall runs npm, so node must finish installing first.
-pi = { version = "latest", depends = ["node"], postinstall = "pi update --extensions" }
-oh-my-pi = { version = "latest", rename_exe = "omp" }
+pi = { version = "latest", depends = ["node"], auto_update = "6h", postinstall = "pi update --extensions" }
+oh-my-pi = { version = "latest", rename_exe = "omp", auto_update = "6h", minimum_release_age = "6h" }
+opencode = { version = "latest", allow_builds = ["@opencode/cli"], auto_update = "6h" }
 "github:ahstn/oceans-llm" = "latest"
-"npm:@opencode/cli" = { version = "latest", allow_builds = true }
 
 # containers
 colima = "latest"
@@ -66,9 +66,8 @@ vale = "latest"
 fnox = "latest"
 age = "latest"
 neovim = "latest"
+"aqua:tmux/tmux-builds" = "latest"
 
-[hooks]
-enter = "mise i -q"
 
 [tasks.git-lfs-setup]
 description = "Configure Git LFS for this user"
@@ -82,8 +81,6 @@ ll = "eza -la --icons --group-directories-first"
 docker-prune = 'docker system prune --all --volumes --force'
 update-pi = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
 update-omp = "mise use -g --minimum-release-age 2h oh-my-pi@latest"
-pi-fabric = 'env PI_CODING_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_FABRIC_AGENT_DIR="$HOME/.pi/profiles/fabric" PI_CODING_AGENT_SESSION_DIR="$HOME/.pi/profiles/fabric/sessions" pi'
-
 [bootstrap.repos]
 "~/git/dotfiles" = { url = "git@github.com:ahstn/dotfiles.git", ref = "main" }
 
@@ -128,8 +125,8 @@ show_all_files = true
 
 [bootstrap.macos.defaults]
 "com.apple.finder" = { AppleShowAllFiles = true }
-# Hide widgets on the desktop and in Stage Manager.
-"com.apple.WindowManager" = { StandardHideWidgets = true, StageManagerHideWidgets = true }
+# Hide widgets and don't reveal the desktop when clicking the wallpaper.
+"com.apple.WindowManager" = { StandardHideWidgets = true, StageManagerHideWidgets = true, EnableStandardClickToShowDesktop = false }
 
 [bootstrap.hooks.post-defaults]
 run = [

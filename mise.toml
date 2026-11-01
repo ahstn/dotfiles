@@ -25,6 +25,7 @@ enter = "mise outdated oh-my-pi pi"
 "~/.config/fnox/config.toml" = { source = ".config/fnox/config.toml" }
 "~/.config/zed/settings.json" = { source = ".config/zed/settings.json" }
 "~/Library/Application Support/Tern/settings.json" = { source = ".config/tern/settings.json"}
+"~/.git-ai" = { source = ".config/git-ai", mode = "symlink-each" }
 
 # ZSH - Separate handling for SSH & local sessions.
 "~/.config/zsh" = { source = ".config/zsh" }

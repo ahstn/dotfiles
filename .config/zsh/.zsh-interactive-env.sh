@@ -1,7 +1,6 @@
 # Intended for interative environments unlike ~/.zshenv
 
 alias avim="NVIM_APPNAME=astronvim nvim"
-export EDITOR="nvim"
 export FZF_DEFAULT_OPTS='
   --height 40% 
   --tmux center,80%,40% 
@@ -12,7 +11,6 @@ export FZF_DEFAULT_OPTS='
   --input-label " Input "
   --color pointer:1,fg+:2,marker:2,bg+:8,prompt:4,info:3
 '
-export BUN_INSTALL="$HOME/.bun"
 
 alias ll='eza --long --icons always --git --header --total-size'
 alias tf='terraform'

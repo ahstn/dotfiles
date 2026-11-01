@@ -29,10 +29,8 @@ task:
   maxConcurrency: 12
 todo:
   eager: default
-tools:
-  {}
-mcp:
-  {}
+tools: {}
+mcp: {}
 bashInterceptor:
   enabled: true
 bash:
@@ -65,17 +63,17 @@ retry:
       - web/mojeek
       - web/public
       - google-antigravity/gemini-2.5-flash
-      - openai-codex/gpt-5.6
-      - openai-codex/gpt-5.5
+      - openai-codex/gpt-5.6-sol
       - xai-oauth/grok-4.5
       - web/ollama
 modelRoles:
-  smol: openai-codex/gpt-6-luna:high
+  smol: openai-codex/gpt-6.1-terra:xhigh
   vision: openai-codex/gpt-6-luna:high
   advisor: anthropic/claude-fable-5:high
   web: web/exa
-  default: anthropic/claude-opus-5-5:medium
   slow: openai-codex/gpt-6-astra:xhigh
+  tiny: openai-codex/gpt-6.1-terra:high
+  memory: openai-codex/gpt-6.1-terra:high
 tier:
   openai: auto
 dev:
