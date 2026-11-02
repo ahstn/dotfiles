@@ -1,0 +1,263 @@
+import type * as T from "./types.ts";
+// Control and direction-override characters in PR-controlled text (review
+// bodies, paths, check names) could rewrite or reorder the terminal around
+// them, making untrusted text pass for watcher output. Show them as escapes.
+// The JSON renderer already escapes control bytes.
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g;
+export const safe = (text: string): string =>
+  text.replace(UNSAFE, (char) => `\\u{${char.codePointAt(0)?.toString(16)}}`);
+// JSON.stringify escapes C0 controls but passes C1 controls, bidi
+// overrides and the U+2028/U+2029 line separators through, which can
+// visually reorder or split a pasted verdict. These can only occur inside
+// JSON strings, so \uXXXX escapes keep it valid and round-trip to the same
+// text.
+const JSON_UNSAFE = /[\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g;
+export const renderJson = (verdict: T.WatcherVerdict): string =>
+  `${JSON.stringify(verdict).replace(
+    JSON_UNSAFE,
+    (char) => `\\u${(char.codePointAt(0) ?? 0).toString(16).padStart(4, "0")}`
+  )}\n`;
+const REJECTION_ACTIONS: Record<T.GitHubMergeRefusal["cause"], string> = {
+  "failing-rollup":
+    "the commit's checks failed somewhere the list doesn't show; inspect the rollup on GitHub",
+  "open-conversations":
+    "threads left for a reviewer (or from untrusted authors) are unresolved and the repo requires conversation resolution; a human resolves or answers them",
+  "unexplained-block":
+    "GitHub blocks the merge for a rule the watcher can't see (e.g. a required check that never reported); check the branch rules",
+};
+const REJECTION_CELLS: Record<T.GitHubMergeRefusal["cause"], string> = {
+  "failing-rollup": "❌ GitHub reports failing checks",
+  "open-conversations": "⚠️ GitHub blocks: open conversations",
+  "unexplained-block": "⚠️ GitHub blocks: hidden rule",
+};
+function ciCell(row: T.PrSnapshot): string {
+  if (row.kind !== "open") return "\u2014";
+  const was = row.ci.hadPreviousPassingCi ? ", was ✅" : "";
+  switch (row.ci.kind) {
+    case "ci-clean":
+      return "✅";
+    case "ci-pending":
+      return `⏳ ${row.ci.pending.length} pending${was}`;
+    case "ci-failing":
+      return `❌ ${row.ci.failed.length} failed${row.ci.pending.length ? `, ${row.ci.pending.length} pending` : ""}${was}`;
+    case "ci-github-rejected":
+      return `${REJECTION_CELLS[row.ci.github.cause]}${was}`;
+    default: {
+      const exhaustive: never = row.ci;
+      return exhaustive;
+    }
+  }
+}
+function reviewCell(row: T.PrSnapshot): string {
+  if (row.kind !== "open") return "\u2014";
+  const open = row.threads.length;
+  // Unverifiable threads block READY (a human has to read them), so they
+  // must not hide inside the harmless "parked" count or behind a ✅.
+  const unverifiable = row.parkedThreads.filter(
+    (thread) => thread.disposition === "unverifiable"
+  ).length;
+  const quietlyParked = row.parkedThreads.length - unverifiable;
+  const parked = quietlyParked ? `, ${quietlyParked} parked` : "";
+  if (unverifiable)
+    return `⚠️ ${unverifiable} too long to verify${open ? `, ${open} open` : ""}${parked}`;
+  return row.reviewAutomationRunning
+    ? open
+      ? `🤖 running, ${open} open${parked}`
+      : `🤖 running${parked}`
+    : open
+      ? `📝 ${open} open${parked}`
+      : `✅${parked}`;
+}
+function mergeCell(row: T.PrSnapshot, allowDraft: boolean): string {
+  if (row.kind === "merged") return "✅ merged";
+  if (row.kind === "closed") return "❌ closed";
+  // Conflicts (and a required update) outrank the human gates below, as in
+  // the classifier: they are the exit-2 work to do first.
+  if (
+    row.facts.mergeable === "CONFLICTING" ||
+    row.facts.mergeStateStatus === "DIRTY" ||
+    row.facts.mergeStateStatus === "CONFLICTING"
+  )
+    return "⚠️ conflict";
+  if (
+    row.kind === "open" &&
+    row.facts.mergeStateStatus === "BEHIND" &&
+    row.upToDateRequired === true
+  )
+    return "⚠️ behind base";
+  // With --allow-draft a draft is no gate; say so rather than hide it.
+  if (row.facts.isDraft && !allowDraft) return "⏸ draft";
+  if (row.facts.reviewDecision === "CHANGES_REQUESTED")
+    return "⚠️ changes requested";
+  if (row.facts.reviewDecision === "REVIEW_REQUIRED") return "⏳ needs approval";
+  if (
+    row.kind === "open" &&
+    row.parkedThreads.some((thread) => thread.disposition === "unverifiable")
+  )
+    return "⚠️ needs a human";
+  if (row.facts.mergeStateStatus === "BEHIND" && row.kind === "open")
+    return row.upToDateRequired === false ? "✅ (behind, not required)" : "⚠️ behind base";
+  return row.facts.isDraft ? "✅ (draft allowed)" : "✅";
+}
+export function renderStatusTable(
+  rows: T.NonEmpty<T.PrSnapshot>,
+  allowDraft = false
+): string {
+  const lines = ["| PR | CI | Review | Merge |", "| --- | --- | --- | --- |"];
+  for (const row of rows) {
+    const url = `https://github.com/${row.context.owner}/${row.context.repo}/pull/${row.context.number}`;
+    lines.push(
+      `| [#${row.context.number}](${url}) | ${ciCell(row)} | ${reviewCell(row)} | ${mergeCell(row, allowDraft)} |`
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+function threadLine(thread: T.ReviewThreadSummary): string {
+  // Where the thread is comes from the opener; what it says now comes from
+  // the comment that decided it (a follow-up or an edit), which is what woke us.
+  const anchor = thread.firstComment;
+  const comment = thread.decidingComment ?? anchor;
+  return [
+    thread.id,
+    safe(anchor?.path ?? "None"),
+    anchor?.line ?? "None",
+    safe(comment?.authorLogin ?? "None"),
+    `disposition=${thread.disposition}`,
+    `isBugBot=${thread.isBugbot}`,
+    `bugbotReviewPasses=${thread.bugbotReviewPasses}`,
+    safe((comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? ""),
+  ].join(" ");
+}
+type StatusQueryBlocker = {
+  readonly kind: "status-query";
+  readonly failures: number;
+  readonly failure: { readonly detail: string };
+};
+function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
+  switch (blocker.kind) {
+    case "merge-conflicts":
+      return [
+        "BLOCKER: merge-conflicts",
+        `pr=${blocker.pr.number}`,
+        `mergeable=${blocker.facts.mergeable}`,
+        `mergeStateStatus=${blocker.facts.mergeStateStatus}`,
+        blocker.facts.mergeStateStatus === "BEHIND"
+          ? "action=merge the base branch to bring the PR up to date"
+          : "action=resolve merge conflicts before waiting for CI",
+      ].join("\n");
+    case "review-threads":
+      return [
+        "BLOCKER: review-threads",
+        `pr=${blocker.pr.number}`,
+        `unresolved=${blocker.threads.length}`,
+        ...blocker.threads.map(threadLine),
+      ].join("\n");
+    case "failing-checks": {
+      const failed = blocker.ci.kind === "ci-failing" ? blocker.ci.failed : [];
+      const details = failed.map(
+        (check) =>
+          safe(`${check.name} ${check.reportedState} ${check.description} ${check.link}`)
+      );
+      if (blocker.ci.kind === "ci-github-rejected")
+        details.push(
+          `mergeStateStatus=${blocker.ci.github.mergeStateStatus}`,
+          `headRollupState=${blocker.ci.github.headRollupState}`,
+          `cause=${blocker.ci.github.cause}`,
+          `action=${REJECTION_ACTIONS[blocker.ci.github.cause]}`
+        );
+      return [
+        "BLOCKER: failing-checks",
+        `pr=${blocker.pr.number}`,
+        `failed=${failed.length}`,
+        ...details,
+      ].join("\n");
+    }
+    case "merge-gate": {
+      const action =
+        blocker.reason === "closed-without-merge"
+          ? "restore or remove the closed PR from the queued stack"
+          : blocker.reason === "draft-pr"
+            ? "mark the PR ready for review before waiting for the merge queue"
+            : blocker.reason === "unverifiable-thread"
+              ? "a review thread is too long to read in full; check it on GitHub"
+              : blocker.reason === "review-required"
+                ? "the PR needs an approving review before it can merge"
+                : blocker.reason === "behind-base"
+                ? "the PR is behind its base and GitHub won't say whether that blocks merging; check the branch rules"
+              : "resolve the changes-requested review before waiting for the merge queue";
+      return [
+        `BLOCKER: ${blocker.reason}`,
+        `pr=${blocker.pr.number}`,
+        `action=${action}`,
+      ].join("\n");
+    }
+    case "status-query":
+      return [
+        "BLOCKER: status-query",
+        `failures=${blocker.failures}`,
+        `detail=${safe(blocker.failure.detail)}`,
+        "action=verify current PR context, GitHub authentication, and API availability, then rearm",
+      ].join("\n");
+    default: {
+      const exhaustive: never = blocker;
+      return exhaustive;
+    }
+  }
+}
+export function renderPretty(
+  verdict: T.WatcherVerdict,
+  options: { readonly allowDraft?: boolean } = {}
+): string {
+  switch (verdict.kind) {
+    case "QUEUE":
+      return `QUEUE: captured ${verdict.queue.length} PR${verdict.queue.length === 1 ? "" : "s"} bottom-to-top: ${verdict.queue.map((pr) => `#${pr.number}`).join(",")}\n`;
+    case "STATUS":
+      return renderStatusTable(verdict.rows, options.allowDraft);
+    case "WAITING":
+      return verdict.reason.kind === "pending-checks"
+        ? `WAITING: frontier=#${verdict.frontier.number}; ${verdict.reason.pending.length} check${verdict.reason.pending.length === 1 ? "" : "s"} pending\n`
+        : `WAITING: frontier=#${verdict.frontier.number} is blocker-free; waiting for merge queue (${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged)\n`;
+    case "ADVANCE":
+      return `ADVANCE: merged #${verdict.merged.number}; next=#${verdict.frontier.number}; remaining=${verdict.remaining}\n`;
+    case "RETRY":
+      return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s\ndetail=${safe(verdict.failure.detail)}\n`;
+    case "BLOCKER":
+      return `${renderBlocker(verdict.blocker)}\n`;
+    case "READY": {
+      // A merged PR short-circuits before threads and checks are read, so
+      // none of the "no conflicts / threads / checks" claims would be true.
+      if (verdict.scope.kind === "single" && verdict.scope.pr.kind === "merged-pr")
+        return `MERGED: #${verdict.scope.pr.context.number} is already merged${verdict.scope.pr.mergedAt ? ` (${verdict.scope.pr.mergedAt})` : ""}\n`;
+      if (verdict.scope.kind === "stack") {
+        const merged = verdict.scope.prs.filter((pr) => pr.kind === "merged-pr");
+        const ready = verdict.scope.prs.length - merged.length;
+        return `READY: stack clear; ${ready} PR${ready === 1 ? "" : "s"} with no conflicts, actionable threads, or failing or pending checks${merged.length ? `, ${merged.length} already merged (${merged.map((pr) => `#${pr.context.number}`).join(", ")})` : ""}\n`;
+      }
+      const detail =
+        verdict.scope.kind === "single" && verdict.scope.pr.kind === "ready-pr"
+          ? `\nmergeStateStatus=${verdict.scope.pr.proof.ci.github.mergeStateStatus}\nreviewDecision=${verdict.scope.pr.proof.gate.reviewDecision}\nisDraft=${verdict.scope.pr.proof.gate.draft === "draft-allowed"}${verdict.scope.pr.proof.gate.draft === "draft-allowed" ? "\nnote=draft allowed (--allow-draft); leave draft \u2014 do not mark ready" : ""}`
+          : "";
+      // Parked threads (awaiting the reviewer, or from untrusted authors) are
+      // still unresolved on GitHub; they just don't block.
+      return `READY: no merge conflicts, no actionable review threads, no failing or pending checks${detail}\n`;
+    }
+    case "COMPLETE":
+      return `COMPLETE: queued stack merged (${verdict.queue.length} PR${verdict.queue.length === 1 ? "" : "s"})\n`;
+    case "TIMEOUT":
+      if (verdict.reason.kind === "pending-checks")
+        return "TIMEOUT: checks still pending\n";
+      if (verdict.reason.kind === "status-unavailable")
+        return "TIMEOUT: GitHub status remained unavailable\n";
+      if (verdict.reason.kind === "startup")
+        return "TIMEOUT: --timeout ran out installing dependencies\n";
+      if (verdict.reason.kind === "discovery")
+        return "TIMEOUT: --timeout ran out while resolving the PR\n";
+      if (verdict.reason.kind === "stack-scan")
+        return `TIMEOUT: stack scan stopped after ${verdict.reason.read} of ${verdict.reason.total} PRs\n`;
+      return `TIMEOUT: queued stack still has ${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged; frontier=#${verdict.reason.frontier.number}\n`;
+    default: {
+      const exhaustive: never = verdict;
+      return exhaustive;
+    }
+  }
+}
