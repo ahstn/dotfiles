@@ -63,6 +63,8 @@ OMP's `.omp/agent/` directory is deployed with `symlink-each` using `mise dotfil
 
 The `/action-pr-comments` and `/rebase-main-branch` commands in `.omp/agent/commands/` are copies of the matching Pi prompts in `.pi/agent/prompts/`. Keep both copies aligned when editing them. Restart OMP after applying to load the commands.
 
+[Homelab](homelab/README.md) separates the shared k3s cluster from application deployments. Run `./homelab/k3s/setup.sh` on Hogwarts to bootstrap the cluster, then `./homelab/hindsight/setup.sh` to deploy [Hindsight memory](homelab/hindsight/README.md) and enroll OMP. Its generated API token stays outside Git in `~/.config/hindsight/omp.env`.
+
 ## Agent Skills
 
 This repo uses [mise] dotfiles to link each skill into both shared and Claude-specific global skill directories:
