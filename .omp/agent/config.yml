@@ -9,7 +9,7 @@ disabledProviders:
 symbolPreset: nerd
 theme:
   dark: dark-catppuccin
-setupVersion: 2
+setupVersion: 3
 statusLine:
   separator: pipe
   preset: default
@@ -27,6 +27,7 @@ task:
     commits: ai
     enabled: false
   maxConcurrency: 12
+  enableEffort: true
 todo:
   eager: default
 tools: {}
@@ -104,3 +105,17 @@ commands:
   enableClaudeProject: false
 edit:
   mode: apply_patch
+update:
+  auto: false
+hindsight:
+  apiUrl: https://hogwarts.tail58b1f6.ts.net:8443
+  bankIdPrefix: ahstn
+  scoping: per-project
+  autoRecall: true
+  autoRetain: true
+  recallTypes:
+    - world
+    - experience
+    - observation
+memory:
+  backend: hindsight
