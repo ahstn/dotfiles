@@ -1,0 +1,20 @@
+.omp/agent/agents/writer.md
+  s_a96d72ef876dc5::t_cfd62a318980fd 4-7
+  s_a96d72ef876dc5::t_2085de5b51ff09 1-3,8-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dab0f0c9d833b8e3d68315320a582a792e3be16d",
+  "prompts": {},
+  "sessions": {
+    "s_a96d72ef876dc5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bbac-eac3-70d3-bf99-d569eacb8638",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
