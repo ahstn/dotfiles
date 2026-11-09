@@ -3,7 +3,7 @@
   "defaultModel": "gpt-5.6-sol",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "0.87.1",
+  "lastChangelogVersion": "1.4.0",
   "collapseChangelog": true,
   "shellCommandPrefix": "export PATH=\"$HOME/.local/share/mise/shims:$PATH\"",
   "packages": [
@@ -11,10 +11,10 @@
     "npm:pi-extmgr",
     "npm:pi-token-burden",
     "npm:pi-context-view",
-    "npm:pi-mcp-adapter",
     "npm:pi-tool-display",
     "npm:@juicesharp/rpiv-todo",
-    "npm:@juicesharp/rpiv-ask-user-question"
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@plannotator/pi-extension"
   ],
   "compaction": {
     "enabled": true,
@@ -46,5 +46,9 @@
         "model": "gpt-5.6-sol:medium"
       }
     }
-  }
+  },
+  "extensions": [
+    "builtin:mcp",
+    "-~/.pi/agent/extensions/exa-websearch/index.ts"
+  ]
 }

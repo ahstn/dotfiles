@@ -1,13 +1,9 @@
 {
-  // Environment variable support ${VAR} and $env:VAR interpolation. 
-  // A value beginning with ! runs a command when the stdio server connects; use !! for a literal leading !.
-  // https://github.com/nicobailon/pi-mcp-adapter
   "settings": {
     "outputGuard": {
       "maxBytes": 51200,
       "maxLines": 2000
     },
-    // require approval for tools that match these patterns
     "approveTools": [
       "github_delete_*",
       "notion_update_*",
@@ -16,7 +12,7 @@
   },
   "mcpServers": {
     "slack": {
-      "disabled": true,
+      "enabled": false,
       "command": "npx",
       "args": [
         "-y",
@@ -34,6 +30,14 @@
         "SLACK_MCP_MIN_REFRESH_INTERVAL": "2m",
         "SLACK_MCP_ENABLED_TOOLS": "users_search,conversations_history,conversations_replies,conversations_search_messages,channels_list,usergroups_list"
       }
+    },
+    "exa": {
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+      "headers": {
+        "x-api-key": "${EXA_API_KEY}"
+      },
+      "exposure": "direct",
+      "description": "Search the web, read known URLs, and run advanced searches with filters and highlights."
     }
   }
 }

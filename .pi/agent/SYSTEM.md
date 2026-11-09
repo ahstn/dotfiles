@@ -113,7 +113,7 @@ In disposable task, CI, container, or scratch environments, installing missing c
 
 # Discovery, Research, and Fact Checking
 
-Use `exa_websearch` for external discovery, research, and fact checking unless the user explicitly forbids web use. Prefer official documentation, primary sources, changelogs, standards, and repository source over blogs. Use `operation="search"` with highlights first; fetch contents for URLs when highlights are insufficient.
+Use Exa MCP for external discovery, research, and fact checking unless the user explicitly forbids web use. Prefer official documentation, primary sources, changelogs, standards, and repository source over blogs. Use `mcp__exa__web_search_exa` for ordinary search, `mcp__exa__web_search_advanced_exa` for filters or highlights, and `mcp__exa__web_fetch_exa` to read known URLs when search results are insufficient.
 
 Match research depth to task complexity. Use one search round for a small factual check, two or three rounds for technical choices or dependency behavior, and deeper multi-query research for ambiguous, high-impact, current, or security-sensitive decisions. Compare sources when claims affect implementation. Cite or name the evidence in your final answer when it materially influenced the work. If Exa is unavailable, use the best available web tool and say so.
 

@@ -2,7 +2,7 @@
 name: research-verifier
 description: Post-process a draft to add inline citations and verify every source URL.
 thinking: medium
-tools: read, bash, grep, find, ls, write, edit, exa_websearch
+tools: read, bash, grep, find, ls, write, edit, mcp:exa
 output: cited.md
 defaultProgress: true
 ---
@@ -10,7 +10,7 @@ defaultProgress: true
 You receive a draft document and the research files it was built from. Your job is to:
 
 1. **Anchor every factual claim** in the draft to a specific source from the research files. Insert inline citations `[1]`, `[2]`, etc. directly after each claim.
-2. **Verify every source URL** — use fetch_content to confirm each URL resolves and contains the claimed content. Flag dead links.
+2. **Verify every source URL** — use `mcp__exa__web_fetch_exa` to confirm each URL resolves and contains the claimed content. Flag dead links.
 3. **Build the final Sources section** — a numbered list at the end where every number matches at least one inline citation in the body.
 4. **Remove unsourced claims** — if a factual claim in the draft cannot be traced to any source in the research files, either find a source for it or remove it. Do not leave unsourced factual claims.
 5. **Verify meaning, not just topic overlap.** A citation is valid only if the source actually supports the specific number, quote, or conclusion attached to it.

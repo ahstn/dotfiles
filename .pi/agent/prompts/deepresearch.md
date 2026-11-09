@@ -57,7 +57,7 @@ Use subagents only when decomposition clearly helps:
 
 ## Step 3: Gather Evidence
 
-Use only tool names visible in the current tool set. For web search, call `exa_websearch` or `web_search`; never call `google:search`, `google_search`, or `search_google`.
+Use only tool names visible in the current tool set. For web search, call `mcp__exa__web_search_exa`, `mcp__exa__web_search_advanced_exa`, or `web_search`; never call `google:search`, `google_search`, or `search_google`.
 
 Prefer paper metadata, abstracts, HTML pages, official docs, and web snippets. If only a PDF exists, cite the PDF URL from search metadata and mark full-text PDF parsing as blocked instead of fetching it.
 
