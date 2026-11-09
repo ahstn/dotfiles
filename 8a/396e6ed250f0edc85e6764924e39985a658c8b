@@ -1,0 +1,19 @@
+.pi/agent/settings.json
+  s_dcff8e1f659a9f::t_95b06711982cf4 6,16-17,49-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a396e6ed250f0edc85e6764924e39985a658c8b",
+  "prompts": {},
+  "sessions": {
+    "s_dcff8e1f659a9f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1bd68-03ba-75be-bb6b-235a5776bc37",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
