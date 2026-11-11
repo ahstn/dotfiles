@@ -10,6 +10,45 @@ dotfiles.default_mode = "symlink"
 [hooks]
 enter = "mise outdated oh-my-pi pi"
 
+# Host services are opt-in, independent of shell entry/exit. The default group stays local.
+[daemon_groups]
+default = ["omp-auth-gateway"]
+omp-auth = ["omp-auth-gateway"]
+omp-auth-remote = ["omp-auth-tailscale"]
+
+[daemons.omp-auth-broker]
+run = "exec omp auth-broker serve --bind=127.0.0.1:8765"
+dir = "~"
+ready_http = "http://127.0.0.1:8765/v1/healthz"
+retry = 3
+proxy = false
+
+[daemons.omp-auth-gateway]
+depends = ["omp-auth-broker"]
+dir = "~"
+env = { OMP_AUTH_BROKER_URL = "http://127.0.0.1:8765" }
+run = '''
+set -eu
+umask 077
+mkdir -p "$HOME/.config/omp"
+if [ ! -e "$HOME/.config/omp/auth-gateway-clients.json" ]; then
+  (set -C; printf '{}\n' > "$HOME/.config/omp/auth-gateway-clients.json")
+fi
+exec env -u OMP_AUTH_BROKER_TOKEN omp auth-gateway serve --bind=127.0.0.1:4000 --clients="$HOME/.config/omp/auth-gateway-clients.json"
+'''
+ready_http = "http://127.0.0.1:4000/healthz"
+retry = 3
+proxy = false
+
+# Foreground Serve follows pitchfork's lifecycle; no --bg or Funnel. Leave HTTPS 443 alone.
+[daemons.omp-auth-tailscale]
+depends = ["omp-auth-gateway"]
+run = "exec tailscale serve --https=8443 http://127.0.0.1:4000"
+dir = "~"
+ready_output = "Available within your tailnet"
+retry = 3
+proxy = false
+
 [dotfiles]
 # Listing only directories & files to inherit, ignoring others that shouldn't be tracked (e.g. `~/.aws`)
 "~/.config/mise/config.toml" = { source = ".config/mise/config.toml" }

@@ -63,6 +63,58 @@ OMP's `.omp/agent/` directory is deployed with `symlink-each` using `mise dotfil
 
 The `/action-pr-comments` and `/rebase-main-branch` commands in `.omp/agent/commands/` are copies of the matching Pi prompts in `.pi/agent/prompts/`. Keep both copies aligned when editing them. Restart OMP after applying to load the commands.
 
+### Auth gateway daemons
+
+The root `mise.toml` runs OMP's credential broker and model gateway with [mise daemons](https://mise.jdx.dev/daemons.html). Start them from this repository on the host that holds your OMP credentials:
+
+```sh
+mise daemons start omp-auth
+```
+
+The gateway waits for the broker. Both bind to loopback: broker `127.0.0.1:8765`, gateway `127.0.0.1:4000`. They use the invoking user's OMP profile and credential store. The gateway connects to the local broker, not an inherited `OMP_AUTH_BROKER_TOKEN`. Each process gets up to three retries after failure. They stay running when you leave the directory, but do not start on shell entry or at login. Plain `mise daemons start` starts only this local pair.
+
+To expose the gateway to your tailnet:
+
+```sh
+mise daemons start omp-auth-remote
+```
+
+This also starts the local pair, then runs Tailscale Serve in the foreground under pitchfork. It requires a running, authenticated Tailscale client with HTTPS enabled. The endpoint is `https://<host>.<tailnet>.ts.net:8443`; port 443 is left alone for other services. Stopping the Serve daemon removes its route. It does not use Funnel or expose the broker.
+
+Restrict tailnet access to gateway TCP port 8443 with Tailscale grants. Network access is not permission to use models: gateway bearer authentication remains enabled.
+
+#### Client access
+
+The first gateway start creates `~/.config/omp/auth-gateway-clients.json` with mode `0600` and contents `{}`. Existing files are preserved. This file is local state, not managed by dotfiles. Add scoped clients there using OMP's [client-token format](https://github.com/can1357/oh-my-pi/blob/main/docs/auth-broker-gateway.md#client-tokens): a SHA-256 token digest, explicit model grants, and optional OAuth account bindings. The gateway reloads it every ten seconds; replace it atomically when updating it.
+
+An empty client list admits no scoped clients. The unrestricted operator token still exists in the active OMP profile's `auth-gateway.token`; keep it on the host. Remote workers should receive only their own scoped token, never the operator token, broker token, or provider credentials.
+
+For a remote OMP client, put the gateway endpoint and token reference in that client's `~/.omp/agent/models.yml`, repeating the provider entry for each granted provider:
+
+```yaml
+providers:
+  anthropic:
+    transport: pi-native
+    baseUrl: https://<host>.<tailnet>.ts.net:8443
+    apiKey: OMP_GATEWAY_TOKEN
+```
+
+Set `OMP_GATEWAY_TOKEN` through the client's secret mechanism. Do not set `OMP_AUTH_BROKER_URL` on a remote worker: direct broker clients receive usable provider credentials. Other OpenAI-compatible clients use the gateway URL with `/v1` appended.
+
+#### Operations
+
+```sh
+mise daemons status
+mise daemons logs omp-auth-gateway
+mise daemons restart omp-auth-gateway
+mise daemons stop omp-auth-tailscale  # remove tailnet exposure, keep the local pair
+mise daemons stop                    # stop all three
+```
+
+After rotating the broker token, restart the broker and gateway; after rotating the operator gateway token, restart the gateway. Scoped client token changes need only the file reload.
+
+Health checks (`/v1/healthz` on the broker, `/healthz` on the gateway) prove that the listeners are ready, not that a provider account works. Check `/v1/models` with a scoped token, then make a model request when testing provider access. `omp auth-gateway check` probes credentials directly rather than the deployed HTTPS route.
+
 ## Agent Skills
 
 This repo uses [mise] dotfiles to link each skill into both shared and Claude-specific global skill directories:
