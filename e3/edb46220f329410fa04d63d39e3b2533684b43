@@ -1,0 +1,21 @@
+README.md
+  s_e6a1e714513635::t_886543dd4e5ea5 66-117
+mise.toml
+  s_e6a1e714513635::t_0a351248f3fb39 13-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3edb46220f329410fa04d63d39e3b2533684b43",
+  "prompts": {},
+  "sessions": {
+    "s_e6a1e714513635": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c287-b7a5-70af-80f4-b593a1724bdd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
