@@ -1,0 +1,47 @@
+skills/rust-review/SKILL.md
+  s_812246fae7dbf8::t_4ef24071a97ea9 1-56
+skills/rust-best-practices/references/runtime-and-safety.md
+  s_812246fae7dbf8::t_ee9930c2463d2e 13,15
+  s_812246fae7dbf8::t_a08f7fdd17bfc3 1-12,14,16-55
+skills/rust-best-practices/references/types-and-apis.md
+  s_812246fae7dbf8::t_ee9930c2463d2e 50-51
+  s_812246fae7dbf8::t_a08f7fdd17bfc3 1-49,52-72
+skills/rust-review/LICENSE
+  s_812246fae7dbf8::t_ca359af2c56f69 1-21
+skills/rust-best-practices/references/verification.md
+  s_812246fae7dbf8::t_a08f7fdd17bfc3 1-29
+skills/rust-best-practices/LICENSE
+  s_812246fae7dbf8::t_ca359af2c56f69 1-21
+skills/rust-best-practices/references/source-analysis.md
+  s_812246fae7dbf8::t_ca2202d6a194fc 7,15,119
+  s_812246fae7dbf8::t_195181b6bb5e93 1-6,8-14,16-22,24-104,106
+  s_812246fae7dbf8::t_352f62385f852c 107-118
+  s_812246fae7dbf8::t_ee9930c2463d2e 23,105
+skills/rust-best-practices/SKILL.md
+  s_812246fae7dbf8::t_ee9930c2463d2e 13,17,23
+  s_812246fae7dbf8::t_4ef24071a97ea9 1-12,14-16,18-22,24-51
+skills/rust-review/references/rubric.md
+  s_812246fae7dbf8::t_89f89dbea074e1 21
+  s_812246fae7dbf8::t_ee9930c2463d2e 19,52
+  s_812246fae7dbf8::t_e5db4d16bd4d98 1-18,20,22-51,53-73
+skills/rust-review/references/evaluation.md
+  s_812246fae7dbf8::t_ee9930c2463d2e 17
+  s_812246fae7dbf8::t_e5db4d16bd4d98 1-2,4-16
+  s_812246fae7dbf8::t_ea2193d725f4be 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aded402edce03a3540e1a8518be812a9c84f2340",
+  "prompts": {},
+  "sessions": {
+    "s_812246fae7dbf8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bba8-38d8-7b80-b145-322333b77d33",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
