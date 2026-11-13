@@ -18,6 +18,7 @@ enabled = true
 # `env = true` loads each into every shell. Project keys belong in that project's fnox.toml.
 # The `credential` field is the default for 1Password API Credential items.
 [secrets]
+HINDSIGHT_API_TOKEN = { provider = "op", value = "op://homelab/Hindsight API Key/credential", env = true }
 OPENROUTER_API_KEY = { provider = "op", value = "op://Development/OpenRouter API Key/credential", env = true }
 RUN_INFRA_API_KEY = { provider = "op", value = "op://Development/RunInfra API Key/credential", env = true }
 EXPLABS_API_KEY = { provider = "op", value = "op://Development/Experiential AI/credential", env = true }

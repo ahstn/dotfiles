@@ -4,7 +4,7 @@ name: Sensitive File Read Protection
 version: 1.0.0
 description: |
   Blocks commands that can expose local environment files, SSH private keys,
-  or the private Zsh configuration.
+  the fnox age key, or the private Zsh configuration.
 
 keywords:
   - .env
@@ -14,11 +14,12 @@ keywords:
   - id-rsa
   - .zsh-private
   - mise
+  - age.txt
 
 # `dcg test "cat .env"`
 destructive_patterns:
   - name: sensitive-file-read
-    pattern: (?:^|[/\s'"=])(?:\.env(?:\.[A-Za-z0-9_-]+)*|mise\.local|id_ed25519|id-ed25519|id_rsa|id-rsa|\.zsh-private)(?:$|[/\s'";|&<>()])
+    pattern: (?:^|[/\s'"=])(?:\.env(?:\.[A-Za-z0-9_-]+)*|mise\.local|id_ed25519|id-ed25519|id_rsa|id-rsa|\.zsh-private|age\.txt)(?:$|[/\s'";|&<>()])
     severity: critical
     description: Reading a sensitive file is blocked
     explanation: |
@@ -72,7 +73,7 @@ destructive_patterns:
       - zip
 
   - name: sensitive-file-dot-source
-    pattern: (?:^|[;&|]\s*)\.\s+(?:[^;&|]*[/\s'"=])(?:\.env(?:\.[A-Za-z0-9_-]+)*|mise\.local|id_ed25519|id-ed25519|id_rsa|id-rsa|\.zsh-private)(?:$|[/\s'";|&<>()])
+    pattern: (?:^|[;&|]\s*)\.\s+(?:[^;&|]*[/\s'"=])(?:\.env(?:\.[A-Za-z0-9_-]+)*|mise\.local|id_ed25519|id-ed25519|id_rsa|id-rsa|\.zsh-private|age\.txt)(?:$|[/\s'";|&<>()])
     severity: critical
     description: Sourcing a sensitive file is blocked
     explanation: |
