@@ -1,0 +1,16 @@
+.config/dcg/packs/sensitive-files.yaml
+  h_2f452a9c375069 7,17,22,76
+.config/fnox/config.toml
+  h_2f452a9c375069 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3aefc4eb80b1c9761fd554a6757c4edc5a7a1a2e",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
