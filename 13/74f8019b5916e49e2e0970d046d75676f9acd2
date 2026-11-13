@@ -1,0 +1,19 @@
+skills/ambiguity/SKILL.md
+  s_46a41534a9bb4d::t_16ebefc9fb1244 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1374f8019b5916e49e2e0970d046d75676f9acd2",
+  "prompts": {},
+  "sessions": {
+    "s_46a41534a9bb4d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c1ef-47bc-74b7-805b-8d236be5001d",
+        "model": "unknown"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
