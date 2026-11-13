@@ -35,9 +35,13 @@ git-lfs = { version = "latest", postinstall = "git-lfs install" }
 # llm and ai
 # check for updates every 6 hours, while respecting minimum_release_age (which is overridden for omp)
 codex = "latest"
-pi = { version = "latest", depends = ["node"], auto_update = "6h", postinstall = "pi update --extensions" }
-oh-my-pi = { version = "latest", rename_exe = "omp", auto_update = "6h", minimum_release_age = "6h" }
-opencode = { version = "latest", allow_builds = ["@opencode/cli"], auto_update = "6h" }
+pi = { version = "latest", depends = [
+  "node",
+], auto_update = "6h", postinstall = "pi update --extensions" }
+oh-my-pi = { version = "latest", rename_exe = "omp", minimum_release_age = "6h", auto_update = "6h" }
+opencode = { version = "latest", allow_builds = [
+  "@opencode/cli",
+], auto_update = "6h" }
 "github:ahstn/oceans-llm" = "latest"
 
 # containers
@@ -67,6 +71,8 @@ fnox = "latest"
 age = "latest"
 neovim = "latest"
 "aqua:tmux/tmux-builds" = "latest"
+turbo = "latest"
+ruby = "latest" # required for brew taps/casks
 
 
 [tasks.git-lfs-setup]
@@ -109,6 +115,9 @@ update-omp = "mise use -g --minimum-release-age 2h oh-my-pi@latest"
 "apt:ripgrep" = "latest"
 "apt:fd-find" = "latest"
 "apt:btop" = "latest"
+
+[bootstrap.brew]
+adopt = true
 
 [bootstrap.user]
 login_shell = "/bin/zsh"
