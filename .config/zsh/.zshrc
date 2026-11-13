@@ -11,12 +11,11 @@ bindkey -e
 [[ -r "${ZDOTDIR}/.zsh-interactive-env.sh" ]] && source "${ZDOTDIR}/.zsh-interactive-env.sh"
 
 # Private & Sensitive Values: fnox resolves them from 1Password (~/.config/fnox/config.toml).
-# If missing, load from ~/.config/zsh/.zsh-private until we migrate all hosts
+# always load ~/.config/zsh/.zsh-private, but this should lack keys going forward.
+[[ -r "${ZDOTDIR}/.zsh-private" ]] && source "${ZDOTDIR}/.zsh-private"
 if (( $+commands[op] )) && (( $+commands[fnox] )); then
   eval "$(fnox activate zsh)" && _fnox_hook
 else
-  [[ -r "${ZDOTDIR}/.zsh-private" ]] && source "${ZDOTDIR}/.zsh-private"
-fi
 
 # Completion search paths (Homebrew's site-functions is added by `brew shellenv` in .zshenv)
 [[ -d /usr/local/share/zsh/site-functions ]] && fpath=(/usr/local/share/zsh/site-functions $fpath)
