@@ -1,0 +1,21 @@
+.pi/agent/agents/worker.md
+  s_e57c605d4db37f::t_d171e594264bae 19-22
+.pi/agent/AGENTS.md
+  s_e57c605d4db37f::t_7863ffb05208bc 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "990c923a20ad8c5cea2557f89137a7dd3f5b4194",
+  "prompts": {},
+  "sessions": {
+    "s_e57c605d4db37f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d486-026c-7531-b68d-b4e202b48be1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
