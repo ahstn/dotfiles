@@ -1,112 +1,38 @@
-providers:
-  openaiWebsockets: "on"
-  openrouterVariant: default
-disabledProviders:
-  - amazon-bedrock
-  - bedrock-mantle
-  - google-vertex
-  - apple
-symbolPreset: nerd
 theme:
   dark: dark-catppuccin
-setupVersion: 3
-statusLine:
-  separator: pipe
-  preset: default
-  transparent: true
-  compactThinkingLevel: false
-power:
-  sleepPrevention: idle
-lsp:
-  enabled: true
-  diagnosticsOnEdit: false
-  formatOnWrite: false
-task:
-  maxRecursionDepth: 2
-  isolation:
-    commits: ai
-    enabled: false
-  maxConcurrency: 12
-  enableEffort: true
-todo:
-  eager: default
-tools: {}
-mcp: {}
-bashInterceptor:
-  enabled: true
-bash:
-  autoBackground:
-    enabled: true
-retry:
-  maxRetries: 2
-  fallbackChains:
-    web:
-      - web/perplexity
-      - google/gemini-2.5-flash
-      - anthropic/claude-haiku-4-5
-      - openai-codex/gpt-5.6-luna
-      - xai/grok-4.5
-      - web/zai
-      - web/tinyfish
-      - web/jina
-      - web/kagi
-      - web/tavily
-      - web/firecrawl
-      - web/brave
-      - web/kimi
-      - web/parallel
-      - web/synthetic
-      - web/searxng
-      - web/startpage
-      - web/duckduckgo
-      - web/ecosia
-      - web/google
-      - web/mojeek
-      - web/public
-      - google-antigravity/gemini-2.5-flash
-      - openai-codex/gpt-5.6-sol
-      - xai-oauth/grok-4.5
-      - web/ollama
 modelRoles:
-  smol: openai-codex/gpt-6.1-terra:xhigh
-  vision: openai-codex/gpt-6-luna:high
-  advisor: anthropic/claude-fable-5:high
+  default: openai-codex/gpt-6.1-sol
+  judge: openrouter/typesafe/jev-1.14
   web: web/exa
-  slow: openai-codex/gpt-6-astra:xhigh
-  tiny: openai-codex/gpt-6.1-terra:high
-  memory: openai-codex/gpt-6.1-terra:high
-tier:
-  openai: auto
-dev:
-  autoqaConsent: granted
-composer:
-  shape: claude
-  tokenRate: true
-skills:
-  enableClaudeUser: false
-  enableClaudeProject: false
-  enableSkillCommands: false
-  customDirectories:
-    - ~/git/dotfiles/skills
-  ignoredSkills:
-    - "*superpower*"
-    - subagent-driven-development
-    - brainstorming
-    - writing-plans
-compaction:
-  thresholdTokens: 256000
-extendedContext: false
-display:
-  showTurnTime: true
-  cacheMissMarker: true
-plan:
-  enabled: false
-commands:
-  enableClaudeProject: false
-edit:
-  mode: apply_patch
 update:
   auto: false
+setupVersion: 3
+composer:
+  shape: pi
+statusLine:
+  transparent: true
+  separator: pipe
+  compactThinkingLevel: false
+tui:
+  completeScrollback: true
+display:
+  showTokenUsage: true
+  cacheMissMarker: true
+  showTurnTime: true
+title:
+  icons: boring
+hideThinkingBlock: false
+skillful: false
+error:
+  notify: "on"
+startup:
+  quiet: false
+compaction:
+  thresholdTokens: 300000
+autolearn:
+  enabled: true
+memory:
+  backend: hindsight
 hindsight:
   apiUrl: https://hogwarts.tail58b1f6.ts.net:8443
   bankIdPrefix: ahstn
@@ -117,5 +43,14 @@ hindsight:
     - world
     - experience
     - observation
-memory:
-  backend: hindsight
+browser:
+  cmux: false
+plan:
+  enabled: true
+task:
+  maxEffort: max
+commands:
+  enableClaudeProject: false
+  enableOpencodeProject: false
+dev:
+  autoqaConsent: granted
