@@ -15,7 +15,7 @@ bindkey -e
 [[ -r "${ZDOTDIR}/.zsh-private" ]] && source "${ZDOTDIR}/.zsh-private"
 if (( $+commands[op] )) && (( $+commands[fnox] )); then
   eval "$(fnox activate zsh)" && _fnox_hook
-else
+fi
 
 # Completion search paths (Homebrew's site-functions is added by `brew shellenv` in .zshenv)
 [[ -d /usr/local/share/zsh/site-functions ]] && fpath=(/usr/local/share/zsh/site-functions $fpath)
