@@ -73,6 +73,8 @@ neovim = "latest"
 "aqua:tmux/tmux-builds" = "latest"
 turbo = "latest"
 ruby = "latest" # required for brew taps/casks
+k3s = "latest"
+helm = "latest"
 
 
 [tasks.git-lfs-setup]

@@ -10,11 +10,10 @@ dotfiles.default_mode = "symlink"
 [hooks]
 enter = "mise outdated oh-my-pi pi"
 
-# Host services are opt-in, independent of shell entry/exit. The default group stays local.
+# Host services are opt-in, independent of shell entry/exit. Use `mise run omp-auth [--tailscale]`;
+# the default group keeps plain `mise daemons start` local.
 [daemon_groups]
-default = ["omp-auth-gateway"]
-omp-auth = ["omp-auth-gateway"]
-omp-auth-remote = ["omp-auth-tailscale"]
+default = ["omp-auth-broker"]
 
 [daemons.omp-auth-broker]
 run = "exec omp auth-broker serve --bind=127.0.0.1:8765"
@@ -23,27 +22,11 @@ ready_http = "http://127.0.0.1:8765/v1/healthz"
 retry = 3
 proxy = false
 
-[daemons.omp-auth-gateway]
-depends = ["omp-auth-broker"]
-dir = "~"
-env = { OMP_AUTH_BROKER_URL = "http://127.0.0.1:8765" }
-run = '''
-set -eu
-umask 077
-mkdir -p "$HOME/.config/omp"
-if [ ! -e "$HOME/.config/omp/auth-gateway-clients.json" ]; then
-  (set -C; printf '{}\n' > "$HOME/.config/omp/auth-gateway-clients.json")
-fi
-exec env -u OMP_AUTH_BROKER_TOKEN omp auth-gateway serve --bind=127.0.0.1:4000 --clients="$HOME/.config/omp/auth-gateway-clients.json"
-'''
-ready_http = "http://127.0.0.1:4000/healthz"
-retry = 3
-proxy = false
-
-# Foreground Serve follows pitchfork's lifecycle; no --bg or Funnel. Leave HTTPS 443 alone.
+# Foreground Serve follows pitchfork's lifecycle; no --bg or Funnel. Serve adds the TLS the broker lacks.
+# 443 (app), 8443/8444 (Hindsight API/UI, homelab/hindsight/manage.py) and 9119 are taken.
 [daemons.omp-auth-tailscale]
-depends = ["omp-auth-gateway"]
-run = "exec tailscale serve --https=8443 http://127.0.0.1:4000"
+depends = ["omp-auth-broker"]
+run = "exec tailscale serve --https=8445 http://127.0.0.1:8765"
 dir = "~"
 ready_output = "Available within your tailnet"
 retry = 3
@@ -132,6 +115,19 @@ mode = "0600"
 [tasks.bootstrap]
 description = "Install user crontab"
 run = "crontab ~/.config/cron/ahstn.crontab"
+
+[tasks.omp-auth]
+description = "Start the OMP auth broker on loopback; --tailscale also exposes it to the tailnet"
+usage = 'flag "--tailscale" help="Serve the broker on tailnet HTTPS :8445; without it, remove that route"'
+run = '''
+set -eu
+if [ "${usage_tailscale:-false}" = true ]; then
+  mise daemons start omp-auth-tailscale
+else
+  mise daemons start omp-auth-broker
+  mise daemons stop omp-auth-tailscale
+fi
+'''
 
 # Host-level preferences: apply explicitly, never on shell startup or app deployment.
 [tasks.tailscale-server-apply]
