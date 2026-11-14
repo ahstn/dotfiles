@@ -7,8 +7,8 @@ color_theme = "catppuccin"
 idiomatic_version_file_enable_tools = ["python", "node"]
 trusted_config_paths = [
   '~/git/',
+  '~/.omp/wt/',
   '~/.codex/worktrees/',
-  '~/.herdr/worktrees/',
   '~/.claude/worktrees/',
   '~/.bb/worktrees/',
 ]
@@ -27,21 +27,13 @@ gcloud = { version = "latest", depends = ["python"] }
 github-cli = "latest"
 kubie = "latest"
 git-lfs = { version = "latest", postinstall = "git-lfs install" }
-# tsrs, the Rust port of TypeScript 7, is the editor TypeScript server.
-# Every release is a prerelease, so "latest" resolves to a 0.0.0 placeholder and the version must be pinned.
-# The postinstall links the native binary to a fixed path named tsgo, which Zed and VS Code start.
-"npm:tsrs" = { version = "0.18.0-ts7.1.0-dev.20260929", postinstall = 'mkdir -p ~/.local/share/tsrs-tsdk && ln -sfn "$(find "$MISE_TOOL_INSTALL_PATH" -path "*/@tsrs/*/tsrs" -type f -print -quit)" ~/.local/share/tsrs-tsdk/tsgo' }
 
 # llm and ai
 # check for updates every 6 hours, while respecting minimum_release_age (which is overridden for omp)
 codex = "latest"
-pi = { version = "latest", depends = [
-  "node",
-], auto_update = "6h", postinstall = "pi update --extensions" }
+pi = { version = "latest", depends = ["node" ], auto_update = "6h", postinstall = "pi update --extensions" }
 oh-my-pi = { version = "latest", rename_exe = "omp", minimum_release_age = "6h", auto_update = "6h" }
-opencode = { version = "latest", allow_builds = [
-  "@opencode/cli",
-], auto_update = "6h" }
+opencode = { version = "latest", allow_builds = [ "@opencode/cli" ], auto_update = "6h" }
 "github:ahstn/oceans-llm" = "latest"
 
 # containers
@@ -87,6 +79,8 @@ ll = "eza -la --icons --group-directories-first"
 docker-prune = 'docker system prune --all --volumes --force'
 update-pi = "mise use -g --minimum-release-age 2h pi@latest && pi update --extensions"
 update-omp = "mise use -g --minimum-release-age 2h oh-my-pi@latest"
+
+
 [bootstrap.repos]
 "~/git/dotfiles" = { url = "git@github.com:ahstn/dotfiles.git", ref = "main" }
 

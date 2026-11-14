@@ -7,6 +7,24 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "ssh_connections": [
+    {
+      "host": "hogwarts",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/home/ahstn"
+          ]
+        },
+        {
+          "paths": [
+            "/home/ahstn/git/model-gym"
+          ]
+        }
+      ]
+    }
+  ],
   "disable_ai": true,
   "completions": {
     "lsp_fetch_timeout_ms": 200,

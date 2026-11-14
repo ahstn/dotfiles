@@ -12,6 +12,7 @@ exa-results/
 .config/herdr/.plugins.lock
 
 # pi
+**/.pi-durable-acp/
 .pi/agent/auth.json
 .pi/agent/models-store.json
 .pi/agent/mcp-*.json
@@ -25,6 +26,7 @@ exa-results/
 .pi/pi-acp/session-map.json
 .pi/agent/pi-subagents/
 .pi/agent/pi-pretty/
+.pi/agent/intercom/
 .pi-subagents/artifacts
 **/node_modules
 exa-usage.json
