@@ -3,18 +3,16 @@
   "defaultModel": "gpt-5.6-sol",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "1.4.0",
+  "lastChangelogVersion": "1.5.2",
   "collapseChangelog": true,
   "shellCommandPrefix": "export PATH=\"$HOME/.local/share/mise/shims:$PATH\"",
   "packages": [
     "npm:pi-subagents",
     "npm:pi-extmgr",
-    "npm:pi-token-burden",
     "npm:pi-context-view",
     "npm:pi-tool-display",
     "npm:@juicesharp/rpiv-todo",
-    "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:@plannotator/pi-extension"
+    "npm:@juicesharp/rpiv-ask-user-question"
   ],
   "compaction": {
     "enabled": true,
@@ -50,5 +48,12 @@
   "extensions": [
     "builtin:mcp",
     "-~/.pi/agent/extensions/exa-websearch/index.ts"
-  ]
+  ],
+  "extensionChangelogVersions": {
+    "{\"source\":\"npm:pi-subagents\",\"scope\":\"user\"}": "0.87.0",
+    "{\"source\":\"npm:pi-extmgr\",\"scope\":\"user\"}": "0.4.2",
+    "{\"source\":\"npm:pi-token-burden\",\"scope\":\"user\"}": "0.6.5",
+    "{\"source\":\"npm:pi-context-view\",\"scope\":\"user\"}": "0.8.3",
+    "{\"source\":\"npm:pi-tool-display\",\"scope\":\"user\"}": "0.5.0"
+  }
 }
