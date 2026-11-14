@@ -4,6 +4,36 @@ modelRoles:
   default: openai-codex/gpt-6.1-sol
   judge: openrouter/typesafe/jev-1.14
   web: web/exa
+  slow: openai-codex/gpt-6-astra:xhigh
+  tiny: openai-codex/gpt-6.1-terra:high
+  memory: openai-codex/gpt-6.1-terra:high
+tier:
+  openai: auto
+composer:
+  shape: claude
+  tokenRate: true
+skills:
+  enableClaudeUser: false
+  enableClaudeProject: false
+  enableSkillCommands: false
+  customDirectories:
+    - ~/git/dotfiles/skills
+  ignoredSkills:
+    - "*superpower*"
+    - subagent-driven-development
+    - brainstorming
+    - writing-plans
+compaction:
+  thresholdTokens: 500000
+extendedContext: false
+display:
+  showTurnTime: true
+  cacheMissMarker: true
+contextFiles:
+  extra:
+    - AGENTS.local.md
+commands:
+  enableClaudeProject: false
 update:
   auto: false
 setupVersion: 3

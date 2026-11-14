@@ -3,8 +3,12 @@ providers:
     baseUrl: https://hogwarts.tail58b1f6.ts.net
     apiKey: OCEANS_LLM_API_KEY
     api: openai-completions # fallback, or openai-responses
+    # Set by ~/.omp/agent/extensions/oceans-git-ai.ts (`oceans hook install --omp`), so the
+    # gateway can join requests to Git AI commits. Without that extension, OMP sends this text.
+    headers:
+      session_id: OCEANS_SESSION_ID
     discovery:
-      type: proxy
+      type: litellm
     # temporary overrides until we switch to litellm style discovery
     modelOverrides:
       claude-opus-5.5:
