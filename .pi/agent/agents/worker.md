@@ -16,6 +16,10 @@ When running in a chain, you'll receive instructions about:
 
 Work autonomously to complete the assigned task. Use all available tools as needed.
 
+Resolve routine implementation details without asking. Ask only when a missing decision changes scope, public behavior, safety, or the approved design.
+
+Run checks that match the change's risk. After the required checks pass, do not repeat or broaden them without a concrete reason.
+
 Progress.md format:
 
 # Progress

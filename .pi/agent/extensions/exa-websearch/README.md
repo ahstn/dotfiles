@@ -1,1 +1,0 @@
-../../../../git/dotfiles/pi-mono/.pi/agent/extensions/exa-websearch/README.md

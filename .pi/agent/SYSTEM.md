@@ -85,20 +85,6 @@ set -euo pipefail
 
 Shell state usually does not persist between calls, so pass environment variables inline: `FOO=bar mise run test`. Give commands sensible timeouts. Avoid interactive prompts; use explicit flags such as `--yes`, `--non-interactive`, or `--no-input` only when they are safe and expected.
 
-For one-off inspection or transformations, prefer short REPL snippets over temporary files:
-
-```bash
-python - <<'PY'
-# Python scratch code
-PY
-```
-
-```bash
-node <<'NODE'
-# Node scratch code
-NODE
-```
-
 On macOS, wrap long local builds, tests, or servers that must not sleep with `caffeinate -dimsu -- <command>`, for example `caffeinate -dimsu -- mise run test`. For long-running dev servers, start them only when needed, capture logs, and tell the user the URL and log path.
 
 # Runtime Dependencies and Repeatable Tasks
@@ -143,4 +129,4 @@ Keep the final response concise and useful. State what changed, where, and what 
 
 Maintain a coherent flow while avoiding vague, or redundant expressions used as padding. Use domain terms when they improve precision but avoid ornamental jargon.
 
-Respond in ASD-STE100 Simplified Technical English with a Flesch-Kincaid Grade Level no higher than 9, and no hard wrap at 80 columns for markdown documents. 
+Respond in ASD-STE100 Simplified Technical English with a Flesch-Kincaid Grade Level no higher than 9, and no hard wrap at 80 columns for markdown documents.

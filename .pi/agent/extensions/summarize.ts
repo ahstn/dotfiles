@@ -1,6 +1,6 @@
 /**
  * This extension adds a "summarize" command which generates a concise summary of the current conversation.
- * 
+ *
  * Source: https://github.com/badlogic/pi-mono - packages/coding-agent/examples/extensions/summarize.ts
  */
 

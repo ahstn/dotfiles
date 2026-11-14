@@ -1,2 +1,12 @@
+# :schema https://mise.en.dev/schema/mise.json
+# Global tools for the diagon-alley machine only.
+[tools]
+tart = "latest"
+
 [env]
 MISE_BREW_CASK_OPT_APPDIR = "$HOME/Applications"
+FNOX_PROFILE = "diagon-alley"
+
+
+[bootstrap.packages]
+"brew-cask:anomalyco/tap/hex" = { version = "latest", os = "macos" }
