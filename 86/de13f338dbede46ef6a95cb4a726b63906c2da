@@ -1,0 +1,19 @@
+.gitignore
+  s_46a41534a9bb4d::t_d9f1b2a11fdfc7 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86de13f338dbede46ef6a95cb4a726b63906c2da",
+  "prompts": {},
+  "sessions": {
+    "s_46a41534a9bb4d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c1ef-47bc-74b7-805b-8d236be5001d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
