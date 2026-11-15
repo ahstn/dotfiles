@@ -1,0 +1,22 @@
+.pi/agent/agents/pr-axis-reviewer.md
+  h_2f452a9c375069 1-37
+.pi/agent/extensions/skill-autocomplete.ts
+  h_2f452a9c375069 191
+.pi/agent/extensions/summarize.ts
+  h_2f452a9c375069 3,201
+.pi/agent/prompts/audit.md
+  h_2f452a9c375069 1-9
+.pi/agent/settings.json
+  h_2f452a9c375069 6,15,51-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8da4b8130d39240537469494531ab10bb53d415f",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
