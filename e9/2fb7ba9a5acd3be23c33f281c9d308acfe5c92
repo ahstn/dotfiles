@@ -1,0 +1,14 @@
+.omp/agent/config.yml
+  h_2f452a9c375069 13,78-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e92fb7ba9a5acd3be23c33f281c9d308acfe5c92",
+  "prompts": {},
+  "humans": {
+    "h_2f452a9c375069": {
+      "author": "Adam Houston <phazyy9@gmail.com>"
+    }
+  }
+}
