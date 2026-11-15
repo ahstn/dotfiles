@@ -10,7 +10,7 @@ modelRoles:
 tier:
   openai: auto
 composer:
-  shape: claude
+  shape: pi
   tokenRate: true
 skills:
   enableClaudeUser: false
@@ -26,19 +26,12 @@ skills:
 compaction:
   thresholdTokens: 500000
 extendedContext: false
-display:
-  showTurnTime: true
-  cacheMissMarker: true
 contextFiles:
   extra:
     - AGENTS.local.md
-commands:
-  enableClaudeProject: false
 update:
   auto: false
 setupVersion: 3
-composer:
-  shape: pi
 statusLine:
   transparent: true
   separator: pipe
@@ -57,8 +50,6 @@ error:
   notify: "on"
 startup:
   quiet: false
-compaction:
-  thresholdTokens: 300000
 autolearn:
   enabled: true
 memory:
@@ -84,3 +75,8 @@ commands:
   enableOpencodeProject: false
 dev:
   autoqaConsent: granted
+disabledProviders:
+  - amazon-bedrock
+  - bedrock-mantle
+  - google-vertex
+  - apple
