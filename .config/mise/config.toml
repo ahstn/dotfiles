@@ -11,11 +11,14 @@ trusted_config_paths = [
   '~/.codex/worktrees/',
   '~/.claude/worktrees/',
   '~/.bb/worktrees/',
+  # Testing
+  '~/.athena/worktrees/',
+  '~/.olymus/worktrees/',
 ]
 
 [tools]
 # languages and tooling
-python = "3.14"
+python = "3.15"
 rust = "latest"
 ruff = "latest"
 bun = "latest"
@@ -65,8 +68,9 @@ neovim = "latest"
 "aqua:tmux/tmux-builds" = "latest"
 turbo = "latest"
 ruby = "latest" # required for brew taps/casks
-k3s = "latest"
+k3s = { version = "latest", os = ["linux"] } 
 helm = "latest"
+"github:mattt/plonge" = "latest"
 
 
 [tasks.git-lfs-setup]
@@ -150,5 +154,12 @@ else {
   $.LSSetDefaultRoleHandlerForContentType($("public.html"), $.kLSRolesViewer, $(id));
   "Helium set as the default browser: confirm the macOS dialog if it asks";
 }'
+''',
+  # Disable volume indexing and searches, including Git/worktree folders. Requires sudo.
+  '''set -eu
+[ "$(uname -s)" = Darwin ] || exit 0
+sudo /usr/bin/mdutil -a -d
+sudo /usr/bin/mdutil -a -i off
+/usr/bin/mdutil -a -s
 ''',
 ]
